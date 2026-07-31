@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PledgeShield Security Report</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-muted: #8b949e;
+            --critical: #f85149;
+            --high: #ff7b72;
+            --medium: #d29922;
+            --low: #58a6ff;
+            --info: #8b949e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .header .subtitle { color: var(--text-muted); font-size: 0.9rem; }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .summary-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .summary-card .count { font-size: 1.8rem; font-weight: bold; }
+        .summary-card .label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+        .finding {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .finding-title { font-weight: 600; font-size: 1rem; }
+        .severity-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .severity-critical { background: rgba(248,81,73,0.15); color: var(--critical); }
+        .severity-high { background: rgba(255,123,114,0.15); color: var(--high); }
+        .severity-medium { background: rgba(210,153,34,0.15); color: var(--medium); }
+        .severity-low { background: rgba(88,166,255,0.15); color: var(--low); }
+        .severity-info { background: rgba(139,148,158,0.15); color: var(--info); }
+        .finding-meta { color: var(--text-muted); font-size: 0.85rem; }
+        .finding-desc { margin-top: 0.5rem; }
+        .finding-fix {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(88,166,255,0.05);
+            border-left: 3px solid var(--low);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .finding-details { margin-top: 0.5rem; font-size: 0.85rem; }
+        .finding-details dt { color: var(--text-muted); font-weight: 600; }
+        .finding-details dd { margin-left: 1rem; margin-bottom: 0.3rem; }
+        .no-findings { text-align: center; padding: 3rem; color: var(--text-muted); }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        .filter-group { display: flex; gap: 0.5rem; align-items: center; }
+        .filter-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; }
+        .filter-select, .search-input {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 0.4rem 0.7rem;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .filter-select:focus, .search-input:focus { border-color: var(--low); }
+        .search-input { min-width: 200px; }
+        .btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 0.4rem 0.9rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: var(--border); }
+        .filter-count { color: var(--text-muted); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PledgeShield Security Report</h1>
+        <div class="subtitle">Personal device security auditor</div>
+    </div>
+    <div id="report">
+        <p style="color: var(--text-muted);">Loading report data...</p>
+    </div>
+
+    <script>
+        const scanData = {{SCAN_RESULT_JSON}};
+
+        let severityFilter = 'all';
+        let categoryFilter = 'all';
+        let searchQuery = '';
+
+        function getCategories(data) {
+            const cats = [...new Set(data.findings.map(f => f.category))];
+            return cats.sort();
+        }
+
+        function filterFindings(data) {
+            return data.findings.filter(f => {
+                if (severityFilter !== 'all' && f.severity !== severityFilter) return false;
+                if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const inTitle = f.title.toLowerCase().includes(q);
+                    const inId = f.id.toLowerCase().includes(q);
+                    const inDesc = f.description && f.description.toLowerCase().includes(q);
+                    const inRec = f.recommendation && f.recommendation.toLowerCase().includes(q);
+                    if (!inTitle && !inId && !inDesc && !inRec) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderReport(data) {
+            const container = document.getElementById('report');
+
+            const summaryHtml = `
+                <div class="summary">
+                    <div class="summary-card"><div class="count" style="color: var(--critical)">${data.summary.critical}</div><div class="label">Critical</div></div>
+                    <div class="summary-card"><div class="count" style="color: var(--high)">${data.summary.high}</div><div class="label">High</div></div>
+                    <div class="summary-card"><div class="count" style="color: var(--medium)">${data.summary.medium}</div><div class="label">Medium</div></div>
+                    <div class="summary-card"><div class="count" style="color: var(--low)">${data.summary.low}</div><div class="label">Low</div></div>
+                    <div class="summary-card"><div class="count" style="color: var(--info)">${data.summary.info}</div><div class="label">Info</div></div>
+                    <div class="summary-card"><div class="count">${data.summary.total}</div><div class="label">Total</div></div>
+                </div>
+            `;
+
+            const hostHtml = `
+                <div style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+                    <strong>Host:</strong> ${data.hostname} &nbsp;|&nbsp;
+                    <strong>OS:</strong> ${data.os} ${data.os_version} &nbsp;|&nbsp;
+                    <strong>Scanned:</strong> ${new Date(data.scan_completed).toLocaleString()}
+                </div>
+            `;
+
+            const categories = getCategories(data);
+            const categoryOptions = ['<option value="all">All Categories</option>']
+                .concat(categories.map(c => `<option value="${c}">${c}</option>`)).join('');
+
+            const filtersHtml = `
+                <div class="filters">
+                    <div class="filter-group">
+                        <span class="filter-label">Severity:</span>
+                        <select class="filter-select" id="severity-filter" onchange="onFilterChange()">
+                            <option value="all">All</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="info">Info</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Category:</span>
+                        <select class="filter-select" id="category-filter" onchange="onFilterChange()">
+                            ${categoryOptions}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" class="search-input" id="search-filter" placeholder="Search findings..." oninput="onFilterChange()">
+                    </div>
+                    <button class="btn" onclick="exportCsv()">Export CSV</button>
+                    <span class="filter-count" id="filter-count"></span>
+                </div>
+            `;
+
+            container.innerHTML = hostHtml + summaryHtml + filtersHtml + '<div id="findings-list"></div>';
+            renderFindings(data);
+        }
+
+        function renderFindings(data) {
+            const filtered = filterFindings(data);
+            const listContainer = document.getElementById('findings-list');
+            const countEl = document.getElementById('filter-count');
+            countEl.textContent = `Showing ${filtered.length} of ${data.findings.length} findings`;
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<div class="no-findings">No findings match the current filters.</div>';
+                return;
+            }
+
+            listContainer.innerHTML = filtered.map(f => {
+                const severityClass = `severity-${f.severity}`;
+                let detailsHtml = '';
+                if (f.metadata && Object.keys(f.metadata).length > 0) {
+                    detailsHtml = '<dl class="finding-details">' +
+                        Object.entries(f.metadata).map(([k,v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('') +
+                        '</dl>';
+                }
+                let fixHtml = f.recommendation ? `<div class="finding-fix"><strong>Fix:</strong> ${f.recommendation}</div>` : '';
+                return `
+                    <div class="finding">
+                        <div class="finding-header">
+                            <span class="finding-title">${f.title}</span>
+                            <span class="severity-badge ${severityClass}">${f.severity}</span>
+                        </div>
+                        <div class="finding-meta">ID: ${f.id} | Category: ${f.category}${f.fixable ? ' | Fixable' : ''}</div>
+                        ${f.description ? `<div class="finding-desc">${f.description}</div>` : ''}
+                        ${fixHtml}
+                        ${detailsHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function onFilterChange() {
+            severityFilter = document.getElementById('severity-filter').value;
+            categoryFilter = document.getElementById('category-filter').value;
+            searchQuery = document.getElementById('search-filter').value;
+            renderFindings(scanData);
+        }
+
+        function exportCsv() {
+            const filtered = filterFindings(scanData);
+            if (filtered.length === 0) return;
+
+            const headers = ['ID', 'Title', 'Severity', 'Category', 'Description', 'Recommendation', 'Fixable', 'Metadata'];
+            const rows = filtered.map(f => [
+                f.id,
+                `"${(f.title || '').replace(/"/g, '""')}"`,
+                f.severity,
+                f.category,
+                `"${(f.description || '').replace(/"/g, '""')}"`,
+                `"${(f.recommendation || '').replace(/"/g, '""')}"`,
+                f.fixable ? 'yes' : 'no',
+                `"${f.metadata ? Object.entries(f.metadata).map(([k,v]) => `${k}=${v}`).join('; ') : ''}"`
+            ]);
+
+            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pledgeshield-report-${scanData.hostname || 'scan'}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        renderReport(scanData);
+    </script>
+</body>
+</html>

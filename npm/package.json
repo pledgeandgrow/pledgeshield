@@ -1,0 +1,25 @@
+{
+  "name": "@pledgeshield/pledgeshield",
+  "version": "0.1.0",
+  "description": "Cross-platform host security auditor — finds what antivirus misses",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "pledgeshield",
+    "triples": {
+      "defaults": ["x86_64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-unknown-linux-gnu"],
+      "additional": ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
+    }
+  },
+  "scripts": {
+    "build": "napi build --release",
+    "build:debug": "napi build",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "node test.js"
+  },
+  "keywords": ["security", "audit", "cve", "hardening", "compliance", "cross-platform"],
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.0.0"
+  }
+}
