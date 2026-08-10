@@ -169,7 +169,12 @@ impl PledgeShieldConfig {
     /// Check if a finding should be excluded based on config.
     pub fn is_excluded(&self, finding: &crate::models::Finding) -> bool {
         // Check finding ID exclusions
-        if self.exclusions.finding_ids.iter().any(|id| finding.id == *id) {
+        if self
+            .exclusions
+            .finding_ids
+            .iter()
+            .any(|id| finding.id == *id)
+        {
             return true;
         }
 
@@ -193,11 +198,13 @@ impl PledgeShieldConfig {
 
     /// Get the minimum severity from config.
     pub fn min_severity(&self) -> Option<Severity> {
-        self.scan.min_severity
+        self.scan
+            .min_severity
             .as_deref()
             .and_then(Severity::from_str)
             .or_else(|| {
-                self.thresholds.fail_on
+                self.thresholds
+                    .fail_on
                     .as_deref()
                     .and_then(Severity::from_str)
             })
@@ -333,7 +340,12 @@ thresholds:
             ..Default::default()
         };
 
-        let f = Finding::new("win-uac-disabled", "UAC Disabled", Severity::High, Category::Config);
+        let f = Finding::new(
+            "win-uac-disabled",
+            "UAC Disabled",
+            Severity::High,
+            Category::Config,
+        );
         assert!(config.is_excluded(&f));
 
         let f2 = Finding::new("other-finding", "Other", Severity::Low, Category::Config);

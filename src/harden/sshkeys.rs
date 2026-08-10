@@ -1,6 +1,5 @@
 /// SSH key auditor — check key sizes, passphrases, permissions, authorized_keys hygiene.
 use crate::models::{Category, Finding, Severity};
-use std::path::Path;
 use std::process::Command;
 
 pub fn audit_ssh_keys() -> Vec<Finding> {
@@ -23,8 +22,12 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
             let name = entry.file_name().to_string_lossy().to_string();
 
             // Skip public keys and known_hosts
-            if name.ends_with(".pub") || name == "known_hosts" || name == "known_hosts2" { continue; }
-            if name.starts_with('.') { continue; }
+            if name.ends_with(".pub") || name == "known_hosts" || name == "known_hosts2" {
+                continue;
+            }
+            if name.starts_with('.') {
+                continue;
+            }
 
             // Check if it's a private key
             if let Ok(content) = std::fs::read_to_string(&path) {
@@ -32,7 +35,9 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
                     // Check key type and size
                     if content.contains("BEGIN RSA PRIVATE KEY") {
                         // Check key size
-                        let out = Command::new("ssh-keygen").args(["-l", "-f", path.to_str().unwrap_or("")]).output();
+                        let out = Command::new("ssh-keygen")
+                            .args(["-l", "-f", path.to_str().unwrap_or("")])
+                            .output();
                         if let Ok(o) = out {
                             let s = String::from_utf8_lossy(&o.stdout);
                             if s.contains("1024") || s.contains("2048") {
@@ -49,7 +54,9 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
                     }
 
                     // Check if key has a passphrase
-                    let out = Command::new("ssh-keygen").args(["-y", "-P", "", "-f", path.to_str().unwrap_or("")]).output();
+                    let out = Command::new("ssh-keygen")
+                        .args(["-y", "-P", "", "-f", path.to_str().unwrap_or("")])
+                        .output();
                     if let Ok(o) = out {
                         if o.status.success() {
                             // Key could be read with empty passphrase — no passphrase set
@@ -73,7 +80,10 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
     let auth_keys = ssh_dir.join("authorized_keys");
     if auth_keys.exists() {
         if let Ok(content) = std::fs::read_to_string(&auth_keys) {
-            let key_count = content.lines().filter(|l| !l.starts_with('#') && !l.trim().is_empty()).count();
+            let key_count = content
+                .lines()
+                .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+                .count();
             if key_count > 10 {
                 findings.push(Finding::new(
                     "sshkey-many-authorized",
@@ -86,7 +96,9 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
 
             // Check for key comments that reveal usernames
             for line in content.lines() {
-                if line.starts_with('#') || line.trim().is_empty() { continue; }
+                if line.starts_with('#') || line.trim().is_empty() {
+                    continue;
+                }
                 if line.contains("root@") || line.contains("admin@") {
                     findings.push(Finding::new(
                         "sshkey-suspicious-key",
@@ -104,7 +116,10 @@ pub fn audit_ssh_keys() -> Vec<Finding> {
     let known_hosts = ssh_dir.join("known_hosts");
     if known_hosts.exists() {
         if let Ok(content) = std::fs::read_to_string(&known_hosts) {
-            let count = content.lines().filter(|l| !l.starts_with('#') && !l.trim().is_empty()).count();
+            let count = content
+                .lines()
+                .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+                .count();
             if count > 50 {
                 findings.push(Finding::new(
                     "sshkey-many-known-hosts",

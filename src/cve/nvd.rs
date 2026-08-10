@@ -121,25 +121,40 @@ impl NvdClient {
             req = req.header("apiKey", key);
         }
 
-        let resp = req.send().await?.error_for_status()?.json::<NvdResponse>().await?;
+        let resp = req
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<NvdResponse>()
+            .await?;
         Ok(resp)
     }
 
     /// Query NVD by keyword search (e.g. product name).
-    pub async fn query_keyword(&self, keyword: &str) -> Result<NvdResponse, Box<dyn std::error::Error>> {
+    pub async fn query_keyword(
+        &self,
+        keyword: &str,
+    ) -> Result<NvdResponse, Box<dyn std::error::Error>> {
         self.rate_limit().await;
 
         let client = reqwest::Client::builder()
             .user_agent("PledgeShield/0.1")
             .build()?;
 
-        let mut req = client.get(&self.base_url).query(&[("keywordSearch", keyword)]);
+        let mut req = client
+            .get(&self.base_url)
+            .query(&[("keywordSearch", keyword)]);
 
         if let Some(ref key) = self.api_key {
             req = req.header("apiKey", key);
         }
 
-        let resp = req.send().await?.error_for_status()?.json::<NvdResponse>().await?;
+        let resp = req
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<NvdResponse>()
+            .await?;
         Ok(resp)
     }
 

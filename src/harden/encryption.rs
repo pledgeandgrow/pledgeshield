@@ -8,7 +8,9 @@ pub fn audit_encryption() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check for LUKS-encrypted partitions
-        let out = Command::new("lsblk").args(["-o", "NAME,FSTYPE,TYPE,MOUNTPOINT", "-J"]).output();
+        let out = Command::new("lsblk")
+            .args(["-o", "NAME,FSTYPE,TYPE,MOUNTPOINT", "-J"])
+            .output();
         let mut encrypted_count = 0;
         let mut total_count = 0;
 
@@ -35,8 +37,12 @@ pub fn audit_encryption() -> Vec<Finding> {
                         let is_crypto = dev.contains("dm-crypt") || dev.contains("LUKS");
                         if !is_crypto {
                             // Check if the underlying device is encrypted
-                            let out = Command::new("lsblk").args(["-o", "TYPE", "-n", dev]).output();
-                            let is_luks = out.map(|o| String::from_utf8_lossy(&o.stdout).contains("crypt")).unwrap_or(false);
+                            let out = Command::new("lsblk")
+                                .args(["-o", "TYPE", "-n", dev])
+                                .output();
+                            let is_luks = out
+                                .map(|o| String::from_utf8_lossy(&o.stdout).contains("crypt"))
+                                .unwrap_or(false);
                             if !is_luks && !dev.contains("dm-") {
                                 findings.push(Finding::new(
                                     &format!("disk-unencrypted-{}", dev.replace('/', "_")),
@@ -60,15 +66,19 @@ pub fn audit_encryption() -> Vec<Finding> {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if let Some(dev) = parts.first() {
                     if !dev.contains("dm-") && dev.starts_with("/dev/") {
-                        findings.push(Finding::new(
-                            "swap-unencrypted",
-                            "Swap space is not encrypted",
-                            Severity::Medium,
-                            Category::HostConfig,
-                        )
-                        .description("Unencrypted swap can leak sensitive data to disk.")
-                        .recommendation("Encrypt swap with cryptsetup or use random key at boot.")
-                        .fixable(true));
+                        findings.push(
+                            Finding::new(
+                                "swap-unencrypted",
+                                "Swap space is not encrypted",
+                                Severity::Medium,
+                                Category::HostConfig,
+                            )
+                            .description("Unencrypted swap can leak sensitive data to disk.")
+                            .recommendation(
+                                "Encrypt swap with cryptsetup or use random key at boot.",
+                            )
+                            .fixable(true),
+                        );
                     }
                 }
             }
@@ -97,7 +107,10 @@ pub fn audit_encryption() -> Vec<Finding> {
     #[cfg(windows)]
     {
         let out = Command::new("powershell")
-            .args(["-Command", "Get-BitLockerVolume | Select-Object MountPoint, ProtectionStatus"])
+            .args([
+                "-Command",
+                "Get-BitLockerVolume | Select-Object MountPoint, ProtectionStatus",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
@@ -150,7 +163,9 @@ pub fn enable_encryption(dry_run: bool) -> Vec<String> {
         results.push("  5. Mount: sudo mount /dev/mapper/encrypted /mnt".to_string());
         results.push("  6. Add to /etc/crypttab and /etc/fstab for boot".to_string());
         results.push("".to_string());
-        results.push("For full-disk encryption on a fresh install, use your distro's installer.".to_string());
+        results.push(
+            "For full-disk encryption on a fresh install, use your distro's installer.".to_string(),
+        );
     }
 
     #[cfg(target_os = "macos")]
@@ -164,7 +179,10 @@ pub fn enable_encryption(dry_run: bool) -> Vec<String> {
     {
         results.push("To enable BitLocker:".to_string());
         results.push("  1. Enable TPM in BIOS".to_string());
-        results.push("  2. Run as admin: Enable-BitLocker -MountPoint C: -EncryptionMethod XtsAes256".to_string());
+        results.push(
+            "  2. Run as admin: Enable-BitLocker -MountPoint C: -EncryptionMethod XtsAes256"
+                .to_string(),
+        );
         results.push("  3. Save recovery key to AD or file".to_string());
     }
 

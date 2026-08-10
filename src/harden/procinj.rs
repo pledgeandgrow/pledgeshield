@@ -1,6 +1,5 @@
 /// Process injection detector — scan running processes for suspicious injected libraries.
 use crate::models::{Category, Finding, Severity};
-use std::process::Command;
 
 pub fn audit_injections() -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -11,7 +10,9 @@ pub fn audit_injections() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
 
                 // Get process name
@@ -28,8 +29,11 @@ pub fn audit_injections() -> Vec<Finding> {
                         if line.contains(".so") {
                             // Extract the path
                             let path = line.split_whitespace().last().unwrap_or("");
-                            if path.starts_with("/tmp/") || path.starts_with("/dev/shm/")
-                                || path.starts_with("/var/tmp/") || path.starts_with("/home/") {
+                            if path.starts_with("/tmp/")
+                                || path.starts_with("/dev/shm/")
+                                || path.starts_with("/var/tmp/")
+                                || path.starts_with("/home/")
+                            {
                                 findings.push(Finding::new(
                                     &format!("procinj-{}-{}", pid, path.replace('/', "_")),
                                     &format!("Process {} (pid {}) loaded library from suspicious path: {}", proc_name, pid, path),
@@ -44,7 +48,10 @@ pub fn audit_injections() -> Vec<Finding> {
                         if line.contains("r-xp") && line.contains("[anon") {
                             // Anonymous executable mapping — potential shellcode
                             // Only flag if process is not a known JIT runtime
-                            let jit_procs = ["java", "node", "python", "ruby", "v8", "chromium", "chrome", "firefox"];
+                            let jit_procs = [
+                                "java", "node", "python", "ruby", "v8", "chromium", "chrome",
+                                "firefox",
+                            ];
                             if !jit_procs.iter().any(|p| proc_name.contains(p)) {
                                 findings.push(Finding::new(
                                     &format!("procinj-anon-{}-{}", pid, proc_name),

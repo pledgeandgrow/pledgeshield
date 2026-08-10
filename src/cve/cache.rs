@@ -91,7 +91,10 @@ mod tests {
     #[test]
     fn test_sanitize_key() {
         assert_eq!(sanitize_key("nvd:chrome"), "nvd_chrome");
-        assert_eq!(sanitize_key("https://example.com/path?q=1"), "https___example.com_path_q_1");
+        assert_eq!(
+            sanitize_key("https://example.com/path?q=1"),
+            "https___example.com_path_q_1"
+        );
         assert_eq!(sanitize_key("clean_key"), "clean_key");
     }
 

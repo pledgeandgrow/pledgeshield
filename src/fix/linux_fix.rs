@@ -5,8 +5,12 @@ type FixResult = Result<(), Box<dyn std::error::Error>>;
 /// Enable UFW (Uncomplicated Firewall).
 pub fn enable_ufw() -> FixResult {
     Command::new("sudo").args(["ufw", "enable"]).output()?;
-    Command::new("sudo").args(["ufw", "default", "deny", "incoming"]).output()?;
-    Command::new("sudo").args(["ufw", "default", "allow", "outgoing"]).output()?;
+    Command::new("sudo")
+        .args(["ufw", "default", "deny", "incoming"])
+        .output()?;
+    Command::new("sudo")
+        .args(["ufw", "default", "allow", "outgoing"])
+        .output()?;
     Ok(())
 }
 
@@ -26,7 +30,9 @@ pub fn disable_ssh_root_login() -> FixResult {
         .join("\n");
 
     std::fs::write("/etc/ssh/sshd_config", &updated)?;
-    Command::new("sudo").args(["systemctl", "restart", "sshd"]).output()?;
+    Command::new("sudo")
+        .args(["systemctl", "restart", "sshd"])
+        .output()?;
     Ok(())
 }
 
@@ -36,7 +42,9 @@ pub fn disable_ssh_password_auth() -> FixResult {
     let updated = config
         .lines()
         .map(|line| {
-            if line.starts_with("#PasswordAuthentication") || line.starts_with("PasswordAuthentication") {
+            if line.starts_with("#PasswordAuthentication")
+                || line.starts_with("PasswordAuthentication")
+            {
                 "PasswordAuthentication no".to_string()
             } else {
                 line.to_string()
@@ -46,7 +54,9 @@ pub fn disable_ssh_password_auth() -> FixResult {
         .join("\n");
 
     std::fs::write("/etc/ssh/sshd_config", &updated)?;
-    Command::new("sudo").args(["systemctl", "restart", "sshd"]).output()?;
+    Command::new("sudo")
+        .args(["systemctl", "restart", "sshd"])
+        .output()?;
     Ok(())
 }
 
@@ -66,15 +76,21 @@ pub fn change_ssh_port() -> FixResult {
         .join("\n");
 
     std::fs::write("/etc/ssh/sshd_config", &updated)?;
-    Command::new("sudo").args(["systemctl", "restart", "sshd"]).output()?;
+    Command::new("sudo")
+        .args(["systemctl", "restart", "sshd"])
+        .output()?;
     println!("  → SSH port changed to 2222. Update your firewall rules accordingly.");
     Ok(())
 }
 
 /// Enable fail2ban for brute-force protection.
 pub fn enable_fail2ban() -> FixResult {
-    Command::new("sudo").args(["systemctl", "enable", "fail2ban"]).output()?;
-    Command::new("sudo").args(["systemctl", "start", "fail2ban"]).output()?;
+    Command::new("sudo")
+        .args(["systemctl", "enable", "fail2ban"])
+        .output()?;
+    Command::new("sudo")
+        .args(["systemctl", "start", "fail2ban"])
+        .output()?;
     Ok(())
 }
 
@@ -98,8 +114,12 @@ pub fn disable_ipv6() -> FixResult {
 
 /// Enable unattended security upgrades (Debian/Ubuntu).
 pub fn enable_unattended_upgrades() -> FixResult {
-    Command::new("sudo").args(["apt-get", "install", "-y", "unattended-upgrades"]).output()?;
-    Command::new("sudo").args(["dpkg-reconfigure", "-plow", "unattended-upgrades"]).output()?;
+    Command::new("sudo")
+        .args(["apt-get", "install", "-y", "unattended-upgrades"])
+        .output()?;
+    Command::new("sudo")
+        .args(["dpkg-reconfigure", "-plow", "unattended-upgrades"])
+        .output()?;
     Ok(())
 }
 

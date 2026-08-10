@@ -8,7 +8,10 @@ pub fn clear_clipboard() -> HardenResult {
         // Use xclip/xsel on Linux, pbcopy on macOS
         #[cfg(target_os = "linux")]
         {
-            let out = Command::new("xclip").args(["-selection", "clipboard"]).stdin(std::process::Stdio::piped()).spawn();
+            let out = Command::new("xclip")
+                .args(["-selection", "clipboard"])
+                .stdin(std::process::Stdio::piped())
+                .spawn();
             if let Ok(mut child) = out {
                 use std::io::Write;
                 if let Some(stdin) = child.stdin.as_mut() {
@@ -23,7 +26,9 @@ pub fn clear_clipboard() -> HardenResult {
                 };
             }
             // Try xsel
-            let out = Command::new("xsel").args(["--clipboard", "--clear"]).output();
+            let out = Command::new("xsel")
+                .args(["--clipboard", "--clear"])
+                .output();
             if out.map(|o| o.status.success()).unwrap_or(false) {
                 return HardenResult {
                     action: "clipboard-clear".to_string(),
@@ -52,7 +57,9 @@ pub fn clear_clipboard() -> HardenResult {
 
         #[cfg(target_os = "macos")]
         {
-            let out = Command::new("pbcopy").stdin(std::process::Stdio::piped()).spawn();
+            let out = Command::new("pbcopy")
+                .stdin(std::process::Stdio::piped())
+                .spawn();
             if let Ok(mut child) = out {
                 use std::io::Write;
                 if let Some(stdin) = child.stdin.as_mut() {
@@ -108,7 +115,10 @@ pub fn install_clipboard_watcher(seconds: u64, dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "clipboard-watcher".to_string(),
             success: true,
-            message: format!("[dry-run] Would install clipboard auto-clear after {}s.", seconds),
+            message: format!(
+                "[dry-run] Would install clipboard auto-clear after {}s.",
+                seconds
+            ),
             findings: vec![],
         };
     }
@@ -133,7 +143,10 @@ done
         HardenResult {
             action: "clipboard-watcher".to_string(),
             success: true,
-            message: format!("Clipboard watcher installed at {} (run it in background).", script_path),
+            message: format!(
+                "Clipboard watcher installed at {} (run it in background).",
+                script_path
+            ),
             findings: vec![],
         }
     }

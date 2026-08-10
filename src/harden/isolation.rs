@@ -9,7 +9,10 @@ pub fn enable_isolation(whitelist: &[String], dry_run: bool) -> Vec<HardenResult
         results.push(HardenResult {
             action: "isolation-enable".to_string(),
             success: true,
-            message: format!("[dry-run] Would block all outbound except: {}", whitelist.join(", ")),
+            message: format!(
+                "[dry-run] Would block all outbound except: {}",
+                whitelist.join(", ")
+            ),
             findings: vec![],
         });
         return results;
@@ -30,13 +33,16 @@ pub fn enable_isolation(whitelist: &[String], dry_run: bool) -> Vec<HardenResult
         results.push(HardenResult {
             action: "isolation-enable".to_string(),
             success: true,
-            message: "Default OUTPUT policy set to DROP. Loopback + established allowed.".to_string(),
+            message: "Default OUTPUT policy set to DROP. Loopback + established allowed."
+                .to_string(),
             findings: vec![],
         });
 
         // Allow whitelisted IPs
         for ip in whitelist {
-            let out = Command::new("iptables").args(["-A", "OUTPUT", "-d", ip, "-j", "ACCEPT"]).output();
+            let out = Command::new("iptables")
+                .args(["-A", "OUTPUT", "-d", ip, "-j", "ACCEPT"])
+                .output();
             let ok = out.map(|o| o.status.success()).unwrap_or(false);
             results.push(HardenResult {
                 action: format!("isolation-allow-{}", ip),
@@ -47,8 +53,12 @@ pub fn enable_isolation(whitelist: &[String], dry_run: bool) -> Vec<HardenResult
         }
 
         // Allow DNS (port 53) to whitelisted DNS servers
-        let _ = Command::new("iptables").args(["-A", "OUTPUT", "-p", "udp", "--dport", "53", "-j", "ACCEPT"]).output();
-        let _ = Command::new("iptables").args(["-A", "OUTPUT", "-p", "tcp", "--dport", "53", "-j", "ACCEPT"]).output();
+        let _ = Command::new("iptables")
+            .args(["-A", "OUTPUT", "-p", "udp", "--dport", "53", "-j", "ACCEPT"])
+            .output();
+        let _ = Command::new("iptables")
+            .args(["-A", "OUTPUT", "-p", "tcp", "--dport", "53", "-j", "ACCEPT"])
+            .output();
         results.push(HardenResult {
             action: "isolation-allow-dns".to_string(),
             success: true,
@@ -84,7 +94,9 @@ pub fn disable_isolation() -> HardenResult {
             let parts: Vec<&str> = cmd.split_whitespace().collect();
             let _ = Command::new(parts[0]).args(&parts[1..]).output();
         }
-        let _ = Command::new("iptables").args(["-P", "OUTPUT", "ACCEPT"]).output();
+        let _ = Command::new("iptables")
+            .args(["-P", "OUTPUT", "ACCEPT"])
+            .output();
         HardenResult {
             action: "isolation-disable".to_string(),
             success: true,

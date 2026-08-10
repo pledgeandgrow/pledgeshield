@@ -3,6 +3,7 @@ use super::HardenResult;
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
+#[allow(dead_code)]
 const HIGH_RISK_COUNTRIES: &[(&str, &str)] = &[
     ("CN", "China"),
     ("RU", "Russia"),
@@ -19,7 +20,10 @@ pub fn enable_geoip_filter(allow_countries: &[String], dry_run: bool) -> HardenR
         return HardenResult {
             action: "geoip-enable".to_string(),
             success: true,
-            message: format!("[dry-run] Would block outbound to high-risk countries (allowing: {:?})", allow_countries),
+            message: format!(
+                "[dry-run] Would block outbound to high-risk countries (allowing: {:?})",
+                allow_countries
+            ),
             findings: vec![],
         };
     }
@@ -27,8 +31,11 @@ pub fn enable_geoip_filter(allow_countries: &[String], dry_run: bool) -> HardenR
     #[cfg(target_os = "linux")]
     {
         // Check if ipset is available
-        let installed = Command::new("which").arg("ipset").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("ipset")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
             return HardenResult {
@@ -40,12 +47,30 @@ pub fn enable_geoip_filter(allow_countries: &[String], dry_run: bool) -> HardenR
         }
 
         // Create ipset for blocked countries
-        let _ = Command::new("ipset").args(["create", "pledgeshield-geoip-block", "hash:net", "hashsize", "4096"]).output();
+        let _ = Command::new("ipset")
+            .args([
+                "create",
+                "pledgeshield-geoip-block",
+                "hash:net",
+                "hashsize",
+                "4096",
+            ])
+            .output();
 
         // For a real implementation, we'd download country IP ranges from ipdeny.com
         // For now, set up the iptables rule
         let out = Command::new("iptables")
-            .args(["-A", "OUTPUT", "-m", "set", "--match-set", "pledgeshield-geoip-block", "dst", "-j", "DROP"])
+            .args([
+                "-A",
+                "OUTPUT",
+                "-m",
+                "set",
+                "--match-set",
+                "pledgeshield-geoip-block",
+                "dst",
+                "-j",
+                "DROP",
+            ])
             .output();
 
         HardenResult {
@@ -72,9 +97,21 @@ pub fn disable_geoip_filter() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         let _ = Command::new("iptables")
-            .args(["-D", "OUTPUT", "-m", "set", "--match-set", "pledgeshield-geoip-block", "dst", "-j", "DROP"])
+            .args([
+                "-D",
+                "OUTPUT",
+                "-m",
+                "set",
+                "--match-set",
+                "pledgeshield-geoip-block",
+                "dst",
+                "-j",
+                "DROP",
+            ])
             .output();
-        let _ = Command::new("ipset").args(["destroy", "pledgeshield-geoip-block"]).output();
+        let _ = Command::new("ipset")
+            .args(["destroy", "pledgeshield-geoip-block"])
+            .output();
         HardenResult {
             action: "geoip-disable".to_string(),
             success: true,

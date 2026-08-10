@@ -38,7 +38,10 @@ pub fn audit_insecure_ports() -> Vec<Finding> {
                         Category::Network,
                     )
                     .description(&format!("Port {}/{} is listening. {}", port, proto, reason))
-                    .recommendation(&format!("Close port {} or bind it to localhost only.", port))
+                    .recommendation(&format!(
+                        "Close port {} or bind it to localhost only.",
+                        port
+                    ))
                     .fixable(true)
                     .metadata("port", &port.to_string())
                     .metadata("protocol", proto),
@@ -190,16 +193,24 @@ fn block_port(port: u16, proto: &str) -> Result<String, String> {
         // iptables fallback
         let ipt = Command::new("iptables")
             .args([
-                "-A", "INPUT",
-                "-p", proto,
-                "--dport", &port.to_string(),
-                "-j", "DROP",
+                "-A",
+                "INPUT",
+                "-p",
+                proto,
+                "--dport",
+                &port.to_string(),
+                "-j",
+                "DROP",
             ])
             .output();
         match ipt {
-            Ok(o) if o.status.success() =>
-                Ok(format!("iptables: DROP rule added for {}/{}", port, proto)),
-            Ok(o) => Err(format!("iptables failed: {}", String::from_utf8_lossy(&o.stderr))),
+            Ok(o) if o.status.success() => {
+                Ok(format!("iptables: DROP rule added for {}/{}", port, proto))
+            }
+            Ok(o) => Err(format!(
+                "iptables failed: {}",
+                String::from_utf8_lossy(&o.stderr)
+            )),
             Err(e) => Err(format!("No firewall tool available: {}", e)),
         }
     }
@@ -208,7 +219,10 @@ fn block_port(port: u16, proto: &str) -> Result<String, String> {
     {
         // pfctl: add a block rule. Requires editing a pf anchor or using `pfctl`.
         // Simplest: use a one-shot anchor rule.
-        let rule = format!("block in quick proto {} from any to any port {}", proto, port);
+        let rule = format!(
+            "block in quick proto {} from any to any port {}",
+            proto, port
+        );
         let out = Command::new("pfctl")
             .args(["-ef", "-"])
             .stdin(std::process::Stdio::piped())
@@ -233,17 +247,26 @@ fn block_port(port: u16, proto: &str) -> Result<String, String> {
         let proto_name = if proto == "tcp" { "TCP" } else { "UDP" };
         let out = Command::new("netsh")
             .args([
-                "advfirewall", "firewall", "add", "rule",
+                "advfirewall",
+                "firewall",
+                "add",
+                "rule",
                 &format!("name=PledgeShield-Block-{}", port),
-                "dir=in", "action=block",
+                "dir=in",
+                "action=block",
                 &format!("protocol={}", proto_name),
                 &format!("localport={}", port),
             ])
             .output();
         match out {
-            Ok(o) if o.status.success() =>
-                Ok(format!("netsh: firewall rule added to block {}/{}", port, proto)),
-            Ok(o) => Err(format!("netsh failed: {}", String::from_utf8_lossy(&o.stderr))),
+            Ok(o) if o.status.success() => Ok(format!(
+                "netsh: firewall rule added to block {}/{}",
+                port, proto
+            )),
+            Ok(o) => Err(format!(
+                "netsh failed: {}",
+                String::from_utf8_lossy(&o.stderr)
+            )),
             Err(e) => Err(format!("netsh not available: {}", e)),
         }
     }
@@ -290,7 +313,13 @@ pub fn restore_ports() -> Vec<HardenResult> {
                     let name = l.strip_prefix("Rule Name:").unwrap_or("").trim();
                     if name.starts_with("PledgeShield-Block-") {
                         let del = Command::new("netsh")
-                            .args(["advfirewall", "firewall", "delete", "rule", &format!("name={}", name)])
+                            .args([
+                                "advfirewall",
+                                "firewall",
+                                "delete",
+                                "rule",
+                                &format!("name={}", name),
+                            ])
                             .output();
                         if del.map(|o| o.status.success()).unwrap_or(false) {
                             removed += 1;
@@ -316,7 +345,8 @@ pub fn restore_ports() -> Vec<HardenResult> {
         results.push(HardenResult {
             action: "restore-ports".to_string(),
             success: true,
-            message: "Check `pfctl -sr` for PledgeShield block rules and remove with `pfctl -d`.".to_string(),
+            message: "Check `pfctl -sr` for PledgeShield block rules and remove with `pfctl -d`."
+                .to_string(),
             findings: vec![],
         });
     }

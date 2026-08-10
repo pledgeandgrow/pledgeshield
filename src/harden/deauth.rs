@@ -8,21 +8,30 @@ pub fn audit_deauth() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check if we're connected to WiFi
-        let out = Command::new("nmcli").args(["-t", "-f", "ACTIVE,SSID,STATE", "dev", "wifi"]).output();
+        let out = Command::new("nmcli")
+            .args(["-t", "-f", "ACTIVE,SSID,STATE", "dev", "wifi"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
-            let connected = s.lines().any(|l| l.starts_with("yes:") && l.contains(":connected"));
+            let connected = s
+                .lines()
+                .any(|l| l.starts_with("yes:") && l.contains(":connected"));
             if !connected {
                 return findings; // Not on WiFi — no deauth risk
             }
 
             // Check dmesg for deauth events
-            let out = Command::new("dmesg").args(["--since", "1 hour ago"]).output();
+            let out = Command::new("dmesg")
+                .args(["--since", "1 hour ago"])
+                .output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
                 let mut deauth_count = 0;
                 for line in s.lines() {
-                    if line.contains("deauth") || line.contains("deauthenticated") || line.contains("disassoc") {
+                    if line.contains("deauth")
+                        || line.contains("deauthenticated")
+                        || line.contains("disassoc")
+                    {
                         deauth_count += 1;
                     }
                 }
@@ -35,25 +44,36 @@ pub fn audit_deauth() -> Vec<Finding> {
                     )
                     .description("Multiple WiFi deauthentication events detected. This could be a deauth attack trying to force you off your network (for evil twin or capture)."));
                 } else if deauth_count > 0 {
-                    findings.push(Finding::new(
-                        "deauth-few",
-                        &format!("{} WiFi deauth event(s) in last hour", deauth_count),
-                        Severity::Low,
-                        Category::Network,
-                    )
-                    .description("A few deauth events are normal. Monitor for increases."));
+                    findings.push(
+                        Finding::new(
+                            "deauth-few",
+                            &format!("{} WiFi deauth event(s) in last hour", deauth_count),
+                            Severity::Low,
+                            Category::Network,
+                        )
+                        .description("A few deauth events are normal. Monitor for increases."),
+                    );
                 }
             }
 
             // Check journalctl for NetworkManager deauth logs
             let out = Command::new("journalctl")
-                .args(["-u", "NetworkManager", "--since", "1 hour ago", "--no-pager"])
+                .args([
+                    "-u",
+                    "NetworkManager",
+                    "--since",
+                    "1 hour ago",
+                    "--no-pager",
+                ])
                 .output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
-                let deauth_count = s.lines().filter(|l| {
-                    l.contains("deauth") || l.contains("DEAUTH") || l.contains("reason=7")
-                }).count();
+                let deauth_count = s
+                    .lines()
+                    .filter(|l| {
+                        l.contains("deauth") || l.contains("DEAUTH") || l.contains("reason=7")
+                    })
+                    .count();
                 if deauth_count > 5 {
                     findings.push(Finding::new(
                         "deauth-nm-multiple",
@@ -87,14 +107,18 @@ pub fn monitor_deauth(max_runtime: u64) {
             let out = Command::new("dmesg").output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
-                let current_count = s.lines().filter(|l| {
-                    l.contains("deauth") || l.contains("deauthenticated")
-                }).count();
+                let current_count = s
+                    .lines()
+                    .filter(|l| l.contains("deauth") || l.contains("deauthenticated"))
+                    .count();
 
                 if current_count > last_count {
                     let new_events = current_count - last_count;
                     let now = chrono::Utc::now().format("%H:%M:%S");
-                    println!("  {} [HIGH] {} new deauth event(s) detected!", now, new_events);
+                    println!(
+                        "  {} [HIGH] {} new deauth event(s) detected!",
+                        now, new_events
+                    );
                     last_count = current_count;
                 }
             }

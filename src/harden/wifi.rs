@@ -8,12 +8,23 @@ pub fn audit_wifi() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check current connection
-        let out = Command::new("nmcli").args(["-t", "-f", "active,ssid,security,signal", "device", "wifi", "list"]).output();
+        let out = Command::new("nmcli")
+            .args([
+                "-t",
+                "-f",
+                "active,ssid,security,signal",
+                "device",
+                "wifi",
+                "list",
+            ])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() < 4 { continue; }
+                if parts.len() < 4 {
+                    continue;
+                }
                 let active = parts[0] == "yes";
                 let ssid = parts[1];
                 let security = parts[2];
@@ -29,35 +40,59 @@ pub fn audit_wifi() -> Vec<Finding> {
                         .recommendation("Use a VPN or switch to a secured network.")
                         .fixable(false));
                     } else if security.contains("WEP") {
-                        findings.push(Finding::new(
-                            "wifi-wep",
-                            &format!("Connected to WEP network: {} (insecure)", ssid),
-                            Severity::High,
-                            Category::Network,
-                        )
-                        .description("WEP encryption is broken and can be cracked in minutes.")
-                        .recommendation("Switch to WPA2/WPA3 or use a VPN.")
-                        .fixable(false));
+                        findings.push(
+                            Finding::new(
+                                "wifi-wep",
+                                &format!("Connected to WEP network: {} (insecure)", ssid),
+                                Severity::High,
+                                Category::Network,
+                            )
+                            .description("WEP encryption is broken and can be cracked in minutes.")
+                            .recommendation("Switch to WPA2/WPA3 or use a VPN.")
+                            .fixable(false),
+                        );
                     }
                 }
             }
         }
 
         // Check saved networks for auto-connect to open networks
-        let out = Command::new("nmcli").args(["-t", "-f", "NAME,TYPE", "connection", "show"]).output();
+        let out = Command::new("nmcli")
+            .args(["-t", "-f", "NAME,TYPE", "connection", "show"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() < 2 || parts[1] != "wifi" { continue; }
+                if parts.len() < 2 || parts[1] != "wifi" {
+                    continue;
+                }
                 let name = parts[0];
                 // Check autoconnect
-                let out2 = Command::new("nmcli").args(["-t", "-f", "connection.autoconnect", "connection", "show", name]).output();
+                let out2 = Command::new("nmcli")
+                    .args([
+                        "-t",
+                        "-f",
+                        "connection.autoconnect",
+                        "connection",
+                        "show",
+                        name,
+                    ])
+                    .output();
                 if let Ok(o2) = out2 {
                     let s2 = String::from_utf8_lossy(&o2.stdout);
                     if s2.contains("yes") {
                         // Check if it's open
-                        let out3 = Command::new("nmcli").args(["-t", "-f", "802-11-wireless-security.key-mgmt", "connection", "show", name]).output();
+                        let out3 = Command::new("nmcli")
+                            .args([
+                                "-t",
+                                "-f",
+                                "802-11-wireless-security.key-mgmt",
+                                "connection",
+                                "show",
+                                name,
+                            ])
+                            .output();
                         if let Ok(o3) = out3 {
                             let s3 = String::from_utf8_lossy(&o3.stdout);
                             if s3.trim().is_empty() || s3.contains("none") {
@@ -80,13 +115,21 @@ pub fn audit_wifi() -> Vec<Finding> {
 
     #[cfg(target_os = "macos")]
     {
-        let out = Command::new("networksetup").args(["-listallnetworkservices"]).output();
+        let out = Command::new("networksetup")
+            .args(["-listallnetworkservices"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines().skip(1) {
                 let svc = line.trim();
-                if svc.is_empty() || svc == "An asterisk (*) denotes that a network service is disabled." { continue; }
-                let out2 = Command::new("networksetup").args(["-getairportnetwork", svc]).output();
+                if svc.is_empty()
+                    || svc == "An asterisk (*) denotes that a network service is disabled."
+                {
+                    continue;
+                }
+                let out2 = Command::new("networksetup")
+                    .args(["-getairportnetwork", svc])
+                    .output();
                 if let Ok(o2) = out2 {
                     let s2 = String::from_utf8_lossy(&o2.stdout);
                     if s2.contains("Wi-Fi") || s2.contains("AirPort") {
@@ -103,43 +146,58 @@ pub fn audit_wifi() -> Vec<Finding> {
 
     #[cfg(windows)]
     {
-        let out = Command::new("netsh").args(["wlan", "show", "interfaces"]).output();
+        let out = Command::new("netsh")
+            .args(["wlan", "show", "interfaces"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("Open") || s.contains("WEP") {
-                findings.push(Finding::new(
-                    "wifi-insecure",
-                    "Connected to insecure WiFi (Open or WEP)",
-                    Severity::High,
-                    Category::Network,
-                )
-                .description("Current WiFi connection uses no encryption or broken WEP.")
-                .recommendation("Switch to a WPA2/WPA3 network or use a VPN.")
-                .fixable(false));
+                findings.push(
+                    Finding::new(
+                        "wifi-insecure",
+                        "Connected to insecure WiFi (Open or WEP)",
+                        Severity::High,
+                        Category::Network,
+                    )
+                    .description("Current WiFi connection uses no encryption or broken WEP.")
+                    .recommendation("Switch to a WPA2/WPA3 network or use a VPN.")
+                    .fixable(false),
+                );
             }
         }
 
         // Check saved networks
-        let out = Command::new("netsh").args(["wlan", "show", "profiles"]).output();
+        let out = Command::new("netsh")
+            .args(["wlan", "show", "profiles"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 if let Some(name) = line.split(':').nth(1) {
                     let name = name.trim();
-                    if name.is_empty() { continue; }
-                    let out2 = Command::new("netsh").args(["wlan", "show", "profile", name, "key=clear"]).output();
+                    if name.is_empty() {
+                        continue;
+                    }
+                    let out2 = Command::new("netsh")
+                        .args(["wlan", "show", "profile", name, "key=clear"])
+                        .output();
                     if let Ok(o2) = out2 {
                         let s2 = String::from_utf8_lossy(&o2.stdout);
                         if s2.contains("Open") {
-                            findings.push(Finding::new(
-                                "wifi-saved-open",
-                                &format!("Saved open WiFi network: {}", name),
-                                Severity::Low,
-                                Category::Network,
-                            )
-                            .description("An open WiFi network is saved and may auto-connect.")
-                            .recommendation(&format!("Remove: netsh wlan delete profile name=\"{}\"", name))
-                            .fixable(true));
+                            findings.push(
+                                Finding::new(
+                                    "wifi-saved-open",
+                                    &format!("Saved open WiFi network: {}", name),
+                                    Severity::Low,
+                                    Category::Network,
+                                )
+                                .description("An open WiFi network is saved and may auto-connect.")
+                                .recommendation(&format!(
+                                    "Remove: netsh wlan delete profile name=\"{}\"",
+                                    name
+                                ))
+                                .fixable(true),
+                            );
                         }
                     }
                 }
@@ -154,7 +212,9 @@ pub fn audit_wifi() -> Vec<Finding> {
 pub fn forget_network(name: &str) -> Result<String, String> {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("nmcli").args(["connection", "delete", name]).output();
+        let out = Command::new("nmcli")
+            .args(["connection", "delete", name])
+            .output();
         match out {
             Ok(o) if o.status.success() => Ok(format!("Removed WiFi network: {}", name)),
             Ok(o) => Err(format!("Failed: {}", String::from_utf8_lossy(&o.stderr))),
@@ -164,7 +224,9 @@ pub fn forget_network(name: &str) -> Result<String, String> {
 
     #[cfg(windows)]
     {
-        let out = Command::new("netsh").args(["wlan", "delete", "profile", &format!("name={}", name)]).output();
+        let out = Command::new("netsh")
+            .args(["wlan", "delete", "profile", &format!("name={}", name)])
+            .output();
         match out {
             Ok(o) if o.status.success() => Ok(format!("Removed WiFi network: {}", name)),
             Ok(o) => Err(format!("Failed: {}", String::from_utf8_lossy(&o.stderr))),

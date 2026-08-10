@@ -2,18 +2,35 @@
 use crate::models::{Category, Finding, Severity};
 
 const SECRET_ENV_VARS: &[&str] = &[
-    "API_KEY", "API_SECRET", "ACCESS_TOKEN", "ACCESS_KEY",
-    "SECRET_KEY", "PRIVATE_KEY", "PASSWORD", "PASSWD",
-    "TOKEN", "AUTH_TOKEN", "BEARER_TOKEN",
-    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
-    "GITHUB_TOKEN", "GITLAB_TOKEN",
-    "STRIPE_SECRET_KEY", "STRIPE_API_KEY",
-    "DATABASE_URL", "DB_PASSWORD",
-    "JWT_SECRET", "SESSION_SECRET",
-    "ENCRYPTION_KEY", "ENCRYPT_KEY",
-    "SLACK_TOKEN", "SLACK_WEBHOOK",
-    "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
-    "GOOGLE_API_KEY", "AZURE_API_KEY",
+    "API_KEY",
+    "API_SECRET",
+    "ACCESS_TOKEN",
+    "ACCESS_KEY",
+    "SECRET_KEY",
+    "PRIVATE_KEY",
+    "PASSWORD",
+    "PASSWD",
+    "TOKEN",
+    "AUTH_TOKEN",
+    "BEARER_TOKEN",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "GITHUB_TOKEN",
+    "GITLAB_TOKEN",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_API_KEY",
+    "DATABASE_URL",
+    "DB_PASSWORD",
+    "JWT_SECRET",
+    "SESSION_SECRET",
+    "ENCRYPTION_KEY",
+    "ENCRYPT_KEY",
+    "SLACK_TOKEN",
+    "SLACK_WEBHOOK",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "AZURE_API_KEY",
 ];
 
 pub fn audit_env_leaks() -> Vec<Finding> {
@@ -24,7 +41,9 @@ pub fn audit_env_leaks() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
 
                 let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
@@ -41,7 +60,8 @@ pub fn audit_env_leaks() -> Vec<Finding> {
                         let pattern = format!("{}=", var);
                         if environ.contains(&pattern) {
                             // Extract the value to check if it's non-empty
-                            let value = environ.split(&pattern)
+                            let value = environ
+                                .split(&pattern)
                                 .nth(1)
                                 .and_then(|s| s.split('\0').next())
                                 .unwrap_or("");
@@ -60,7 +80,8 @@ pub fn audit_env_leaks() -> Vec<Finding> {
 
                     // Check for LD_PRELOAD (injection)
                     if environ.contains("LD_PRELOAD=") {
-                        let preload = environ.split("LD_PRELOAD=")
+                        let preload = environ
+                            .split("LD_PRELOAD=")
                             .nth(1)
                             .and_then(|s| s.split('\0').next())
                             .unwrap_or("");

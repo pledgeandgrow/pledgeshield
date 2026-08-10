@@ -11,16 +11,18 @@ pub fn audit_webrtc() -> Vec<crate::models::Finding> {
         let prefs_path = ff_dir.join("prefs.js");
         if let Ok(content) = std::fs::read_to_string(&prefs_path) {
             if !content.contains("media.peerconnection.enabled\", false") {
-                findings.push(Finding::new(
-                    "webrtc-firefox-enabled",
-                    "Firefox WebRTC is enabled (IP leak risk)",
-                    Severity::Medium,
-                    Category::Browser,
-                )
-                .description("WebRTC can leak your real IP address even when using a VPN.")
-                .recommendation("Run: pledgeshield harden webrtc --block")
-                .fixable(true)
-                .metadata("browser", "firefox"));
+                findings.push(
+                    Finding::new(
+                        "webrtc-firefox-enabled",
+                        "Firefox WebRTC is enabled (IP leak risk)",
+                        Severity::Medium,
+                        Category::Browser,
+                    )
+                    .description("WebRTC can leak your real IP address even when using a VPN.")
+                    .recommendation("Run: pledgeshield harden webrtc --block")
+                    .fixable(true)
+                    .metadata("browser", "firefox"),
+                );
             }
         }
     }
@@ -29,16 +31,20 @@ pub fn audit_webrtc() -> Vec<crate::models::Finding> {
     // but we can check if the policy is set
     for browser in &["chrome", "chromium", "brave", "edge"] {
         if get_chromium_prefs_path(browser).is_some() {
-            findings.push(Finding::new(
-                &format!("webrtc-{}-check", browser),
-                &format!("{} WebRTC status unknown (check via browser)", browser),
-                Severity::Low,
-                Category::Browser,
-            )
-            .description("Chromium-based browsers need a WebRTC blocking extension or policy.")
-            .recommendation("Run: pledgeshield harden webrtc --block  (sets policy to block WebRTC)")
-            .fixable(true)
-            .metadata("browser", browser.to_string()));
+            findings.push(
+                Finding::new(
+                    &format!("webrtc-{}-check", browser),
+                    &format!("{} WebRTC status unknown (check via browser)", browser),
+                    Severity::Low,
+                    Category::Browser,
+                )
+                .description("Chromium-based browsers need a WebRTC blocking extension or policy.")
+                .recommendation(
+                    "Run: pledgeshield harden webrtc --block  (sets policy to block WebRTC)",
+                )
+                .fixable(true)
+                .metadata("browser", browser.to_string()),
+            );
         }
     }
 
@@ -61,21 +67,31 @@ pub fn block_webrtc(dry_run: bool) -> Vec<HardenResult> {
                 });
             } else {
                 let content = std::fs::read_to_string(&prefs_path).unwrap_or_default();
-                let mut lines: Vec<String> = content.lines()
+                let mut lines: Vec<String> = content
+                    .lines()
                     .filter(|l| !l.starts_with("user_pref(\"media.peerconnection"))
                     .map(String::from)
                     .collect();
                 lines.push("user_pref(\"media.peerconnection.enabled\", false);".to_string());
                 lines.push("user_pref(\"media.peerconnection.turn.disable\", true);".to_string());
-                lines.push("user_pref(\"media.peerconnection.use_document_iceservers\", false);".to_string());
+                lines.push(
+                    "user_pref(\"media.peerconnection.use_document_iceservers\", false);"
+                        .to_string(),
+                );
                 lines.push("user_pref(\"media.peerconnection.video.enabled\", false);".to_string());
-                lines.push("user_pref(\"media.peerconnection.identity.enabled\", false);".to_string());
-                lines.push("user_pref(\"media.peerconnection.ice.default_address_only\", true);".to_string());
+                lines.push(
+                    "user_pref(\"media.peerconnection.identity.enabled\", false);".to_string(),
+                );
+                lines.push(
+                    "user_pref(\"media.peerconnection.ice.default_address_only\", true);"
+                        .to_string(),
+                );
                 let _ = std::fs::write(&prefs_path, lines.join("\n") + "\n");
                 results.push(HardenResult {
                     action: "webrtc-block-firefox".to_string(),
                     success: true,
-                    message: "Firefox WebRTC disabled + ICE restricted to default address only.".to_string(),
+                    message: "Firefox WebRTC disabled + ICE restricted to default address only."
+                        .to_string(),
                     findings: vec![],
                 });
             }
@@ -108,7 +124,10 @@ pub fn block_webrtc(dry_run: bool) -> Vec<HardenResult> {
                     Ok(()) => results.push(HardenResult {
                         action: format!("webrtc-block-{}", browser),
                         success: true,
-                        message: format!("{} WebRTC policy set (disable_non_proxied_udp).", browser),
+                        message: format!(
+                            "{} WebRTC policy set (disable_non_proxied_udp).",
+                            browser
+                        ),
                         findings: vec![],
                     }),
                     Err(e) => results.push(HardenResult {
@@ -142,7 +161,8 @@ pub fn restore_webrtc() -> Vec<HardenResult> {
         let prefs_path = ff_dir.join("prefs.js");
         if prefs_path.exists() {
             let content = std::fs::read_to_string(&prefs_path).unwrap_or_default();
-            let lines: Vec<String> = content.lines()
+            let lines: Vec<String> = content
+                .lines()
                 .filter(|l| !l.starts_with("user_pref(\"media.peerconnection"))
                 .map(String::from)
                 .collect();
@@ -217,7 +237,10 @@ fn get_chromium_prefs_path(browser: &str) -> Option<PathBuf> {
         let base = match browser {
             "chrome" => config.join("google-chrome").join("Default"),
             "edge" => config.join("microsoft-edge").join("Default"),
-            "brave" => config.join("BraveSoftware").join("Brave-Browser").join("Default"),
+            "brave" => config
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("Default"),
             "chromium" => config.join("chromium").join("Default"),
             _ => return None,
         };

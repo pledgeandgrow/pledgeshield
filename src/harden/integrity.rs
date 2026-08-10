@@ -10,19 +10,40 @@ fn get_critical_paths() -> Vec<&'static str> {
     #[cfg(target_os = "linux")]
     {
         vec![
-            "/etc/passwd", "/etc/shadow", "/etc/sudoers", "/etc/hosts",
-            "/etc/ssh/sshd_config", "/etc/crontab", "/etc/fstab",
-            "/etc/resolv.conf", "/etc/environment", "/etc/profile",
-            "/bin/su", "/bin/sudo", "/usr/bin/sudo", "/bin/mount",
-            "/bin/login", "/usr/bin/passwd", "/bin/bash", "/bin/sh",
+            "/etc/passwd",
+            "/etc/shadow",
+            "/etc/sudoers",
+            "/etc/hosts",
+            "/etc/ssh/sshd_config",
+            "/etc/crontab",
+            "/etc/fstab",
+            "/etc/resolv.conf",
+            "/etc/environment",
+            "/etc/profile",
+            "/bin/su",
+            "/bin/sudo",
+            "/usr/bin/sudo",
+            "/bin/mount",
+            "/bin/login",
+            "/usr/bin/passwd",
+            "/bin/bash",
+            "/bin/sh",
         ]
     }
     #[cfg(target_os = "macos")]
     {
         vec![
-            "/etc/passwd", "/etc/sudoers", "/etc/hosts", "/etc/ssh/sshd_config",
-            "/etc/crontab", "/etc/resolv.conf", "/etc/profile",
-            "/bin/su", "/usr/bin/sudo", "/bin/bash", "/bin/sh",
+            "/etc/passwd",
+            "/etc/sudoers",
+            "/etc/hosts",
+            "/etc/ssh/sshd_config",
+            "/etc/crontab",
+            "/etc/resolv.conf",
+            "/etc/profile",
+            "/bin/su",
+            "/usr/bin/sudo",
+            "/bin/bash",
+            "/bin/sh",
         ]
     }
     #[cfg(windows)]
@@ -108,7 +129,11 @@ pub fn create_baseline() -> HardenResult {
         Ok(()) => HardenResult {
             action: "fim-baseline".to_string(),
             success: true,
-            message: format!("Baseline created: {} files hashed (stored at {})", hashes.len(), db_path),
+            message: format!(
+                "Baseline created: {} files hashed (stored at {})",
+                hashes.len(),
+                db_path
+            ),
             findings: vec![],
         },
         Err(e) => HardenResult {
@@ -128,13 +153,15 @@ pub fn check_integrity() -> Vec<Finding> {
     let content = match fs::read_to_string(&db_path) {
         Ok(c) => c,
         Err(_) => {
-            findings.push(Finding::new(
-                "fim-no-baseline",
-                "No file integrity baseline found",
-                Severity::Low,
-                Category::HostConfig,
-            )
-            .description("Run: pledgeshield harden integrity --baseline  to create one."));
+            findings.push(
+                Finding::new(
+                    "fim-no-baseline",
+                    "No file integrity baseline found",
+                    Severity::Low,
+                    Category::HostConfig,
+                )
+                .description("Run: pledgeshield harden integrity --baseline  to create one."),
+            );
             return findings;
         }
     };
@@ -159,14 +186,16 @@ pub fn check_integrity() -> Vec<Finding> {
                 }
             }
             None => {
-                findings.push(Finding::new(
-                    &format!("fim-missing-{}", path.replace('/', "_")),
-                    &format!("File missing: {}", path),
-                    Severity::Critical,
-                    Category::HostConfig,
-                )
-                .description("A critical system file that was in the baseline is now missing!")
-                .recommendation(&format!("Restore {} from a known-good source.", path)));
+                findings.push(
+                    Finding::new(
+                        &format!("fim-missing-{}", path.replace('/', "_")),
+                        &format!("File missing: {}", path),
+                        Severity::Critical,
+                        Category::HostConfig,
+                    )
+                    .description("A critical system file that was in the baseline is now missing!")
+                    .recommendation(&format!("Restore {} from a known-good source.", path)),
+                );
             }
         }
     }

@@ -14,18 +14,25 @@ pub struct TrendPoint {
 }
 
 /// Get detailed trend data from scan history.
-pub fn get_trend_data(history: &ScanHistory, limit: u32) -> Result<Vec<TrendPoint>, Box<dyn std::error::Error>> {
+pub fn get_trend_data(
+    history: &ScanHistory,
+    limit: u32,
+) -> Result<Vec<TrendPoint>, Box<dyn std::error::Error>> {
     let entries = history.list(limit)?;
 
-    let trend: Vec<TrendPoint> = entries.into_iter().rev().map(|e| TrendPoint {
-        timestamp: e.timestamp,
-        critical: e.critical,
-        high: e.high,
-        medium: e.medium,
-        low: e.low,
-        info: e.info,
-        total: e.total,
-    }).collect();
+    let trend: Vec<TrendPoint> = entries
+        .into_iter()
+        .rev()
+        .map(|e| TrendPoint {
+            timestamp: e.timestamp,
+            critical: e.critical,
+            high: e.high,
+            medium: e.medium,
+            low: e.low,
+            info: e.info,
+            total: e.total,
+        })
+        .collect();
 
     Ok(trend)
 }
@@ -87,13 +94,27 @@ pub fn format_dashboard(trend: &[TrendPoint]) -> String {
         let delta = last.total - first.total;
 
         buf.push_str("\n── Trend Analysis ────────────────────────────────────────\n");
-        buf.push_str(&format!("  First scan: {} findings ({})\n", first.total, first.timestamp.format("%Y-%m-%d")));
-        buf.push_str(&format!("  Last scan:  {} findings ({})\n", last.total, last.timestamp.format("%Y-%m-%d")));
+        buf.push_str(&format!(
+            "  First scan: {} findings ({})\n",
+            first.total,
+            first.timestamp.format("%Y-%m-%d")
+        ));
+        buf.push_str(&format!(
+            "  Last scan:  {} findings ({})\n",
+            last.total,
+            last.timestamp.format("%Y-%m-%d")
+        ));
 
         if delta < 0 {
-            buf.push_str(&format!("  Change:     \x1b[32m{} findings (improving)\x1b[0m\n", delta));
+            buf.push_str(&format!(
+                "  Change:     \x1b[32m{} findings (improving)\x1b[0m\n",
+                delta
+            ));
         } else if delta > 0 {
-            buf.push_str(&format!("  Change:     \x1b[31m+{} findings (worsening)\x1b[0m\n", delta));
+            buf.push_str(&format!(
+                "  Change:     \x1b[31m+{} findings (worsening)\x1b[0m\n",
+                delta
+            ));
         } else {
             buf.push_str("  Change:     0 findings (stable)\n");
         }
@@ -101,8 +122,16 @@ pub fn format_dashboard(trend: &[TrendPoint]) -> String {
         // Critical trend
         let crit_delta = last.critical - first.critical;
         if crit_delta != 0 {
-            buf.push_str(&format!("  Critical:   {} → {} ({})\n", first.critical, last.critical,
-                if crit_delta < 0 { "improving" } else { "worsening" }));
+            buf.push_str(&format!(
+                "  Critical:   {} → {} ({})\n",
+                first.critical,
+                last.critical,
+                if crit_delta < 0 {
+                    "improving"
+                } else {
+                    "worsening"
+                }
+            ));
         }
     }
 
@@ -124,11 +153,21 @@ mod tests {
         let trend = vec![
             TrendPoint {
                 timestamp: Utc::now(),
-                critical: 2, high: 3, medium: 1, low: 0, info: 0, total: 6,
+                critical: 2,
+                high: 3,
+                medium: 1,
+                low: 0,
+                info: 0,
+                total: 6,
             },
             TrendPoint {
                 timestamp: Utc::now(),
-                critical: 1, high: 2, medium: 1, low: 1, info: 0, total: 5,
+                critical: 1,
+                high: 2,
+                medium: 1,
+                low: 1,
+                info: 0,
+                total: 5,
             },
         ];
 

@@ -680,7 +680,6 @@ pub enum HardenAction {
     },
 
     // === Boot & Firmware ===
-
     /// UEFI/BIOS security audit (Secure Boot, boot password)
     Uefi,
 
@@ -705,7 +704,6 @@ pub enum HardenAction {
     Tpm,
 
     // === File & Data Protection ===
-
     /// File permission auditor — find world-readable/writable sensitive files
     Fileperms {
         /// Fix permissions on sensitive files
@@ -765,7 +763,6 @@ pub enum HardenAction {
     Logtamper,
 
     // === SSH & Remote Access ===
-
     /// SSH config hardener — disable root login, password auth, enforce keys
     Ssh {
         /// Apply secure SSH settings
@@ -807,7 +804,6 @@ pub enum HardenAction {
     },
 
     // === Application Hardening ===
-
     /// SSL/TLS certificate checker — check your own certs for expiration/weak ciphers
     Tls {
         /// Certificate file path or hostname:port to check
@@ -844,7 +840,6 @@ pub enum HardenAction {
     },
 
     // === System Monitoring ===
-
     /// System resource anomaly detector — CPU/RAM spikes, crypto miners
     Resource {
         /// Run real-time resource monitor
@@ -913,7 +908,6 @@ pub enum HardenAction {
     },
 
     // === Privacy & Compliance ===
-
     /// PII scanner — scan your own files for SSNs, credit cards, phone numbers
     Pii {
         /// Directory to scan
@@ -966,7 +960,6 @@ pub enum HardenAction {
     },
 
     // === Process & Memory Defense ===
-
     /// Process injection detector — scan for suspicious injected libraries
     Procinj,
 
@@ -990,7 +983,6 @@ pub enum HardenAction {
     },
 
     // === Network Defense ===
-
     /// Connection rate limiter — limit new outbound connections
     Ratelimit {
         /// Enable rate limiting (max connections per minute)
@@ -1042,7 +1034,6 @@ pub enum HardenAction {
     },
 
     // === Filesystem & Storage ===
-
     /// Immutable file setter — protect critical system files with chattr +i
     Immutable {
         /// Set immutable flag on critical files
@@ -1083,7 +1074,6 @@ pub enum HardenAction {
     },
 
     // === Access Control ===
-
     /// PAM module auditor — check for backdoored/weak PAM modules
     Pam,
 
@@ -1100,7 +1090,6 @@ pub enum HardenAction {
     Nsaudit,
 
     // === Hardware & Peripherals ===
-
     /// Thunderbolt/USB4 guard — disable DMA, require device approval
     Thunderbolt {
         /// Block/deauthorize all Thunderbolt devices
@@ -1142,7 +1131,6 @@ pub enum HardenAction {
     },
 
     // === System Integrity ===
-
     /// Systemd unit auditor — deep scan for suspicious units
     Systemd,
 

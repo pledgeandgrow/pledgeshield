@@ -9,7 +9,9 @@ pub fn audit_ipv6() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check if IPv6 is enabled
-        let out = Command::new("cat").arg("/proc/sys/net/ipv6/conf/all/disable_ipv6").output();
+        let out = Command::new("cat")
+            .arg("/proc/sys/net/ipv6/conf/all/disable_ipv6")
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "0" {
@@ -27,7 +29,9 @@ pub fn audit_ipv6() -> Vec<Finding> {
         }
 
         // Check for global IPv6 address
-        let out = Command::new("ip").args(["-6", "addr", "show", "scope", "global"]).output();
+        let out = Command::new("ip")
+            .args(["-6", "addr", "show", "scope", "global"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.trim().is_empty() {
@@ -49,34 +53,43 @@ pub fn audit_ipv6() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("inet6") && s.contains("scope") {
-                findings.push(Finding::new(
-                    "ipv6-enabled",
-                    "IPv6 is enabled (potential VPN leak)",
-                    Severity::Medium,
-                    Category::Network,
-                )
-                .description("IPv6 traffic may bypass your VPN.")
-                .recommendation("Run: pledgeshield harden ipv6 --disable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "ipv6-enabled",
+                        "IPv6 is enabled (potential VPN leak)",
+                        Severity::Medium,
+                        Category::Network,
+                    )
+                    .description("IPv6 traffic may bypass your VPN.")
+                    .recommendation("Run: pledgeshield harden ipv6 --disable")
+                    .fixable(true),
+                );
             }
         }
     }
 
     #[cfg(windows)]
     {
-        let out = Command::new("powershell").args(["-Command", "Get-NetIPv6Protocol | Select-Object -ExpandProperty DefaultHopLimit"]).output();
+        let out = Command::new("powershell")
+            .args([
+                "-Command",
+                "Get-NetIPv6Protocol | Select-Object -ExpandProperty DefaultHopLimit",
+            ])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.contains("0") {
-                findings.push(Finding::new(
-                    "ipv6-enabled",
-                    "IPv6 is enabled (potential VPN leak)",
-                    Severity::Medium,
-                    Category::Network,
-                )
-                .description("IPv6 traffic may bypass your VPN.")
-                .recommendation("Run: pledgeshield harden ipv6 --disable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "ipv6-enabled",
+                        "IPv6 is enabled (potential VPN leak)",
+                        Severity::Medium,
+                        Category::Network,
+                    )
+                    .description("IPv6 traffic may bypass your VPN.")
+                    .recommendation("Run: pledgeshield harden ipv6 --disable")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -125,7 +138,8 @@ pub fn disable_ipv6(dry_run: bool) -> HardenResult {
         HardenResult {
             action: "ipv6-disable".to_string(),
             success: false,
-            message: "IPv6 disable is only supported on Linux. Use --firewall for other platforms.".to_string(),
+            message: "IPv6 disable is only supported on Linux. Use --firewall for other platforms."
+                .to_string(),
             findings: vec![],
         }
     }
@@ -159,7 +173,8 @@ pub fn firewall_ipv6(dry_run: bool) -> HardenResult {
         HardenResult {
             action: "ipv6-firewall".to_string(),
             success: ok,
-            message: "IPv6 traffic blocked via ip6tables (INPUT/OUTPUT/FORWARD = DROP).".to_string(),
+            message: "IPv6 traffic blocked via ip6tables (INPUT/OUTPUT/FORWARD = DROP)."
+                .to_string(),
             findings: vec![],
         }
     }
@@ -189,9 +204,15 @@ pub fn restore_ipv6() -> HardenResult {
         }
         let _ = std::fs::remove_file("/etc/sysctl.d/99-disable-ipv6.conf");
         // Restore ip6tables
-        let _ = Command::new("ip6tables").args(["-P", "INPUT", "ACCEPT"]).output();
-        let _ = Command::new("ip6tables").args(["-P", "OUTPUT", "ACCEPT"]).output();
-        let _ = Command::new("ip6tables").args(["-P", "FORWARD", "ACCEPT"]).output();
+        let _ = Command::new("ip6tables")
+            .args(["-P", "INPUT", "ACCEPT"])
+            .output();
+        let _ = Command::new("ip6tables")
+            .args(["-P", "OUTPUT", "ACCEPT"])
+            .output();
+        let _ = Command::new("ip6tables")
+            .args(["-P", "FORWARD", "ACCEPT"])
+            .output();
         HardenResult {
             action: "ipv6-restore".to_string(),
             success: true,

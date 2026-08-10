@@ -20,7 +20,11 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() { e } else { s }
+            if s.is_empty() {
+                e
+            } else {
+                s
+            }
         })
         .unwrap_or_default()
 }
@@ -45,11 +49,7 @@ fn reg_subkeys(hive: isize, path: &str) -> Vec<String> {
     use winreg::RegKey;
     RegKey::predef(hive)
         .open_subkey(path)
-        .map(|key| {
-            key.enum_keys()
-                .filter_map(|r| r.ok())
-                .collect()
-        })
+        .map(|key| key.enum_keys().filter_map(|r| r.ok()).collect())
         .unwrap_or_default()
 }
 
@@ -74,8 +74,16 @@ pub fn audit_config() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
 }
 
 fn audit_uac(findings: &mut Vec<Finding>) {
-    let enable_lua = reg_read_u32(winreg::enums::HKEY_LOCAL_MACHINE, POLICIES_SYSTEM, "EnableLUA");
-    let consent_prompt = reg_read_u32(winreg::enums::HKEY_LOCAL_MACHINE, POLICIES_SYSTEM, "ConsentPromptBehaviorAdmin");
+    let enable_lua = reg_read_u32(
+        winreg::enums::HKEY_LOCAL_MACHINE,
+        POLICIES_SYSTEM,
+        "EnableLUA",
+    );
+    let consent_prompt = reg_read_u32(
+        winreg::enums::HKEY_LOCAL_MACHINE,
+        POLICIES_SYSTEM,
+        "ConsentPromptBehaviorAdmin",
+    );
 
     match enable_lua {
         Some(0) => {
@@ -109,13 +117,15 @@ fn audit_uac(findings: &mut Vec<Finding>) {
             }
         }
         _ => {
-            findings.push(Finding::new(
-                "win-uac-unknown",
-                "UAC status could not be determined",
-                Severity::Info,
-                Category::Config,
-            )
-            .description("Unable to read UAC configuration from registry."));
+            findings.push(
+                Finding::new(
+                    "win-uac-unknown",
+                    "UAC status could not be determined",
+                    Severity::Info,
+                    Category::Config,
+                )
+                .description("Unable to read UAC configuration from registry."),
+            );
         }
     }
 }
@@ -178,7 +188,7 @@ fn audit_firewall(findings: &mut Vec<Finding>) {
                 .metadata("profile", *profile_name));
             }
             Some(1) => {} // Enabled, good
-            _ => {}    // Can't read or unknown, skip
+            _ => {}       // Can't read or unknown, skip
         }
     }
 }
@@ -361,7 +371,8 @@ fn audit_autologin(findings: &mut Vec<Finding>) {
                 winreg::enums::HKEY_LOCAL_MACHINE,
                 r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
                 "DefaultUserName",
-            ).unwrap_or_default();
+            )
+            .unwrap_or_default();
 
             findings.push(Finding::new(
                 "win-autologin-enabled",
@@ -426,7 +437,11 @@ fn audit_listening_ports(findings: &mut Vec<Finding>) {
 
             if is_public {
                 let service_name = identify_service_by_port(port);
-                let severity = if is_dangerous_port(port) { Severity::Critical } else { Severity::High };
+                let severity = if is_dangerous_port(port) {
+                    Severity::Critical
+                } else {
+                    Severity::High
+                };
 
                 findings.push(Finding::new(
                     &format!("win-port-public-{}", port),
@@ -474,7 +489,10 @@ fn identify_service_by_port(port: u16) -> &'static str {
 }
 
 fn is_dangerous_port(port: u16) -> bool {
-    matches!(port, 22 | 23 | 3389 | 445 | 5985 | 5986 | 5900 | 5901 | 5902 | 139 | 135)
+    matches!(
+        port,
+        22 | 23 | 3389 | 445 | 5985 | 5986 | 5900 | 5901 | 5902 | 139 | 135
+    )
 }
 
 fn audit_high_priv_services(findings: &mut Vec<Finding>) {
@@ -517,15 +535,54 @@ fn audit_high_priv_services(findings: &mut Vec<Finding>) {
 
 fn is_standard_system_service(name: &str) -> bool {
     const STANDARD: &[&str] = &[
-        "Audiosrv", "AudioEndpointBuilder", "BFE", "BITS", "BrokerInfrastructure",
-        "CryptSvc", "DcomLaunch", "Dhcp", "Dnscache", "DPS", "EventLog",
-        "EventSystem", "FontCache", "gpsvc", "LanmanServer", "LanmanWorkstation",
-        "LSM", "MpsSvc", "Netman", "nsi", "PlugPlay", "Power", "ProfSvc",
-        "RpcSs", "RpcEptMapper", "SamSs", "Schedule", "SENS", "SessionEnv",
-        "Spooler", "SystemEventsBroker", "Themes", "TrkWks", "TrustedInstaller",
-        "UserManager", "UsoSvc", "Winmgmt", "WinDefend", "wuauserv",
-        "WpnService", "wuauserv", "StateRepository", "ShellHWDetection",
-        "DoSvc", "DiagTrack", "WSearch", "SysMain", "WdiSystemHost",
+        "Audiosrv",
+        "AudioEndpointBuilder",
+        "BFE",
+        "BITS",
+        "BrokerInfrastructure",
+        "CryptSvc",
+        "DcomLaunch",
+        "Dhcp",
+        "Dnscache",
+        "DPS",
+        "EventLog",
+        "EventSystem",
+        "FontCache",
+        "gpsvc",
+        "LanmanServer",
+        "LanmanWorkstation",
+        "LSM",
+        "MpsSvc",
+        "Netman",
+        "nsi",
+        "PlugPlay",
+        "Power",
+        "ProfSvc",
+        "RpcSs",
+        "RpcEptMapper",
+        "SamSs",
+        "Schedule",
+        "SENS",
+        "SessionEnv",
+        "Spooler",
+        "SystemEventsBroker",
+        "Themes",
+        "TrkWks",
+        "TrustedInstaller",
+        "UserManager",
+        "UsoSvc",
+        "Winmgmt",
+        "WinDefend",
+        "wuauserv",
+        "WpnService",
+        "wuauserv",
+        "StateRepository",
+        "ShellHWDetection",
+        "DoSvc",
+        "DiagTrack",
+        "WSearch",
+        "SysMain",
+        "WdiSystemHost",
     ];
     STANDARD.contains(&name)
 }
@@ -581,7 +638,9 @@ fn audit_smb_exposure(findings: &mut Vec<Finding>) {
     let netstat = run_cmd_lossy("netstat", &["-ano", "-p", "TCP"]);
     for line in netstat.lines() {
         let line = line.trim();
-        if (line.contains("0.0.0.0:445") || line.contains("0.0.0.0:139")) && line.contains("LISTENING") {
+        if (line.contains("0.0.0.0:445") || line.contains("0.0.0.0:139"))
+            && line.contains("LISTENING")
+        {
             findings.push(Finding::new(
                 "win-smb-public",
                 "SMB (port 445/139) is exposed to 0.0.0.0",
@@ -599,7 +658,9 @@ fn audit_winrm_exposure(findings: &mut Vec<Finding>) {
     let netstat = run_cmd_lossy("netstat", &["-ano", "-p", "TCP"]);
     for line in netstat.lines() {
         let line = line.trim();
-        if (line.contains("0.0.0.0:5985") || line.contains("0.0.0.0:5986")) && line.contains("LISTENING") {
+        if (line.contains("0.0.0.0:5985") || line.contains("0.0.0.0:5986"))
+            && line.contains("LISTENING")
+        {
             findings.push(Finding::new(
                 "win-winrm-public",
                 "WinRM (port 5985/5986) is exposed to 0.0.0.0",
@@ -635,7 +696,9 @@ fn audit_vnc_exposure(findings: &mut Vec<Finding>) {
     let netstat = run_cmd_lossy("netstat", &["-ano", "-p", "TCP"]);
     for line in netstat.lines() {
         let line = line.trim();
-        if (line.contains("0.0.0.0:5900") || line.contains("0.0.0.0:5901")) && line.contains("LISTENING") {
+        if (line.contains("0.0.0.0:5900") || line.contains("0.0.0.0:5901"))
+            && line.contains("LISTENING")
+        {
             findings.push(Finding::new(
                 "win-vnc-public",
                 "VNC (port 5900/5901) is exposed to 0.0.0.0",
@@ -665,7 +728,11 @@ fn audit_local_users(findings: &mut Vec<Finding>) {
 
     for line in output.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with("User accounts") || line.starts_with("The command") || line.starts_with("---") {
+        if line.is_empty()
+            || line.starts_with("User accounts")
+            || line.starts_with("The command")
+            || line.starts_with("---")
+        {
             continue;
         }
 
@@ -688,21 +755,28 @@ fn audit_local_users(findings: &mut Vec<Finding>) {
                 if info_line.contains("Account expires") && info_line.contains("Never") {
                     never_expires = true;
                 }
-                if info_line.contains("Local Group Memberships") && info_line.contains("Administrators") {
+                if info_line.contains("Local Group Memberships")
+                    && info_line.contains("Administrators")
+                {
                     is_admin = true;
                 }
             }
 
             if active && is_admin {
-                findings.push(Finding::new(
-                    &format!("win-user-admin-{}", name),
-                    &format!("User '{}' has administrator privileges", name),
-                    Severity::Info,
-                    Category::Privileges,
-                )
-                .description(&format!("User '{}' is a member of the Administrators group.", name))
-                .metadata("user", name)
-                .metadata("group", "Administrators"));
+                findings.push(
+                    Finding::new(
+                        &format!("win-user-admin-{}", name),
+                        &format!("User '{}' has administrator privileges", name),
+                        Severity::Info,
+                        Category::Privileges,
+                    )
+                    .description(&format!(
+                        "User '{}' is a member of the Administrators group.",
+                        name
+                    ))
+                    .metadata("user", name)
+                    .metadata("group", "Administrators"),
+                );
             }
 
             if never_expires && active {
@@ -741,13 +815,15 @@ fn audit_admin_group(findings: &mut Vec<Finding>) {
     }
 
     if members.is_empty() {
-        findings.push(Finding::new(
-            "win-admin-group-empty",
-            "Administrators group has no visible members",
-            Severity::Info,
-            Category::Privileges,
-        )
-        .description("Could not enumerate Administrators group members or the group is empty."));
+        findings.push(
+            Finding::new(
+                "win-admin-group-empty",
+                "Administrators group has no visible members",
+                Severity::Info,
+                Category::Privileges,
+            )
+            .description("Could not enumerate Administrators group members or the group is empty."),
+        );
     } else if members.len() > 3 {
         findings.push(Finding::new(
             "win-admin-group-large",
@@ -858,11 +934,31 @@ pub fn audit_persistence() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
 
 fn audit_run_keys(findings: &mut Vec<Finding>) {
     const RUN_KEYS: &[(isize, &str, &str)] = &[
-        (winreg::enums::HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "HKLM"),
-        (winreg::enums::HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce", "HKLM"),
-        (winreg::enums::HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "HKCU"),
-        (winreg::enums::HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce", "HKCU"),
-        (winreg::enums::HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "HKLM WOW64"),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            "HKLM",
+        ),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+            "HKLM",
+        ),
+        (
+            winreg::enums::HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            "HKCU",
+        ),
+        (
+            winreg::enums::HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+            "HKCU",
+        ),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+            "HKLM WOW64",
+        ),
     ];
 
     for (hive, path, label) in RUN_KEYS {
@@ -884,16 +980,21 @@ fn audit_run_keys(findings: &mut Vec<Finding>) {
                     .metadata("entry_name", &name)
                     .metadata("entry_value", &val_str));
                 } else {
-                    findings.push(Finding::new(
-                        &format!("win-runkey-{}-{}", label.replace(' ', ""), name),
-                        &format!("Startup entry: {} ({}\\Run)", name, label),
-                        Severity::Info,
-                        Category::Persistence,
-                    )
-                    .description(&format!("Program '{}' starts automatically via registry: {}", name, val_str))
-                    .metadata("registry_path", &format!("{}\\{}", label, path))
-                    .metadata("entry_name", &name)
-                    .metadata("entry_value", &val_str));
+                    findings.push(
+                        Finding::new(
+                            &format!("win-runkey-{}-{}", label.replace(' ', ""), name),
+                            &format!("Startup entry: {} ({}\\Run)", name, label),
+                            Severity::Info,
+                            Category::Persistence,
+                        )
+                        .description(&format!(
+                            "Program '{}' starts automatically via registry: {}",
+                            name, val_str
+                        ))
+                        .metadata("registry_path", &format!("{}\\{}", label, path))
+                        .metadata("entry_name", &name)
+                        .metadata("entry_value", &val_str),
+                    );
                 }
             }
         }
@@ -944,13 +1045,15 @@ fn audit_startup_folder(findings: &mut Vec<Finding>) {
                             .description(&format!("File '{}' in the Startup folder has suspicious characteristics.", path_str))
                             .metadata("path", &path_str));
                         } else {
-                            findings.push(Finding::new(
-                                &format!("win-startup-{}", file_name),
-                                &format!("Startup folder entry: {}", file_name),
-                                Severity::Info,
-                                Category::Persistence,
-                            )
-                            .metadata("path", &path_str));
+                            findings.push(
+                                Finding::new(
+                                    &format!("win-startup-{}", file_name),
+                                    &format!("Startup folder entry: {}", file_name),
+                                    Severity::Info,
+                                    Category::Persistence,
+                                )
+                                .metadata("path", &path_str),
+                            );
                         }
                     }
                 }
@@ -1006,7 +1109,10 @@ fn audit_suspicious_services(findings: &mut Vec<Finding>) {
         for line in qc_output.lines() {
             let line = line.trim();
             if line.contains("BINARY_PATH_NAME") {
-                let path = line.trim_start_matches("BINARY_PATH_NAME").trim_start_matches(':').trim();
+                let path = line
+                    .trim_start_matches("BINARY_PATH_NAME")
+                    .trim_start_matches(':')
+                    .trim();
 
                 if is_suspicious_persistence_path(path) {
                     findings.push(Finding::new(
@@ -1062,9 +1168,8 @@ fn audit_stored_credentials(findings: &mut Vec<Finding>) {
 
 fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     // Chrome
-    let chrome_login_db = dirs::data_dir().map(|d| {
-        d.join(r"Google\Chrome\User Data\Default\Login Data")
-    });
+    let chrome_login_db =
+        dirs::data_dir().map(|d| d.join(r"Google\Chrome\User Data\Default\Login Data"));
     if let Some(path) = &chrome_login_db {
         if path.exists() {
             findings.push(Finding::new(
@@ -1080,9 +1185,8 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     }
 
     // Edge
-    let edge_login_db = dirs::data_dir().map(|d| {
-        d.join(r"Microsoft\Edge\User Data\Default\Login Data")
-    });
+    let edge_login_db =
+        dirs::data_dir().map(|d| d.join(r"Microsoft\Edge\User Data\Default\Login Data"));
     if let Some(path) = &edge_login_db {
         if path.exists() {
             findings.push(Finding::new(
@@ -1123,20 +1227,21 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     }
 
     // Brave
-    let brave_login_db = dirs::data_dir().map(|d| {
-        d.join(r"BraveSoftware\Brave-Browser\User Data\Default\Login Data")
-    });
+    let brave_login_db = dirs::data_dir()
+        .map(|d| d.join(r"BraveSoftware\Brave-Browser\User Data\Default\Login Data"));
     if let Some(path) = &brave_login_db {
         if path.exists() {
-            findings.push(Finding::new(
-                "win-browser-brave-passwords",
-                "Brave browser has saved passwords",
-                Severity::Medium,
-                Category::Credentials,
-            )
-            .description("Brave's Login Data database exists, indicating saved passwords.")
-            .metadata("browser", "Brave")
-            .metadata("path", path.to_string_lossy().to_string()));
+            findings.push(
+                Finding::new(
+                    "win-browser-brave-passwords",
+                    "Brave browser has saved passwords",
+                    Severity::Medium,
+                    Category::Credentials,
+                )
+                .description("Brave's Login Data database exists, indicating saved passwords.")
+                .metadata("browser", "Brave")
+                .metadata("path", path.to_string_lossy().to_string()),
+            );
         }
     }
 }
@@ -1156,7 +1261,16 @@ fn audit_wifi_passwords(findings: &mut Vec<Finding>) {
     }
 
     for profile in &profiles {
-        let key_output = run_cmd_lossy("netsh", &["wlan", "show", "profile", &format!("name={}", profile), "key=clear"]);
+        let key_output = run_cmd_lossy(
+            "netsh",
+            &[
+                "wlan",
+                "show",
+                "profile",
+                &format!("name={}", profile),
+                "key=clear",
+            ],
+        );
 
         for line in key_output.lines() {
             let line = line.trim();
@@ -1192,7 +1306,10 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
                     let file_name = entry.file_name().to_string_lossy().to_string();
 
                     // Check private keys (no .pub extension)
-                    if !file_name.ends_with(".pub") && !file_name.starts_with("known_hosts") && !file_name.starts_with("config") {
+                    if !file_name.ends_with(".pub")
+                        && !file_name.starts_with("known_hosts")
+                        && !file_name.starts_with("config")
+                    {
                         if let Ok(content) = std::fs::read_to_string(&path) {
                             let is_private = content.contains("PRIVATE KEY");
                             if is_private {
@@ -1200,13 +1317,18 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
                                 let is_encrypted = content.contains("ENCRYPTED");
 
                                 if !is_encrypted {
-                                    findings.push(Finding::new(
-                                        &format!("win-ssh-key-nopass-{}", file_name),
-                                        &format!("SSH private key '{}' has no passphrase", file_name),
-                                        Severity::High,
-                                        Category::Credentials,
-                                    )
-                                    .metadata("key_file", &file_name));
+                                    findings.push(
+                                        Finding::new(
+                                            &format!("win-ssh-key-nopass-{}", file_name),
+                                            &format!(
+                                                "SSH private key '{}' has no passphrase",
+                                                file_name
+                                            ),
+                                            Severity::High,
+                                            Category::Credentials,
+                                        )
+                                        .metadata("key_file", &file_name),
+                                    );
                                 }
                             }
                         }
@@ -1240,14 +1362,19 @@ fn audit_rdp_saved_sessions(findings: &mut Vec<Finding>) {
     );
 
     if !saved_servers.is_empty() {
-        findings.push(Finding::new(
-            "win-rdp-saved-servers",
-            &format!("{} saved RDP server(s) in registry", saved_servers.len()),
-            Severity::Info,
-            Category::Credentials,
-        )
-        .description(&format!("RDP client has saved connections to: {}", saved_servers.join(", ")))
-        .metadata("servers", &saved_servers.join(", ")));
+        findings.push(
+            Finding::new(
+                "win-rdp-saved-servers",
+                &format!("{} saved RDP server(s) in registry", saved_servers.len()),
+                Severity::Info,
+                Category::Credentials,
+            )
+            .description(&format!(
+                "RDP client has saved connections to: {}",
+                saved_servers.join(", ")
+            ))
+            .metadata("servers", &saved_servers.join(", ")),
+        );
     }
 }
 
@@ -1291,7 +1418,12 @@ fn audit_shares_list(findings: &mut Vec<Finding>) {
         let resource = parts.get(1).unwrap_or(&"?");
 
         // Check for default admin shares
-        if share_name.ends_with('$') && (share_name == "C$" || share_name == "D$" || share_name == "ADMIN$" || share_name == "IPC$") {
+        if share_name.ends_with('$')
+            && (share_name == "C$"
+                || share_name == "D$"
+                || share_name == "ADMIN$"
+                || share_name == "IPC$")
+        {
             findings.push(Finding::new(
                 &format!("win-admin-share-{}", share_name),
                 &format!("Default admin share '{}' is active", share_name),
@@ -1310,7 +1442,11 @@ fn audit_shares_list(findings: &mut Vec<Finding>) {
             let mut everyone_access = false;
             for info_line in share_info.lines() {
                 let info_line = info_line.trim();
-                if info_line.contains("Everyone") && (info_line.contains("READ") || info_line.contains("FULL") || info_line.contains("CHANGE")) {
+                if info_line.contains("Everyone")
+                    && (info_line.contains("READ")
+                        || info_line.contains("FULL")
+                        || info_line.contains("CHANGE"))
+                {
                     everyone_access = true;
                 }
             }
@@ -1329,14 +1465,16 @@ fn audit_shares_list(findings: &mut Vec<Finding>) {
                 .metadata("resource", *resource)
                 .metadata("access", "Everyone"));
             } else {
-                findings.push(Finding::new(
-                    &format!("win-share-{}", share_name),
-                    &format!("Share '{}' is active", share_name),
-                    Severity::Info,
-                    Category::Shares,
-                )
-                .metadata("share", share_name)
-                .metadata("resource", *resource));
+                findings.push(
+                    Finding::new(
+                        &format!("win-share-{}", share_name),
+                        &format!("Share '{}' is active", share_name),
+                        Severity::Info,
+                        Category::Shares,
+                    )
+                    .metadata("share", share_name)
+                    .metadata("resource", *resource),
+                );
             }
         }
     }
@@ -1397,13 +1535,17 @@ fn audit_smb_signing(findings: &mut Vec<Finding>) {
         "EnableSecuritySignature",
     );
     if let Some(0) = enable_signing {
-        findings.push(Finding::new(
-            "win-smb-client-signing-disabled",
-            "SMB client signing is disabled",
-            Severity::Low,
-            Category::Shares,
-        )
-        .description("SMB client-side signing is disabled, which may allow tampering with SMB traffic."));
+        findings.push(
+            Finding::new(
+                "win-smb-client-signing-disabled",
+                "SMB client signing is disabled",
+                Severity::Low,
+                Category::Shares,
+            )
+            .description(
+                "SMB client-side signing is disabled, which may allow tampering with SMB traffic.",
+            ),
+        );
     }
 }
 
@@ -1485,7 +1627,11 @@ foreach ($update in $result.Updates) {
     for line in output.lines() {
         let line = line.trim();
         if line.starts_with("Count:") {
-            if let Some(count) = line.split(':').nth(1).and_then(|s| s.trim().parse::<usize>().ok()) {
+            if let Some(count) = line
+                .split(':')
+                .nth(1)
+                .and_then(|s| s.trim().parse::<usize>().ok())
+            {
                 pending_count = count;
             }
         }
@@ -1510,14 +1656,19 @@ foreach ($update in $result.Updates) {
                     .recommendation("Install updates immediately: Open Windows Update and install all pending updates."));
                 } else if sev.contains("important") || sev.contains("high") {
                     high_count += 1;
-                    findings.push(Finding::new(
-                        &format!("win-update-high-{}", pending_count),
-                        &format!("Important update pending: {}", current_title),
-                        Severity::High,
-                        Category::Patches,
-                    )
-                    .description(&format!("An important security update is pending: {}", current_title))
-                    .recommendation("Install pending updates via Windows Update."));
+                    findings.push(
+                        Finding::new(
+                            &format!("win-update-high-{}", pending_count),
+                            &format!("Important update pending: {}", current_title),
+                            Severity::High,
+                            Category::Patches,
+                        )
+                        .description(&format!(
+                            "An important security update is pending: {}",
+                            current_title
+                        ))
+                        .recommendation("Install pending updates via Windows Update."),
+                    );
                 }
             }
             current_title.clear();
@@ -1538,13 +1689,15 @@ foreach ($update in $result.Updates) {
 
     if pending_count == 0 && output.contains("Count:") {
         // Updates are up to date
-        findings.push(Finding::new(
-            "win-updates-current",
-            "Windows is up to date",
-            Severity::Info,
-            Category::Patches,
-        )
-        .description("No pending Windows updates found."));
+        findings.push(
+            Finding::new(
+                "win-updates-current",
+                "Windows is up to date",
+                Severity::Info,
+                Category::Patches,
+            )
+            .description("No pending Windows updates found."),
+        );
     }
 }
 
@@ -1576,14 +1729,18 @@ fn audit_pending_reboot(findings: &mut Vec<Finding>) {
         "Reserved",
     );
     if update_pending.is_some() {
-        findings.push(Finding::new(
-            "win-update-reboot-required",
-            "Windows Update requires a reboot",
-            Severity::Medium,
-            Category::Patches,
-        )
-        .description("Windows Update has installed updates that require a reboot to take effect.")
-        .recommendation("Restart the computer as soon as possible."));
+        findings.push(
+            Finding::new(
+                "win-update-reboot-required",
+                "Windows Update requires a reboot",
+                Severity::Medium,
+                Category::Patches,
+            )
+            .description(
+                "Windows Update has installed updates that require a reboot to take effect.",
+            )
+            .recommendation("Restart the computer as soon as possible."),
+        );
     }
 }
 

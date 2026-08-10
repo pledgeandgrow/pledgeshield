@@ -11,13 +11,17 @@ pub fn audit_pcap() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/sys/class/net") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name == "lo" { continue; }
+                if name == "lo" {
+                    continue;
+                }
 
                 // Check flags for PROMISC
                 let flags_path = format!("/sys/class/net/{}/flags", name);
                 if let Ok(content) = std::fs::read_to_string(&flags_path) {
-                    let flags = u32::from_str_radix(content.trim().trim_start_matches("0x"), 16).unwrap_or(0);
-                    if flags & 0x100 != 0 { // IFF_PROMISC
+                    let flags = u32::from_str_radix(content.trim().trim_start_matches("0x"), 16)
+                        .unwrap_or(0);
+                    if flags & 0x100 != 0 {
+                        // IFF_PROMISC
                         findings.push(Finding::new(
                             &format!("pcap-promisc-{}", name),
                             &format!("Interface {} is in promiscuous mode", name),
@@ -34,7 +38,16 @@ pub fn audit_pcap() -> Vec<Finding> {
         let out = Command::new("ps").args(["-eo", "comm"]).output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
-            let sniffers = ["tcpdump", "tshark", "wireshark", "dumpcap", "ettercap", "bettercap", "kismet", "airsnort"];
+            let sniffers = [
+                "tcpdump",
+                "tshark",
+                "wireshark",
+                "dumpcap",
+                "ettercap",
+                "bettercap",
+                "kismet",
+                "airsnort",
+            ];
             for sniffer in &sniffers {
                 if s.contains(sniffer) {
                     findings.push(Finding::new(
@@ -54,7 +67,9 @@ pub fn audit_pcap() -> Vec<Finding> {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("raw") {
                 // Check which process has raw sockets
-                let out2 = Command::new("sh").args(["-c", "cat /proc/net/raw 2>/dev/null | tail -n +2"]).output();
+                let out2 = Command::new("sh")
+                    .args(["-c", "cat /proc/net/raw 2>/dev/null | tail -n +2"])
+                    .output();
                 if let Ok(o2) = out2 {
                     let raw_count = String::from_utf8_lossy(&o2.stdout).lines().count();
                     if raw_count > 0 {

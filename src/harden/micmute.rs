@@ -9,13 +9,17 @@ pub fn audit_mic() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check PulseAudio/PipeWire for microphone status
-        let out = Command::new("pactl").args(["list", "sources", "short"]).output();
+        let out = Command::new("pactl")
+            .args(["list", "sources", "short"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 if line.contains("input") || line.contains("capture") || line.contains("mic") {
                     let source = line.split_whitespace().nth(1).unwrap_or("");
-                    if source.is_empty() { continue; }
+                    if source.is_empty() {
+                        continue;
+                    }
 
                     // Check if this source is muted
                     let out2 = Command::new("pactl")
@@ -75,7 +79,9 @@ pub fn mute_mic(dry_run: bool) -> HardenResult {
 
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("pactl").args(["list", "sources", "short"]).output();
+        let out = Command::new("pactl")
+            .args(["list", "sources", "short"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             let mut muted = 0;
@@ -83,7 +89,9 @@ pub fn mute_mic(dry_run: bool) -> HardenResult {
                 if line.contains("input") || line.contains("capture") {
                     let source = line.split_whitespace().nth(1).unwrap_or("");
                     if !source.is_empty() {
-                        let _ = Command::new("pactl").args(["set-source-mute", source, "1"]).output();
+                        let _ = Command::new("pactl")
+                            .args(["set-source-mute", source, "1"])
+                            .output();
                         muted += 1;
                     }
                 }
@@ -118,14 +126,18 @@ pub fn mute_mic(dry_run: bool) -> HardenResult {
 pub fn unmute_mic() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("pactl").args(["list", "sources", "short"]).output();
+        let out = Command::new("pactl")
+            .args(["list", "sources", "short"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 if line.contains("input") || line.contains("capture") {
                     let source = line.split_whitespace().nth(1).unwrap_or("");
                     if !source.is_empty() {
-                        let _ = Command::new("pactl").args(["set-source-mute", source, "0"]).output();
+                        let _ = Command::new("pactl")
+                            .args(["set-source-mute", source, "0"])
+                            .output();
                     }
                 }
             }

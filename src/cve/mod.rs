@@ -32,7 +32,10 @@ fn detect_ecosystem(sw: &InstalledSoftware) -> Option<String> {
     if publisher_lower == "dpkg" || publisher_lower == "apt" {
         return Some("Debian".to_string());
     }
-    if publisher_lower == "rpm" || publisher_lower.contains("redhat") || publisher_lower.contains("fedora") {
+    if publisher_lower == "rpm"
+        || publisher_lower.contains("redhat")
+        || publisher_lower.contains("fedora")
+    {
         return Some("AlmaLinux".to_string());
     }
     if publisher_lower == "pacman" || publisher_lower.contains("arch") {
@@ -48,7 +51,11 @@ fn detect_ecosystem(sw: &InstalledSoftware) -> Option<String> {
     if name_lower.starts_with("python") || name_lower == "pip" || name_lower == "pip3" {
         return Some("PyPI".to_string());
     }
-    if name_lower == "node" || name_lower == "node.js" || name_lower == "npm" || name_lower == "yarn" {
+    if name_lower == "node"
+        || name_lower == "node.js"
+        || name_lower == "npm"
+        || name_lower == "yarn"
+    {
         return Some("npm".to_string());
     }
     if name_lower == "go" || name_lower.starts_with("golang") {
@@ -80,7 +87,11 @@ fn detect_ecosystem(sw: &InstalledSoftware) -> Option<String> {
 
 /// Orchestrate the full CVE scan: enumerate software, query APIs, deduplicate, rank.
 pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
-    log::info!("CVE scan started (offline={}, refresh={})", ctx.offline, ctx.refresh);
+    log::info!(
+        "CVE scan started (offline={}, refresh={})",
+        ctx.offline,
+        ctx.refresh
+    );
 
     if ctx.offline {
         log::info!("CVE scan skipped (offline mode)");
@@ -111,7 +122,8 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
     let ghsa_client = ghsa::GhsaClient::new(ctx.github_token.clone());
 
     // 4. Build OSV batch query for all packages with detected ecosystems
-    let osv_queries: Vec<osv::OsvQuery> = software.iter()
+    let osv_queries: Vec<osv::OsvQuery> = software
+        .iter()
         .filter_map(|sw| {
             detect_ecosystem(sw).map(|eco| osv::OsvQuery {
                 package: osv::OsvPackage {
@@ -124,10 +136,13 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
         .collect();
 
     // 5. Execute OSV batch query if we have ecosystem-matched packages
-    let mut osv_results: std::collections::HashMap<String, osv::OsvResponse> = std::collections::HashMap::new();
+    let mut osv_results: std::collections::HashMap<String, osv::OsvResponse> =
+        std::collections::HashMap::new();
     if !osv_queries.is_empty() {
         log::info!("Querying OSV batch for {} packages", osv_queries.len());
-        let batch = osv::OsvBatchQuery { queries: osv_queries.clone() };
+        let batch = osv::OsvBatchQuery {
+            queries: osv_queries.clone(),
+        };
         match osv_client.query_batch(&batch).await {
             Ok(responses) => {
                 for (i, resp) in responses.iter().enumerate() {
@@ -137,7 +152,10 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
                 }
             }
             Err(e) => {
-                log::warn!("OSV batch query failed: {}, falling back to individual queries", e);
+                log::warn!(
+                    "OSV batch query failed: {}, falling back to individual queries",
+                    e
+                );
                 // Fallback: query individually
                 for q in &osv_queries {
                     if let Ok(resp) = osv_client.query(q).await {
@@ -181,7 +199,12 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
         }
 
         // Fall back to keyword search if no CPE match or CPE query returned nothing
-        if nvd_resp.is_none() || nvd_resp.as_ref().map(|r| r.vulnerabilities.is_empty()).unwrap_or(true) {
+        if nvd_resp.is_none()
+            || nvd_resp
+                .as_ref()
+                .map(|r| r.vulnerabilities.is_empty())
+                .unwrap_or(true)
+        {
             let cache_key = format!("nvd:{}", sw.name);
             let cached = if let Some(entry) = cache.get(&cache_key) {
                 serde_json::from_str::<nvd::NvdResponse>(&entry.data).ok()
@@ -191,20 +214,18 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
 
             nvd_resp = match cached {
                 Some(r) => Some(r),
-                None => {
-                    match nvd_client.query_keyword(&sw.name).await {
-                        Ok(resp) => {
-                            if let Ok(json) = serde_json::to_string(&resp) {
-                                let _ = cache.set(&cache_key, &json);
-                            }
-                            Some(resp)
+                None => match nvd_client.query_keyword(&sw.name).await {
+                    Ok(resp) => {
+                        if let Ok(json) = serde_json::to_string(&resp) {
+                            let _ = cache.set(&cache_key, &json);
                         }
-                        Err(e) => {
-                            log::warn!("NVD keyword query failed for {}: {}", sw.name, e);
-                            None
-                        }
+                        Some(resp)
                     }
-                }
+                    Err(e) => {
+                        log::warn!("NVD keyword query failed for {}: {}", sw.name, e);
+                        None
+                    }
+                },
             };
         }
 
@@ -218,12 +239,18 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
                 }
                 seen_cves.insert(cve_id.clone());
 
-                let description = vuln.cve.descriptions.iter()
+                let description = vuln
+                    .cve
+                    .descriptions
+                    .iter()
                     .find(|d| d.lang == "en")
                     .map(|d| d.value.clone())
                     .unwrap_or_else(|| "No description available".to_string());
 
-                let (cvss_score, cvss_severity) = vuln.cve.metrics.as_ref()
+                let (cvss_score, cvss_severity) = vuln
+                    .cve
+                    .metrics
+                    .as_ref()
                     .and_then(|m| m.cvss_metric_v31.first().or(m.cvss_metric_v2.first()))
                     .map(|m| (m.cvss_data.base_score, m.cvss_data.base_severity.clone()))
                     .unwrap_or((0.0, "UNKNOWN".to_string()));
@@ -240,22 +267,27 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
 
                 let severity = map_cvss_severity(&cvss_severity, epss_score);
 
-                findings.push(Finding::new(
-                    &format!("cve-{}", cve_id.to_lowercase()),
-                    &format!("{}: {} ({})", cve_id, sw.name, sw.version),
-                    severity,
-                    Category::Cve,
-                )
-                .description(&description)
-                .recommendation(&format!("Update {} to the latest version or apply the vendor patch.", sw.name))
-                .metadata("cve_id", cve_id)
-                .metadata("software", &sw.name)
-                .metadata("installed_version", &sw.version)
-                .metadata("cvss_score", &format!("{:.1}", cvss_score))
-                .metadata("cvss_severity", &cvss_severity)
-                .metadata("epss_score", &format!("{:.4}", epss_score))
-                .metadata("epss_percentile", &format!("{:.2}", epss_percentile))
-                .metadata("source", "NVD"));
+                findings.push(
+                    Finding::new(
+                        &format!("cve-{}", cve_id.to_lowercase()),
+                        &format!("{}: {} ({})", cve_id, sw.name, sw.version),
+                        severity,
+                        Category::Cve,
+                    )
+                    .description(&description)
+                    .recommendation(&format!(
+                        "Update {} to the latest version or apply the vendor patch.",
+                        sw.name
+                    ))
+                    .metadata("cve_id", cve_id)
+                    .metadata("software", &sw.name)
+                    .metadata("installed_version", &sw.version)
+                    .metadata("cvss_score", &format!("{:.1}", cvss_score))
+                    .metadata("cvss_severity", &cvss_severity)
+                    .metadata("epss_score", &format!("{:.4}", epss_score))
+                    .metadata("epss_percentile", &format!("{:.2}", epss_percentile))
+                    .metadata("source", "NVD"),
+                );
             }
         }
 
@@ -280,18 +312,20 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
                     Severity::Medium
                 };
 
-                findings.push(Finding::new(
-                    &format!("cve-{}", vuln.id.to_lowercase()),
-                    &format!("{}: {} ({})", vuln.id, sw.name, sw.version),
-                    severity,
-                    Category::Cve,
-                )
-                .description(&vuln.summary)
-                .recommendation(&format!("Update {} to the latest version.", sw.name))
-                .metadata("cve_id", &vuln.id)
-                .metadata("software", &sw.name)
-                .metadata("installed_version", &sw.version)
-                .metadata("source", "OSV"));
+                findings.push(
+                    Finding::new(
+                        &format!("cve-{}", vuln.id.to_lowercase()),
+                        &format!("{}: {} ({})", vuln.id, sw.name, sw.version),
+                        severity,
+                        Category::Cve,
+                    )
+                    .description(&vuln.summary)
+                    .recommendation(&format!("Update {} to the latest version.", sw.name))
+                    .metadata("cve_id", &vuln.id)
+                    .metadata("software", &sw.name)
+                    .metadata("installed_version", &sw.version)
+                    .metadata("source", "OSV"),
+                );
             }
         }
 
@@ -322,23 +356,33 @@ pub async fn run_cve_scan(ctx: &CveContext) -> Result<Vec<Finding>, Box<dyn std:
                             let cvss_score = adv.cvss.as_ref().map(|c| c.score).unwrap_or(0.0);
                             let severity = map_cvss_score(cvss_score);
 
-                            findings.push(Finding::new(
-                                &format!("cve-{}", adv_id.to_lowercase()),
-                                &format!("{}: {} ({})", adv_id, sw.name, sw.version),
-                                severity,
-                                Category::Cve,
-                            )
-                            .description(&adv.summary)
-                            .recommendation(&format!("Update {} to the latest version.", sw.name))
-                            .metadata("cve_id", adv_id)
-                            .metadata("ghsa_id", &adv.ghsa_id)
-                            .metadata("software", &sw.name)
-                            .metadata("installed_version", &sw.version)
-                            .metadata("source", "GHSA"));
+                            findings.push(
+                                Finding::new(
+                                    &format!("cve-{}", adv_id.to_lowercase()),
+                                    &format!("{}: {} ({})", adv_id, sw.name, sw.version),
+                                    severity,
+                                    Category::Cve,
+                                )
+                                .description(&adv.summary)
+                                .recommendation(&format!(
+                                    "Update {} to the latest version.",
+                                    sw.name
+                                ))
+                                .metadata("cve_id", adv_id)
+                                .metadata("ghsa_id", &adv.ghsa_id)
+                                .metadata("software", &sw.name)
+                                .metadata("installed_version", &sw.version)
+                                .metadata("source", "GHSA"),
+                            );
                         }
                     }
                     Err(e) => {
-                        log::debug!("GHSA query failed for {} ({}): {}", sw.name, ghsa_ecosystem, e);
+                        log::debug!(
+                            "GHSA query failed for {} ({}): {}",
+                            sw.name,
+                            ghsa_ecosystem,
+                            e
+                        );
                     }
                 }
             }
@@ -414,7 +458,11 @@ fn enumerate_software() -> Vec<InstalledSoftware> {
                 let name = parts[0].to_string();
                 let version = parts[1].to_string();
                 let publisher = parts.get(2).unwrap_or(&"").to_string();
-                software.push(InstalledSoftware { name, version, publisher });
+                software.push(InstalledSoftware {
+                    name,
+                    version,
+                    publisher,
+                });
             }
         }
     }
@@ -422,9 +470,18 @@ fn enumerate_software() -> Vec<InstalledSoftware> {
     // Method 2: Registry uninstall keys (more reliable)
     use winreg::RegKey;
     const UNINSTALL_PATHS: &[(isize, &str)] = &[
-        (winreg::enums::HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (winreg::enums::HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (winreg::enums::HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            winreg::enums::HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
     ];
 
     for (hive, path) in UNINSTALL_PATHS {
@@ -527,7 +584,10 @@ fn enumerate_software() -> Vec<InstalledSoftware> {
                 for app in items {
                     let name = app.get("_name").and_then(|v| v.as_str()).unwrap_or("");
                     let version = app.get("version").and_then(|v| v.as_str()).unwrap_or("");
-                    let publisher = app.get("obtained_from").and_then(|v| v.as_str()).unwrap_or("");
+                    let publisher = app
+                        .get("obtained_from")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     if !name.is_empty() {
                         software.push(InstalledSoftware {
                             name: name.to_string(),
@@ -549,9 +609,7 @@ fn enumerate_software() -> Vec<InstalledSoftware> {
     let mut software = Vec::new();
 
     // dpkg (Debian/Ubuntu)
-    let output = std::process::Command::new("dpkg")
-        .args(["-l"])
-        .output();
+    let output = std::process::Command::new("dpkg").args(["-l"]).output();
 
     if let Ok(output) = output {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -590,9 +648,7 @@ fn enumerate_software() -> Vec<InstalledSoftware> {
 
     // pacman (Arch)
     if software.is_empty() {
-        let output = std::process::Command::new("pacman")
-            .args(["-Q"])
-            .output();
+        let output = std::process::Command::new("pacman").args(["-Q"]).output();
 
         if let Ok(output) = output {
             let stdout = String::from_utf8_lossy(&output.stdout);

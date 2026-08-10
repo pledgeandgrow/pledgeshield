@@ -31,20 +31,27 @@ pub fn audit_dependencies(dir: &str) -> Vec<Finding> {
         findings.extend(audit_go(&go_sum));
     }
 
-    if findings.is_empty() && !pkg_json.exists() && !cargo_lock.exists() && !reqs.exists() && !go_sum.exists() {
-        findings.push(Finding::new(
-            "deps-no-manifest",
-            "No package manifest found in directory",
-            Severity::Info,
-            Category::HostConfig,
-        )
-        .description("No package.json, Cargo.lock, requirements.txt, or go.sum found."));
+    if findings.is_empty()
+        && !pkg_json.exists()
+        && !cargo_lock.exists()
+        && !reqs.exists()
+        && !go_sum.exists()
+    {
+        findings.push(
+            Finding::new(
+                "deps-no-manifest",
+                "No package manifest found in directory",
+                Severity::Info,
+                Category::HostConfig,
+            )
+            .description("No package.json, Cargo.lock, requirements.txt, or go.sum found."),
+        );
     }
 
     findings
 }
 
-fn audit_npm(pkg_json: &Path, pkg_lock: &Path) -> Vec<Finding> {
+fn audit_npm(pkg_json: &Path, _pkg_lock: &Path) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     // Try npm audit
@@ -58,22 +65,27 @@ fn audit_npm(pkg_json: &Path, pkg_lock: &Path) -> Vec<Finding> {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&s) {
             if let Some(vulns) = json.get("vulnerabilities").and_then(|v| v.as_object()) {
                 for (name, info) in vulns {
-                    let severity = info.get("severity").and_then(|s| s.as_str()).unwrap_or("low");
+                    let severity = info
+                        .get("severity")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("low");
                     let sev = match severity {
                         "critical" => Severity::Critical,
                         "high" => Severity::High,
                         "moderate" | "medium" => Severity::Medium,
                         _ => Severity::Low,
                     };
-                    findings.push(Finding::new(
-                        &format!("dep-npm-{}", name),
-                        &format!("npm vulnerability in {}: {}", name, severity),
-                        sev,
-                        Category::HostConfig,
-                    )
-                    .description("A vulnerable npm package was found.")
-                    .recommendation(&format!("Run: npm audit fix  (or: npm update {})", name))
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            &format!("dep-npm-{}", name),
+                            &format!("npm vulnerability in {}: {}", name, severity),
+                            sev,
+                            Category::HostConfig,
+                        )
+                        .description("A vulnerable npm package was found.")
+                        .recommendation(&format!("Run: npm audit fix  (or: npm update {})", name))
+                        .fixable(true),
+                    );
                 }
             }
         }
@@ -97,34 +109,47 @@ fn audit_cargo(cargo_lock: &Path) -> Vec<Finding> {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&s) {
             if let Some(vulns) = json.get("vulnerabilities").and_then(|v| v.as_array()) {
                 for v in vulns {
-                    let name = v.get("package").and_then(|p| p.get("name")).and_then(|n| n.as_str()).unwrap_or("?");
+                    let name = v
+                        .get("package")
+                        .and_then(|p| p.get("name"))
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("?");
                     let id = v.get("id").and_then(|i| i.as_str()).unwrap_or("?");
-                    let severity = v.get("severity").and_then(|s| s.as_str()).unwrap_or("medium");
+                    let severity = v
+                        .get("severity")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("medium");
                     let sev = match severity {
                         "critical" => Severity::Critical,
                         "high" => Severity::High,
                         _ => Severity::Medium,
                     };
-                    findings.push(Finding::new(
-                        &format!("dep-cargo-{}", name),
-                        &format!("Rust vulnerability in {}: {}", name, id),
-                        sev,
-                        Category::HostConfig,
-                    )
-                    .recommendation(&format!("Run: cargo update -p {}", name))
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            &format!("dep-cargo-{}", name),
+                            &format!("Rust vulnerability in {}: {}", name, id),
+                            sev,
+                            Category::HostConfig,
+                        )
+                        .recommendation(&format!("Run: cargo update -p {}", name))
+                        .fixable(true),
+                    );
                 }
             }
         }
     } else {
         // cargo-audit not installed
-        findings.push(Finding::new(
-            "deps-cargo-audit-missing",
-            "cargo-audit not installed — cannot check Rust dependencies",
-            Severity::Low,
-            Category::HostConfig,
-        )
-        .description("Install cargo-audit to scan Rust dependencies: cargo install cargo-audit"));
+        findings.push(
+            Finding::new(
+                "deps-cargo-audit-missing",
+                "cargo-audit not installed — cannot check Rust dependencies",
+                Severity::Low,
+                Category::HostConfig,
+            )
+            .description(
+                "Install cargo-audit to scan Rust dependencies: cargo install cargo-audit",
+            ),
+        );
     }
 
     findings
@@ -135,7 +160,12 @@ fn audit_python(reqs: &Path) -> Vec<Finding> {
 
     // Try safety or pip-audit
     let out = std::process::Command::new("pip-audit")
-        .args(["-r", reqs.to_str().unwrap_or("requirements.txt"), "--format", "json"])
+        .args([
+            "-r",
+            reqs.to_str().unwrap_or("requirements.txt"),
+            "--format",
+            "json",
+        ])
         .output();
 
     if let Ok(o) = out {
@@ -145,14 +175,16 @@ fn audit_python(reqs: &Path) -> Vec<Finding> {
                 for v in vulns {
                     let name = v.get("name").and_then(|n| n.as_str()).unwrap_or("?");
                     let id = v.get("id").and_then(|i| i.as_str()).unwrap_or("?");
-                    findings.push(Finding::new(
-                        &format!("dep-py-{}", name),
-                        &format!("Python vulnerability in {}: {}", name, id),
-                        Severity::High,
-                        Category::HostConfig,
-                    )
-                    .recommendation(&format!("Update: pip install --upgrade {}", name))
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            &format!("dep-py-{}", name),
+                            &format!("Python vulnerability in {}: {}", name, id),
+                            Severity::High,
+                            Category::HostConfig,
+                        )
+                        .recommendation(&format!("Update: pip install --upgrade {}", name))
+                        .fixable(true),
+                    );
                 }
             }
         }
@@ -173,13 +205,15 @@ fn audit_go(go_sum: &Path) -> Vec<Finding> {
         let s = String::from_utf8_lossy(&o.stdout);
         for line in s.lines() {
             if line.contains("Vulnerability") {
-                findings.push(Finding::new(
-                    "dep-go-vuln",
-                    &format!("Go vulnerability: {}", line),
-                    Severity::High,
-                    Category::HostConfig,
-                )
-                .recommendation("Run: go get -u && go mod tidy"));
+                findings.push(
+                    Finding::new(
+                        "dep-go-vuln",
+                        &format!("Go vulnerability: {}", line),
+                        Severity::High,
+                        Category::HostConfig,
+                    )
+                    .recommendation("Run: go get -u && go mod tidy"),
+                );
             }
         }
     }

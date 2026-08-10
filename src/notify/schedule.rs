@@ -1,6 +1,6 @@
-use std::process::Command;
 #[cfg(target_os = "linux")]
 use std::io::Write;
+use std::process::Command;
 
 /// Schedule configuration for recurring scans.
 #[derive(Debug, Clone)]
@@ -32,14 +32,18 @@ pub fn install_schedule(config: &ScheduleConfig) -> Result<(), Box<dyn std::erro
 }
 
 /// Remove a scheduled scan.
-pub fn remove_schedule(task_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn remove_schedule(_task_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(windows)]
     {
         let output = Command::new("schtasks")
             .args(["/Delete", "/TN", task_name, "/F"])
             .output()?;
         if !output.status.success() {
-            return Err(format!("schtasks delete failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "schtasks delete failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
         log::info!("Removed scheduled task: {}", task_name);
     }
@@ -47,7 +51,9 @@ pub fn remove_schedule(task_name: &str) -> Result<(), Box<dyn std::error::Error>
     {
         let plist_path = format!("/Library/LaunchAgents/com.pledgeshield.{}.plist", task_name);
         std::fs::remove_file(&plist_path)?;
-        Command::new("launchctl").args(["unload", &plist_path]).output()?;
+        Command::new("launchctl")
+            .args(["unload", &plist_path])
+            .output()?;
     }
     #[cfg(target_os = "linux")]
     {
@@ -93,15 +99,22 @@ fn install_windows_task(config: &ScheduleConfig) -> Result<(), Box<dyn std::erro
     let output = Command::new("schtasks")
         .args([
             "/Create",
-            "/TN", task_name,
-            "/TR", &format!("\"{}\" {}", exe_path, config.command),
-            "/SC", schedule,
+            "/TN",
+            task_name,
+            "/TR",
+            &format!("\"{}\" {}", exe_path, config.command),
+            "/SC",
+            schedule,
             "/F",
         ])
         .output()?;
 
     if !output.status.success() {
-        return Err(format!("schtasks failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+        return Err(format!(
+            "schtasks failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
     }
 
     log::info!("Scheduled task '{}' created successfully", task_name);
@@ -143,7 +156,9 @@ fn install_macos_launchd(config: &ScheduleConfig) -> Result<(), Box<dyn std::err
 
     let plist_path = "/Library/LaunchAgents/com.pledgeshield.scheduled.plist";
     std::fs::write(plist_path, &plist)?;
-    Command::new("launchctl").args(["load", plist_path]).output()?;
+    Command::new("launchctl")
+        .args(["load", plist_path])
+        .output()?;
     log::info!("LaunchAgent installed at {}", plist_path);
     Ok(())
 }

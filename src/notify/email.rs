@@ -44,7 +44,9 @@ pub fn send_critical_notification(
 
     body.push_str("Critical/High Findings:\n");
     for f in &result.findings {
-        if f.severity == crate::models::Severity::Critical || f.severity == crate::models::Severity::High {
+        if f.severity == crate::models::Severity::Critical
+            || f.severity == crate::models::Severity::High
+        {
             body.push_str(&format!("  [{}] {} — {}\n", f.severity, f.id, f.title));
             if !f.recommendation.is_empty() {
                 body.push_str(&format!("    Fix: {}\n", f.recommendation));
@@ -59,7 +61,11 @@ pub fn send_critical_notification(
         config.from, email_to, subject, body
     );
 
-    log::info!("Email notification prepared: subject='{}', recipients={}", subject, email_to);
+    log::info!(
+        "Email notification prepared: subject='{}', recipients={}",
+        subject,
+        email_to
+    );
 
     // In a full implementation, this would use an SMTP client (lettre crate).
     // For now, we log the email and optionally write it to a file for debugging.

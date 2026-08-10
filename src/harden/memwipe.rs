@@ -55,7 +55,9 @@ pub fn wipe_swap(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Get swap devices
-        let out = Command::new("swapon").args(["--show=NAME", "--noheadings"]).output();
+        let out = Command::new("swapon")
+            .args(["--show=NAME", "--noheadings"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             let devices: Vec<&str> = s.lines().filter(|l| !l.trim().is_empty()).collect();
@@ -75,7 +77,14 @@ pub fn wipe_swap(dry_run: bool) -> HardenResult {
                 // Disable swap
                 let _ = Command::new("swapoff").arg(dev).output();
                 // Wipe with dd
-                let _ = Command::new("dd").args(["if=/dev/urandom", &format!("of={}", dev), "bs=1M", "status=progress"]).output();
+                let _ = Command::new("dd")
+                    .args([
+                        "if=/dev/urandom",
+                        &format!("of={}", dev),
+                        "bs=1M",
+                        "status=progress",
+                    ])
+                    .output();
                 // Re-enable
                 let _ = Command::new("swapon").arg(dev).output();
             }
@@ -129,7 +138,10 @@ pub fn setup_encrypted_swap(dry_run: bool) -> HardenResult {
             content = existing;
         }
         if !content.contains("pledgeshield-swap") {
-            content.push_str(&format!("# PledgeShield encrypted swap\n{}", crypttab_entry));
+            content.push_str(&format!(
+                "# PledgeShield encrypted swap\n{}",
+                crypttab_entry
+            ));
             let _ = std::fs::write(crypttab_path, content);
         }
 
@@ -181,7 +193,9 @@ WantedBy=halt.target reboot.target shutdown.target
 "#;
         let path = "/etc/systemd/system/pledgeshield-ramwipe.service";
         if std::fs::write(path, service).is_ok() {
-            let _ = Command::new("systemctl").args(["enable", "pledgeshield-ramwipe.service"]).output();
+            let _ = Command::new("systemctl")
+                .args(["enable", "pledgeshield-ramwipe.service"])
+                .output();
             HardenResult {
                 action: "ram-wipe-install".to_string(),
                 success: true,
@@ -213,7 +227,9 @@ WantedBy=halt.target reboot.target shutdown.target
 pub fn drop_caches() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("sh").args(["-c", "echo 3 > /proc/sys/vm/drop_caches"]).output();
+        let out = Command::new("sh")
+            .args(["-c", "echo 3 > /proc/sys/vm/drop_caches"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "drop-caches".to_string(),

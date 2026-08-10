@@ -39,19 +39,33 @@ pub fn audit_profile(profile: Profile) -> Vec<Finding> {
             CheckType::Sysctl => {
                 #[cfg(target_os = "linux")]
                 {
-                    let out = std::process::Command::new("sysctl").args(["-n", &setting.key]).output();
+                    let out = std::process::Command::new("sysctl")
+                        .args(["-n", &setting.key])
+                        .output();
                     if let Ok(o) = out {
                         let current = String::from_utf8_lossy(&o.stdout).trim().to_string();
                         if current != setting.expected {
-                            findings.push(Finding::new(
-                                &format!("profile-{}-{}", profile.as_str().to_lowercase().replace(' ', "-"), setting.key.replace('.', "_")),
-                                &format!("{} = {} (should be {})", setting.key, current, setting.expected),
-                                setting.severity,
-                                Category::HostConfig,
-                            )
-                            .description(setting.description.clone())
-                            .recommendation(&format!("Run: pledgeshield harden profile --apply {:?}", profile))
-                            .fixable(true));
+                            findings.push(
+                                Finding::new(
+                                    &format!(
+                                        "profile-{}-{}",
+                                        profile.as_str().to_lowercase().replace(' ', "-"),
+                                        setting.key.replace('.', "_")
+                                    ),
+                                    &format!(
+                                        "{} = {} (should be {})",
+                                        setting.key, current, setting.expected
+                                    ),
+                                    setting.severity,
+                                    Category::HostConfig,
+                                )
+                                .description(setting.description.clone())
+                                .recommendation(&format!(
+                                    "Run: pledgeshield harden profile --apply {:?}",
+                                    profile
+                                ))
+                                .fixable(true),
+                            );
                         }
                     }
                 }
@@ -64,13 +78,18 @@ pub fn audit_profile(profile: Profile) -> Vec<Finding> {
                         let mode = meta.permissions().mode() & 0o7777;
                         if let Ok(expected_mode) = u32::from_str_radix(&setting.expected, 8) {
                             if mode != expected_mode {
-                                findings.push(Finding::new(
-                                    &format!("profile-perm-{}", setting.key.replace('/', "_")),
-                                    &format!("{} is {:04o} (should be {:04o})", setting.key, mode, expected_mode),
-                                    setting.severity,
-                                    Category::HostConfig,
-                                )
-                                .fixable(true));
+                                findings.push(
+                                    Finding::new(
+                                        &format!("profile-perm-{}", setting.key.replace('/', "_")),
+                                        &format!(
+                                            "{} is {:04o} (should be {:04o})",
+                                            setting.key, mode, expected_mode
+                                        ),
+                                        setting.severity,
+                                        Category::HostConfig,
+                                    )
+                                    .fixable(true),
+                                );
                             }
                         }
                     }
@@ -79,17 +98,24 @@ pub fn audit_profile(profile: Profile) -> Vec<Finding> {
             CheckType::ServiceDisabled => {
                 #[cfg(target_os = "linux")]
                 {
-                    let out = std::process::Command::new("systemctl").args(["is-enabled", &setting.key]).output();
+                    let out = std::process::Command::new("systemctl")
+                        .args(["is-enabled", &setting.key])
+                        .output();
                     if let Ok(o) = out {
                         let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
                         if s != "disabled" && s != "not-found" && s != "masked" {
-                            findings.push(Finding::new(
-                                &format!("profile-service-{}", setting.key),
-                                &format!("Service {} is enabled (should be disabled)", setting.key),
-                                setting.severity,
-                                Category::Services,
-                            )
-                            .fixable(true));
+                            findings.push(
+                                Finding::new(
+                                    &format!("profile-service-{}", setting.key),
+                                    &format!(
+                                        "Service {} is enabled (should be disabled)",
+                                        setting.key
+                                    ),
+                                    setting.severity,
+                                    Category::Services,
+                                )
+                                .fixable(true),
+                            );
                         }
                     }
                 }
@@ -134,7 +160,10 @@ pub fn apply_profile(profile: Profile, dry_run: bool) -> Vec<HardenResult> {
                 #[cfg(unix)]
                 {
                     if let Ok(mode) = u32::from_str_radix(&setting.expected, 8) {
-                        let _ = std::fs::set_permissions(&setting.key, std::os::unix::fs::PermissionsExt::from_mode(mode));
+                        let _ = std::fs::set_permissions(
+                            &setting.key,
+                            std::os::unix::fs::PermissionsExt::from_mode(mode),
+                        );
                         results.push(HardenResult {
                             action: format!("perm-{}", setting.key),
                             success: true,
@@ -147,7 +176,9 @@ pub fn apply_profile(profile: Profile, dry_run: bool) -> Vec<HardenResult> {
             CheckType::ServiceDisabled => {
                 #[cfg(target_os = "linux")]
                 {
-                    let _ = std::process::Command::new("systemctl").args(["disable", "--now", &setting.key]).output();
+                    let _ = std::process::Command::new("systemctl")
+                        .args(["disable", "--now", &setting.key])
+                        .output();
                     results.push(HardenResult {
                         action: format!("disable-{}", setting.key),
                         success: true,

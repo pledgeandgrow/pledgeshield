@@ -67,9 +67,7 @@ impl GhsaClient {
             .user_agent("PledgeShield/0.1")
             .build()?;
 
-        let mut req = client
-            .get(&self.base_url)
-            .query(&[("cve_id", cve_id)]);
+        let mut req = client.get(&self.base_url).query(&[("cve_id", cve_id)]);
 
         if let Some(ref token) = self.token {
             req = req.header("Authorization", format!("Bearer {}", token));

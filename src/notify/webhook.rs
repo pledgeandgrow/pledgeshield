@@ -70,9 +70,13 @@ pub async fn send_webhook_notification(
 }
 
 fn build_slack_payload(result: &ScanResult) -> serde_json::Value {
-    let color = if result.summary.critical > 0 { "#ff0000" }
-        else if result.summary.high > 0 { "#ff7b00" }
-        else { "#ffcc00" };
+    let color = if result.summary.critical > 0 {
+        "#ff0000"
+    } else if result.summary.high > 0 {
+        "#ff7b00"
+    } else {
+        "#ffcc00"
+    };
 
     let mut fields = vec![
         serde_json::json!({
@@ -98,13 +102,16 @@ fn build_slack_payload(result: &ScanResult) -> serde_json::Value {
     ];
 
     // Add top critical findings
-    let critical_findings: Vec<_> = result.findings.iter()
+    let critical_findings: Vec<_> = result
+        .findings
+        .iter()
         .filter(|f| f.severity == crate::models::Severity::Critical)
         .take(5)
         .collect();
 
     if !critical_findings.is_empty() {
-        let finding_text = critical_findings.iter()
+        let finding_text = critical_findings
+            .iter()
             .map(|f| format!("• [{}] {} — {}", f.severity, f.id, f.title))
             .collect::<Vec<_>>()
             .join("\n");
@@ -127,9 +134,13 @@ fn build_slack_payload(result: &ScanResult) -> serde_json::Value {
 }
 
 fn build_discord_payload(result: &ScanResult) -> serde_json::Value {
-    let color = if result.summary.critical > 0 { 0xFF0000 }
-        else if result.summary.high > 0 { 0xFF7B00 }
-        else { 0xFFCC00 };
+    let color = if result.summary.critical > 0 {
+        0xFF0000
+    } else if result.summary.high > 0 {
+        0xFF7B00
+    } else {
+        0xFFCC00
+    };
 
     let mut description = format!(
         "**PledgeShield Security Alert**\n**Host:** {} | **OS:** {} {}\n**Critical:** {} | **High:** {} | **Medium:** {} | **Low:** {} | **Info:** {}",
@@ -138,7 +149,9 @@ fn build_discord_payload(result: &ScanResult) -> serde_json::Value {
         result.summary.low, result.summary.info
     );
 
-    let critical_findings: Vec<_> = result.findings.iter()
+    let critical_findings: Vec<_> = result
+        .findings
+        .iter()
         .filter(|f| f.severity == crate::models::Severity::Critical)
         .take(5)
         .collect();
@@ -162,9 +175,13 @@ fn build_discord_payload(result: &ScanResult) -> serde_json::Value {
 }
 
 fn build_teams_payload(result: &ScanResult) -> serde_json::Value {
-    let theme_color = if result.summary.critical > 0 { "FF0000" }
-        else if result.summary.high > 0 { "FF7B00" }
-        else { "FFCC00" };
+    let theme_color = if result.summary.critical > 0 {
+        "FF0000"
+    } else if result.summary.high > 0 {
+        "FF7B00"
+    } else {
+        "FFCC00"
+    };
 
     let mut facts = vec![
         serde_json::json!({ "name": "Host", "value": result.hostname }),
@@ -175,7 +192,9 @@ fn build_teams_payload(result: &ScanResult) -> serde_json::Value {
         serde_json::json!({ "name": "Low", "value": result.summary.low.to_string() }),
     ];
 
-    let critical_findings: Vec<_> = result.findings.iter()
+    let critical_findings: Vec<_> = result
+        .findings
+        .iter()
         .filter(|f| f.severity == crate::models::Severity::Critical)
         .take(3)
         .collect();

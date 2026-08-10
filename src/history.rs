@@ -115,10 +115,13 @@ impl ScanHistory {
     }
 
     /// Get trend data (total findings over time).
-    pub fn trend(&self, limit: u32) -> Result<Vec<(DateTime<Utc>, i32)>, Box<dyn std::error::Error>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT timestamp, total FROM scan_history ORDER BY timestamp ASC LIMIT ?1",
-        )?;
+    pub fn trend(
+        &self,
+        limit: u32,
+    ) -> Result<Vec<(DateTime<Utc>, i32)>, Box<dyn std::error::Error>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT timestamp, total FROM scan_history ORDER BY timestamp ASC LIMIT ?1")?;
 
         let entries = stmt.query_map(params![limit], |row| {
             let ts: String = row.get(0)?;
@@ -205,8 +208,18 @@ mod tests {
 
     fn make_scan_result() -> ScanResult {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test", Severity::Critical, Category::Config));
-        result.add_finding(Finding::new("test-2", "Test2", Severity::High, Category::Services));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test",
+            Severity::Critical,
+            Category::Config,
+        ));
+        result.add_finding(Finding::new(
+            "test-2",
+            "Test2",
+            Severity::High,
+            Category::Services,
+        ));
         result.finalize();
         result
     }
@@ -243,7 +256,10 @@ mod tests {
         for i in 0..5 {
             let mut result = ScanResult::new();
             result.add_finding(Finding::new(
-                &format!("test-{}", i), "Test", Severity::Critical, Category::Config,
+                &format!("test-{}", i),
+                "Test",
+                Severity::Critical,
+                Category::Config,
             ));
             result.finalize();
             history.record(&result).unwrap();
@@ -258,21 +274,19 @@ mod tests {
 
     #[test]
     fn test_format_history() {
-        let entries = vec![
-            ScanHistoryEntry {
-                id: 1,
-                timestamp: Utc::now(),
-                hostname: "test-host".to_string(),
-                os: "Windows".to_string(),
-                os_version: "11".to_string(),
-                critical: 2,
-                high: 3,
-                medium: 1,
-                low: 0,
-                info: 0,
-                total: 6,
-            },
-        ];
+        let entries = vec![ScanHistoryEntry {
+            id: 1,
+            timestamp: Utc::now(),
+            hostname: "test-host".to_string(),
+            os: "Windows".to_string(),
+            os_version: "11".to_string(),
+            critical: 2,
+            high: 3,
+            medium: 1,
+            low: 0,
+            info: 0,
+            total: 6,
+        }];
 
         let formatted = format_history(&entries);
         assert!(formatted.contains("Scan History"));
@@ -282,11 +296,7 @@ mod tests {
 
     #[test]
     fn test_format_trend() {
-        let trend = vec![
-            (Utc::now(), 5),
-            (Utc::now(), 3),
-            (Utc::now(), 7),
-        ];
+        let trend = vec![(Utc::now(), 5), (Utc::now(), 3), (Utc::now(), 7)];
 
         let formatted = format_trend(&trend);
         assert!(formatted.contains("Findings Trend"));

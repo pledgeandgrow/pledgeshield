@@ -20,7 +20,11 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() { e } else { s }
+            if s.is_empty() {
+                e
+            } else {
+                s
+            }
         })
         .unwrap_or_default()
 }
@@ -95,7 +99,10 @@ fn audit_filevault(findings: &mut Vec<Finding>) {
 }
 
 fn audit_firewall(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("/usr/libexec/ApplicationFirewall/socketfilterfw", &["--getglobalstate"]);
+    let output = run_cmd_lossy(
+        "/usr/libexec/ApplicationFirewall/socketfilterfw",
+        &["--getglobalstate"],
+    );
     if output.contains("off") || output.contains("Off") {
         findings.push(Finding::new(
             "mac-firewall-off",
@@ -108,7 +115,10 @@ fn audit_firewall(findings: &mut Vec<Finding>) {
         .fixable(true));
     }
 
-    let stealth = run_cmd_lossy("/usr/libexec/ApplicationFirewall/socketfilterfw", &["getstealthmode"]);
+    let stealth = run_cmd_lossy(
+        "/usr/libexec/ApplicationFirewall/socketfilterfw",
+        &["getstealthmode"],
+    );
     if stealth.contains("off") || stealth.contains("Off") {
         findings.push(Finding::new(
             "mac-firewall-stealth-off",
@@ -122,7 +132,8 @@ fn audit_firewall(findings: &mut Vec<Finding>) {
 }
 
 fn audit_xprotect(findings: &mut Vec<Finding>) {
-    let xprotect_plist = "/Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Info.plist";
+    let xprotect_plist =
+        "/Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Info.plist";
     if !file_exists(xprotect_plist) {
         findings.push(Finding::new(
             "mac-xprotect-missing",
@@ -135,22 +146,37 @@ fn audit_xprotect(findings: &mut Vec<Finding>) {
 }
 
 fn audit_telemetry(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("defaults", &["read", "/Library/Preferences/com.apple.alf", "globalstate"]);
+    let output = run_cmd_lossy(
+        "defaults",
+        &["read", "/Library/Preferences/com.apple.alf", "globalstate"],
+    );
     // Check analytics submission
-    let analytics = run_cmd_lossy("defaults", &["read", "com.apple.alf", "allowdownloadsignedenabled"]);
+    let analytics = run_cmd_lossy(
+        "defaults",
+        &["read", "com.apple.alf", "allowdownloadsignedenabled"],
+    );
     if analytics.contains("0") {
-        findings.push(Finding::new(
-            "mac-analytics-disabled",
-            "Diagnostic data submission appears restricted",
-            Severity::Info,
-            Category::Config,
-        )
-        .description("Diagnostic and usage data submission is restricted."));
+        findings.push(
+            Finding::new(
+                "mac-analytics-disabled",
+                "Diagnostic data submission appears restricted",
+                Severity::Info,
+                Category::Config,
+            )
+            .description("Diagnostic and usage data submission is restricted."),
+        );
     }
 }
 
 fn audit_autologin(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("defaults", &["read", "/Library/Preferences/com.apple.loginwindow", "autoLoginUser"]);
+    let output = run_cmd_lossy(
+        "defaults",
+        &[
+            "read",
+            "/Library/Preferences/com.apple.loginwindow",
+            "autoLoginUser",
+        ],
+    );
     if !output.is_empty() && !output.contains("does not exist") {
         findings.push(Finding::new(
             "mac-autologin-enabled",
@@ -171,7 +197,8 @@ fn audit_ssh_config(findings: &mut Vec<Finding>) {
             if line.starts_with('#') || line.is_empty() {
                 continue;
             }
-            if line.starts_with("PermitRootLogin") && (line.contains("yes") || !line.contains("no")) {
+            if line.starts_with("PermitRootLogin") && (line.contains("yes") || !line.contains("no"))
+            {
                 findings.push(Finding::new(
                     "mac-ssh-root-login",
                     "SSH root login is permitted",
@@ -248,7 +275,11 @@ fn audit_listening_ports(findings: &mut Vec<Finding>) {
 
             if is_public {
                 let service_name = identify_service_by_port(port);
-                let severity = if is_dangerous_port(port) { Severity::Critical } else { Severity::High };
+                let severity = if is_dangerous_port(port) {
+                    Severity::Critical
+                } else {
+                    Severity::High
+                };
 
                 findings.push(Finding::new(
                     &format!("mac-port-public-{}", port),
@@ -262,14 +293,16 @@ fn audit_listening_ports(findings: &mut Vec<Finding>) {
                 .metadata("user", user)
                 .metadata("address", ip.to_string()));
             } else if !is_loopback {
-                findings.push(Finding::new(
-                    &format!("mac-port-bound-{}", port),
-                    &format!("Port {} listening on {}", port, ip),
-                    Severity::Low,
-                    Category::Services,
-                )
-                .metadata("port", port.to_string())
-                .metadata("address", ip.to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("mac-port-bound-{}", port),
+                        &format!("Port {} listening on {}", port, ip),
+                        Severity::Low,
+                        Category::Services,
+                    )
+                    .metadata("port", port.to_string())
+                    .metadata("address", ip.to_string()),
+                );
             }
         }
     }
@@ -303,7 +336,10 @@ fn identify_service_by_port(port: u16) -> &'static str {
 }
 
 fn is_dangerous_port(port: u16) -> bool {
-    matches!(port, 23 | 21 | 139 | 445 | 3389 | 5900 | 5901 | 27017 | 6379 | 9200 | 11211)
+    matches!(
+        port,
+        23 | 21 | 139 | 445 | 3389 | 5900 | 5901 | 27017 | 6379 | 9200 | 11211
+    )
 }
 
 fn audit_launchd_services(findings: &mut Vec<Finding>) {
@@ -325,55 +361,75 @@ fn audit_launchd_services(findings: &mut Vec<Finding>) {
 
         if pid != "-" {
             // Running non-Apple service
-            findings.push(Finding::new(
-                &format!("mac-launchd-service-{}", label),
-                &format!("Third-party launchd service running: {}", label),
-                Severity::Info,
-                Category::Services,
-            )
-            .metadata("label", label)
-            .metadata("pid", pid.to_string()));
+            findings.push(
+                Finding::new(
+                    &format!("mac-launchd-service-{}", label),
+                    &format!("Third-party launchd service running: {}", label),
+                    Severity::Info,
+                    Category::Services,
+                )
+                .metadata("label", label)
+                .metadata("pid", pid.to_string()),
+            );
         }
     }
 }
 
 fn audit_exposed_services(findings: &mut Vec<Finding>) {
     // Check for remote management (VNC/ARD)
-    let ard = run_cmd_lossy("sudo", &["defaults", "read", "/var/db/launchd.db/com.apple.launchd/overrides.plist", "com.apple.screensharing"]);
+    let ard = run_cmd_lossy(
+        "sudo",
+        &[
+            "defaults",
+            "read",
+            "/var/db/launchd.db/com.apple.launchd/overrides.plist",
+            "com.apple.screensharing",
+        ],
+    );
     if ard.contains("1") || ard.contains("true") {
-        findings.push(Finding::new(
-            "mac-remote-management-on",
-            "Remote Management (Screen Sharing/VNC) is enabled",
-            Severity::High,
-            Category::Services,
-        )
-        .description("Remote Management is enabled, allowing VNC/ARD connections to this Mac.")
-        .recommendation("Disable if not needed: System Settings > Sharing > Screen Sharing > Off"));
+        findings.push(
+            Finding::new(
+                "mac-remote-management-on",
+                "Remote Management (Screen Sharing/VNC) is enabled",
+                Severity::High,
+                Category::Services,
+            )
+            .description("Remote Management is enabled, allowing VNC/ARD connections to this Mac.")
+            .recommendation(
+                "Disable if not needed: System Settings > Sharing > Screen Sharing > Off",
+            ),
+        );
     }
 
     // Check for SSH
     let ssh = run_cmd_lossy("systemsetup", &["-getremotelogin"]);
     if ssh.contains("On") {
-        findings.push(Finding::new(
-            "mac-ssh-enabled",
-            "Remote Login (SSH) is enabled",
-            Severity::Medium,
-            Category::Services,
-        )
-        .description("SSH remote login is enabled. If not needed, disable to reduce attack surface.")
-        .recommendation("Disable: sudo systemsetup -setremotelogin off"));
+        findings.push(
+            Finding::new(
+                "mac-ssh-enabled",
+                "Remote Login (SSH) is enabled",
+                Severity::Medium,
+                Category::Services,
+            )
+            .description(
+                "SSH remote login is enabled. If not needed, disable to reduce attack surface.",
+            )
+            .recommendation("Disable: sudo systemsetup -setremotelogin off"),
+        );
     }
 
     // Check for file sharing
     let afp = run_cmd_lossy("sudo", &["launchctl", "list", "com.apple.AppleFileServer"]);
     if !afp.contains("Could not find") {
-        findings.push(Finding::new(
-            "mac-afp-sharing",
-            "AFP file sharing is active",
-            Severity::Medium,
-            Category::Services,
-        )
-        .description("Apple Filing Protocol (AFP) sharing is active."));
+        findings.push(
+            Finding::new(
+                "mac-afp-sharing",
+                "AFP file sharing is active",
+                Severity::Medium,
+                Category::Services,
+            )
+            .description("Apple Filing Protocol (AFP) sharing is active."),
+        );
     }
 }
 
@@ -396,14 +452,16 @@ fn audit_admin_users(findings: &mut Vec<Finding>) {
     if !members.is_empty() {
         let user_list: Vec<&str> = members.split_whitespace().collect();
         for user in user_list {
-            findings.push(Finding::new(
-                &format!("mac-admin-user-{}", user),
-                &format!("User '{}' is an administrator", user),
-                Severity::Info,
-                Category::Privileges,
-            )
-            .metadata("user", user)
-            .metadata("group", "admin"));
+            findings.push(
+                Finding::new(
+                    &format!("mac-admin-user-{}", user),
+                    &format!("User '{}' is an administrator", user),
+                    Severity::Info,
+                    Category::Privileges,
+                )
+                .metadata("user", user)
+                .metadata("group", "admin"),
+            );
         }
 
         if user_list.len() > 3 {
@@ -437,14 +495,23 @@ fn audit_sudoers(findings: &mut Vec<Finding>) {
                 .description(&format!("Sudoers contains a NOPASSWD entry: '{}'. This allows running commands as root without password, making privilege escalation trivial.", line))
                 .recommendation("Remove NOPASSWD entries or restrict to specific commands."));
             }
-            if line.contains("ALL=(ALL) ALL") && !line.starts_with("root") && !line.starts_with("%admin") && !line.starts_with("%wheel") {
-                findings.push(Finding::new(
-                    "mac-sudo-all-user",
-                    "Non-standard user has full sudo access",
-                    Severity::Medium,
-                    Category::Privileges,
-                )
-                .description(&format!("Sudoers entry: '{}'. This user has unrestricted sudo access.", line)));
+            if line.contains("ALL=(ALL) ALL")
+                && !line.starts_with("root")
+                && !line.starts_with("%admin")
+                && !line.starts_with("%wheel")
+            {
+                findings.push(
+                    Finding::new(
+                        "mac-sudo-all-user",
+                        "Non-standard user has full sudo access",
+                        Severity::Medium,
+                        Category::Privileges,
+                    )
+                    .description(&format!(
+                        "Sudoers entry: '{}'. This user has unrestricted sudo access.",
+                        line
+                    )),
+                );
             }
         }
     }
@@ -457,13 +524,19 @@ fn audit_sudoers(findings: &mut Vec<Finding>) {
                 for line in content.lines() {
                     let line = line.trim();
                     if line.contains("NOPASSWD") {
-                        findings.push(Finding::new(
-                            &format!("mac-sudo-nopasswd-{}", path.display()),
-                            &format!("NOPASSWD in {}", path.display()),
-                            Severity::High,
-                            Category::Privileges,
-                        )
-                        .description(&format!("NOPASSWD entry in {}: '{}'", path.display(), line)));
+                        findings.push(
+                            Finding::new(
+                                &format!("mac-sudo-nopasswd-{}", path.display()),
+                                &format!("NOPASSWD in {}", path.display()),
+                                Severity::High,
+                                Category::Privileges,
+                            )
+                            .description(&format!(
+                                "NOPASSWD entry in {}: '{}'",
+                                path.display(),
+                                line
+                            )),
+                        );
                     }
                 }
             }
@@ -490,7 +563,14 @@ fn audit_password_policy(findings: &mut Vec<Finding>) {
 }
 
 fn audit_guest_account(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("defaults", &["read", "/Library/Preferences/com.apple.loginwindow", "GuestEnabled"]);
+    let output = run_cmd_lossy(
+        "defaults",
+        &[
+            "read",
+            "/Library/Preferences/com.apple.loginwindow",
+            "GuestEnabled",
+        ],
+    );
     if output.contains("1") || output.contains("true") {
         findings.push(Finding::new(
             "mac-guest-enabled",
@@ -522,7 +602,10 @@ fn audit_launch_agents(findings: &mut Vec<Finding>) {
         "/System/Library/LaunchDaemons",
         "/Library/LaunchAgents",
         "/Library/LaunchDaemons",
-        &format!("{}/Library/LaunchAgents", std::env::var("HOME").unwrap_or_default()),
+        &format!(
+            "{}/Library/LaunchAgents",
+            std::env::var("HOME").unwrap_or_default()
+        ),
     ];
 
     for path in &launch_paths {
@@ -531,26 +614,40 @@ fn audit_launch_agents(findings: &mut Vec<Finding>) {
                 let file_path = entry.path();
                 if file_path.extension().map_or(false, |e| e == "plist") {
                     if let Some(content) = std::fs::read_to_string(&file_path).ok() {
-                        let is_suspicious = is_suspicious_persistence(&content, &file_path.display().to_string());
+                        let is_suspicious =
+                            is_suspicious_persistence(&content, &file_path.display().to_string());
 
                         if is_suspicious {
-                            findings.push(Finding::new(
-                                &format!("mac-launch-{}", file_path.file_name().unwrap().to_string_lossy()),
-                                &format!("Suspicious launch agent: {}", file_path.display()),
-                                Severity::High,
-                                Category::Persistence,
-                            )
-                            .description(&format!("Launch agent at {} has suspicious characteristics.", file_path.display()))
-                            .metadata("path", file_path.display().to_string()));
+                            findings.push(
+                                Finding::new(
+                                    &format!(
+                                        "mac-launch-{}",
+                                        file_path.file_name().unwrap().to_string_lossy()
+                                    ),
+                                    &format!("Suspicious launch agent: {}", file_path.display()),
+                                    Severity::High,
+                                    Category::Persistence,
+                                )
+                                .description(&format!(
+                                    "Launch agent at {} has suspicious characteristics.",
+                                    file_path.display()
+                                ))
+                                .metadata("path", file_path.display().to_string()),
+                            );
                         } else if !path.starts_with("/System/Library") {
                             // Third-party launch agent
-                            findings.push(Finding::new(
-                                &format!("mac-launch-{}", file_path.file_name().unwrap().to_string_lossy()),
-                                &format!("Third-party launch agent: {}", file_path.display()),
-                                Severity::Info,
-                                Category::Persistence,
-                            )
-                            .metadata("path", file_path.display().to_string()));
+                            findings.push(
+                                Finding::new(
+                                    &format!(
+                                        "mac-launch-{}",
+                                        file_path.file_name().unwrap().to_string_lossy()
+                                    ),
+                                    &format!("Third-party launch agent: {}", file_path.display()),
+                                    Severity::Info,
+                                    Category::Persistence,
+                                )
+                                .metadata("path", file_path.display().to_string()),
+                            );
                         }
                     }
                 }
@@ -584,13 +681,18 @@ fn audit_login_items(findings: &mut Vec<Finding>) {
                 if line.contains("URL") || line.contains("Path") {
                     let trimmed = line.trim();
                     if trimmed.contains("tmp") || trimmed.contains("Downloads") {
-                        findings.push(Finding::new(
-                            "mac-login-item-suspicious",
-                            "Suspicious login item detected",
-                            Severity::Medium,
-                            Category::Persistence,
-                        )
-                        .description(&format!("Login item from suspicious location: {}", trimmed)));
+                        findings.push(
+                            Finding::new(
+                                "mac-login-item-suspicious",
+                                "Suspicious login item detected",
+                                Severity::Medium,
+                                Category::Persistence,
+                            )
+                            .description(&format!(
+                                "Login item from suspicious location: {}",
+                                trimmed
+                            )),
+                        );
                     }
                 }
             }
@@ -617,14 +719,16 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
                     if line.starts_with('#') || line.is_empty() {
                         continue;
                     }
-                    findings.push(Finding::new(
-                        &format!("mac-cron-{}", path),
-                        &format!("Cron job in {}", path),
-                        Severity::Info,
-                        Category::Persistence,
-                    )
-                    .metadata("path", path.to_string())
-                    .metadata("entry", line.to_string()));
+                    findings.push(
+                        Finding::new(
+                            &format!("mac-cron-{}", path),
+                            &format!("Cron job in {}", path),
+                            Severity::Info,
+                            Category::Persistence,
+                        )
+                        .metadata("path", path.to_string())
+                        .metadata("entry", line.to_string()),
+                    );
                 }
             }
         } else if p.is_dir() {
@@ -635,13 +739,15 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
                         for line in content.lines() {
                             let line = line.trim();
                             if !line.is_empty() && !line.starts_with('#') {
-                                findings.push(Finding::new(
-                                    &format!("mac-cron-{}", file_path.display()),
-                                    &format!("Cron job: {}", file_path.display()),
-                                    Severity::Info,
-                                    Category::Persistence,
-                                )
-                                .metadata("path", file_path.display().to_string()));
+                                findings.push(
+                                    Finding::new(
+                                        &format!("mac-cron-{}", file_path.display()),
+                                        &format!("Cron job: {}", file_path.display()),
+                                        Severity::Info,
+                                        Category::Persistence,
+                                    )
+                                    .metadata("path", file_path.display().to_string()),
+                                );
                             }
                         }
                     }
@@ -655,35 +761,36 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
     for line in user_cron.lines() {
         let line = line.trim();
         if !line.is_empty() && !line.starts_with('#') {
-            findings.push(Finding::new(
-                "mac-cron-user",
-                "User crontab entry",
-                Severity::Info,
-                Category::Persistence,
-            )
-            .metadata("entry", line.to_string()));
+            findings.push(
+                Finding::new(
+                    "mac-cron-user",
+                    "User crontab entry",
+                    Severity::Info,
+                    Category::Persistence,
+                )
+                .metadata("entry", line.to_string()),
+            );
         }
     }
 }
 
 fn audit_startup_items(findings: &mut Vec<Finding>) {
-    let startup_paths = [
-        "/Library/StartupItems",
-        "/System/Library/StartupItems",
-    ];
+    let startup_paths = ["/Library/StartupItems", "/System/Library/StartupItems"];
 
     for path in &startup_paths {
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let dir_path = entry.path();
                 if dir_path.is_dir() {
-                    findings.push(Finding::new(
-                        &format!("mac-startup-{}", dir_path.display()),
-                        &format!("Startup item: {}", dir_path.display()),
-                        Severity::Info,
-                        Category::Persistence,
-                    )
-                    .metadata("path", dir_path.display().to_string()));
+                    findings.push(
+                        Finding::new(
+                            &format!("mac-startup-{}", dir_path.display()),
+                            &format!("Startup item: {}", dir_path.display()),
+                            Severity::Info,
+                            Category::Persistence,
+                        )
+                        .metadata("path", dir_path.display().to_string()),
+                    );
                 }
             }
         }
@@ -711,13 +818,15 @@ fn audit_keychain(findings: &mut Vec<Finding>) {
             // Check if keychain is unlocked
             let locked = run_cmd_lossy("security", &["show-keychain-info", keychain]);
             if locked.contains("locked") {
-                findings.push(Finding::new(
-                    &format!("mac-keychain-locked-{}", keychain),
-                    &format!("Keychain '{}' is locked", keychain),
-                    Severity::Info,
-                    Category::Credentials,
-                )
-                .metadata("keychain", keychain.to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("mac-keychain-locked-{}", keychain),
+                        &format!("Keychain '{}' is locked", keychain),
+                        Severity::Info,
+                        Category::Credentials,
+                    )
+                    .metadata("keychain", keychain.to_string()),
+                );
             }
         }
     }
@@ -741,7 +850,10 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     let home = std::env::var("HOME").unwrap_or_default();
 
     // Chrome
-    let chrome_login = format!("{}/Library/Application Support/Google/Chrome/Default/Login Data", home);
+    let chrome_login = format!(
+        "{}/Library/Application Support/Google/Chrome/Default/Login Data",
+        home
+    );
     if file_exists(&chrome_login) {
         findings.push(Finding::new(
             "mac-browser-chrome-passwords",
@@ -759,14 +871,16 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
             let profile = entry.path();
             let logins = profile.join("logins.json");
             if logins.exists() {
-                findings.push(Finding::new(
-                    "mac-browser-firefox-passwords",
-                    "Firefox has saved passwords",
-                    Severity::Medium,
-                    Category::Credentials,
-                )
-                .description("Firefox logins.json exists, indicating saved passwords.")
-                .metadata("path", logins.display().to_string()));
+                findings.push(
+                    Finding::new(
+                        "mac-browser-firefox-passwords",
+                        "Firefox has saved passwords",
+                        Severity::Medium,
+                        Category::Credentials,
+                    )
+                    .description("Firefox logins.json exists, indicating saved passwords.")
+                    .metadata("path", logins.display().to_string()),
+                );
                 break;
             }
         }
@@ -775,37 +889,49 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     // Safari
     let safari_cookies = format!("{}/Library/Cookies/Cookies.binarycookies", home);
     if file_exists(&safari_cookies) {
-        findings.push(Finding::new(
-            "mac-browser-safari-cookies",
-            "Safari has stored cookies",
-            Severity::Low,
-            Category::Credentials,
-        )
-        .description("Safari cookie database exists. Cookies may contain session tokens."));
+        findings.push(
+            Finding::new(
+                "mac-browser-safari-cookies",
+                "Safari has stored cookies",
+                Severity::Low,
+                Category::Credentials,
+            )
+            .description("Safari cookie database exists. Cookies may contain session tokens."),
+        );
     }
 
     // Edge
-    let edge_login = format!("{}/Library/Application Support/Microsoft Edge/Default/Login Data", home);
+    let edge_login = format!(
+        "{}/Library/Application Support/Microsoft Edge/Default/Login Data",
+        home
+    );
     if file_exists(&edge_login) {
-        findings.push(Finding::new(
-            "mac-browser-edge-passwords",
-            "Microsoft Edge has saved passwords",
-            Severity::Medium,
-            Category::Credentials,
-        )
-        .description("Edge's Login Data database exists, indicating saved passwords."));
+        findings.push(
+            Finding::new(
+                "mac-browser-edge-passwords",
+                "Microsoft Edge has saved passwords",
+                Severity::Medium,
+                Category::Credentials,
+            )
+            .description("Edge's Login Data database exists, indicating saved passwords."),
+        );
     }
 
     // Brave
-    let brave_login = format!("{}/Library/Application Support/BraveSoftware/Brave-Browser/Default/Login Data", home);
+    let brave_login = format!(
+        "{}/Library/Application Support/BraveSoftware/Brave-Browser/Default/Login Data",
+        home
+    );
     if file_exists(&brave_login) {
-        findings.push(Finding::new(
-            "mac-browser-brave-passwords",
-            "Brave browser has saved passwords",
-            Severity::Medium,
-            Category::Credentials,
-        )
-        .description("Brave's Login Data database exists, indicating saved passwords."));
+        findings.push(
+            Finding::new(
+                "mac-browser-brave-passwords",
+                "Brave browser has saved passwords",
+                Severity::Medium,
+                Category::Credentials,
+            )
+            .description("Brave's Login Data database exists, indicating saved passwords."),
+        );
     }
 }
 
@@ -816,9 +942,15 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
     if let Ok(entries) = std::fs::read_dir(&ssh_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let file_name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
 
-            if file_name.ends_with(".pub") || file_name.starts_with("known_hosts") || file_name.starts_with("config") {
+            if file_name.ends_with(".pub")
+                || file_name.starts_with("known_hosts")
+                || file_name.starts_with("config")
+            {
                 continue;
             }
 
@@ -850,8 +982,12 @@ fn audit_wifi_passwords(findings: &mut Vec<Finding>) {
             // Get the device name
             let next_lines: Vec<&str> = output.lines().collect();
             // Try to list known networks
-            let networks = run_cmd_lossy("networksetup", &["-listpreferredwirelessnetworks", "en0"]);
-            let count = networks.lines().filter(|l| !l.is_empty() && !l.contains("Preferred")).count();
+            let networks =
+                run_cmd_lossy("networksetup", &["-listpreferredwirelessnetworks", "en0"]);
+            let count = networks
+                .lines()
+                .filter(|l| !l.is_empty() && !l.contains("Preferred"))
+                .count();
             if count > 0 {
                 findings.push(Finding::new(
                     "mac-wifi-profiles",
@@ -898,13 +1034,15 @@ fn audit_smb_shares(findings: &mut Vec<Finding>) {
     for line in sharing.lines() {
         let line = line.trim();
         if line.starts_with("name:") || line.starts_with("path:") {
-            findings.push(Finding::new(
-                "mac-smb-share",
-                &format!("Shared folder: {}", line),
-                Severity::Info,
-                Category::Shares,
-            )
-            .metadata("share", line.to_string()));
+            findings.push(
+                Finding::new(
+                    "mac-smb-share",
+                    &format!("Shared folder: {}", line),
+                    Severity::Info,
+                    Category::Shares,
+                )
+                .metadata("share", line.to_string()),
+            );
         }
     }
 }
@@ -923,7 +1061,14 @@ fn audit_afp_shares(findings: &mut Vec<Finding>) {
 }
 
 fn audit_guest_access(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("defaults", &["read", "/Library/Preferences/com.apple.AppleFileServer", "guest_access"]);
+    let output = run_cmd_lossy(
+        "defaults",
+        &[
+            "read",
+            "/Library/Preferences/com.apple.AppleFileServer",
+            "guest_access",
+        ],
+    );
     if output.contains("1") || output.contains("true") {
         findings.push(Finding::new(
             "mac-afp-guest",
@@ -935,7 +1080,14 @@ fn audit_guest_access(findings: &mut Vec<Finding>) {
         .recommendation("Disable guest access: sudo defaults write /Library/Preferences/com.apple.AppleFileServer guest_access -bool false"));
     }
 
-    let smb_guest = run_cmd_lossy("defaults", &["read", "/Library/Preferences/SystemConfiguration/com.apple.smb.server", "GuestEnabled"]);
+    let smb_guest = run_cmd_lossy(
+        "defaults",
+        &[
+            "read",
+            "/Library/Preferences/SystemConfiguration/com.apple.smb.server",
+            "GuestEnabled",
+        ],
+    );
     if smb_guest.contains("1") || smb_guest.contains("true") {
         findings.push(Finding::new(
             "mac-smb-guest",
@@ -1003,27 +1155,39 @@ fn audit_brew_outdated(findings: &mut Vec<Finding>) {
 
     let count = output.lines().filter(|l| !l.is_empty()).count();
     if count > 0 {
-        findings.push(Finding::new(
-            "mac-brew-outdated",
-            &format!("{} Homebrew packages outdated", count),
-            Severity::Medium,
-            Category::Patches,
-        )
-        .description(&format!("{} Homebrew packages have updates available.", count))
-        .recommendation("Update: brew upgrade")
-        .metadata("count", count.to_string()));
+        findings.push(
+            Finding::new(
+                "mac-brew-outdated",
+                &format!("{} Homebrew packages outdated", count),
+                Severity::Medium,
+                Category::Patches,
+            )
+            .description(&format!(
+                "{} Homebrew packages have updates available.",
+                count
+            ))
+            .recommendation("Update: brew upgrade")
+            .metadata("count", count.to_string()),
+        );
 
         for line in output.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 2 {
-                findings.push(Finding::new(
-                    &format!("mac-brew-outdated-{}", parts[0]),
-                    &format!("{} is outdated ({} -> {})", parts[0], parts[1], parts.get(3).unwrap_or(&"?")),
-                    Severity::Low,
-                    Category::Patches,
-                )
-                .metadata("package", parts[0].to_string())
-                .metadata("current", parts[1].to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("mac-brew-outdated-{}", parts[0]),
+                        &format!(
+                            "{} is outdated ({} -> {})",
+                            parts[0],
+                            parts[1],
+                            parts.get(3).unwrap_or(&"?")
+                        ),
+                        Severity::Low,
+                        Category::Patches,
+                    )
+                    .metadata("package", parts[0].to_string())
+                    .metadata("current", parts[1].to_string()),
+                );
             }
         }
     }
@@ -1035,18 +1199,27 @@ fn audit_last_update(findings: &mut Vec<Finding>) {
     for line in output.lines() {
         let line = line.trim();
         if line.contains("Last Update") || line.contains("last update") {
-            findings.push(Finding::new(
-                "mac-last-update",
-                "Last system update info",
-                Severity::Info,
-                Category::Patches,
-            )
-            .metadata("info", line.to_string()));
+            findings.push(
+                Finding::new(
+                    "mac-last-update",
+                    "Last system update info",
+                    Severity::Info,
+                    Category::Patches,
+                )
+                .metadata("info", line.to_string()),
+            );
         }
     }
 
     // Check if automatic updates are enabled
-    let auto = run_cmd_lossy("defaults", &["read", "/Library/Preferences/com.apple.SoftwareUpdate", "AutomaticCheckEnabled"]);
+    let auto = run_cmd_lossy(
+        "defaults",
+        &[
+            "read",
+            "/Library/Preferences/com.apple.SoftwareUpdate",
+            "AutomaticCheckEnabled",
+        ],
+    );
     if auto.contains("0") || auto.contains("false") {
         findings.push(Finding::new(
             "mac-auto-update-off",

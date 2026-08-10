@@ -11,7 +11,9 @@ pub fn audit_temp() -> Vec<Finding> {
     let mut findings = Vec::new();
 
     for dir in TEMP_DIRS {
-        if !Path::new(dir).exists() { continue; }
+        if !Path::new(dir).exists() {
+            continue;
+        }
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -37,7 +39,12 @@ pub fn audit_temp() -> Vec<Finding> {
                                 if age > Duration::from_secs(7 * 86400) {
                                     findings.push(Finding::new(
                                         &format!("temp-stale-{}-{}", dir.replace('/', "_"), name),
-                                        &format!("Stale file in {} ({} days old): {}", dir, age.as_secs() / 86400, name),
+                                        &format!(
+                                            "Stale file in {} ({} days old): {}",
+                                            dir,
+                                            age.as_secs() / 86400,
+                                            name
+                                        ),
                                         Severity::Low,
                                         Category::HostConfig,
                                     ));
@@ -86,7 +93,9 @@ pub fn clean_temp(dry_run: bool) -> Vec<HardenResult> {
     let mut results = Vec::new();
 
     for dir in TEMP_DIRS {
-        if !Path::new(dir).exists() { continue; }
+        if !Path::new(dir).exists() {
+            continue;
+        }
         let mut cleaned = 0;
 
         if let Ok(entries) = std::fs::read_dir(dir) {

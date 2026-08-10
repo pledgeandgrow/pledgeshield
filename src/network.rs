@@ -82,7 +82,11 @@ fn check_upnp() -> Option<Finding> {
         if stdout.contains("PID") {
             // mDNSResponder is running — check if NAT/UPnP is enabled
             let nat_output = std::process::Command::new("defaults")
-                .args(["read", "/Library/Preferences/com.apple.nat", "NatUpnpEnabled"])
+                .args([
+                    "read",
+                    "/Library/Preferences/com.apple.nat",
+                    "NatUpnpEnabled",
+                ])
                 .output()
                 .ok()?;
 
@@ -109,9 +113,7 @@ fn check_public_ip_exposure() -> Option<Finding> {
     // Check if any network interface has a public (non-RFC1918) IP
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("ipconfig")
-            .output()
-            .ok()?;
+        let output = std::process::Command::new("ipconfig").output().ok()?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         for line in stdout.lines() {
@@ -137,9 +139,7 @@ fn check_public_ip_exposure() -> Option<Finding> {
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        let output = std::process::Command::new("ifconfig")
-            .output()
-            .ok()?;
+        let output = std::process::Command::new("ifconfig").output().ok()?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         for line in stdout.lines() {
@@ -200,7 +200,11 @@ fn check_wildcard_listening() -> Option<Finding> {
         let output = std::process::Command::new("ss")
             .args(["-tlnp"])
             .output()
-            .or_else(|_| std::process::Command::new("netstat").args(["-tlnp"]).output())
+            .or_else(|_| {
+                std::process::Command::new("netstat")
+                    .args(["-tlnp"])
+                    .output()
+            })
             .ok()?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -211,15 +215,22 @@ fn check_wildcard_listening() -> Option<Finding> {
             .count();
 
         if wildcard_count > 0 {
-            return Some(Finding::new(
-                "net-wildcard-listening",
-                "Services Listening on All Interfaces",
-                Severity::Medium,
-                Category::Network,
-            )
-            .description(&format!("{} service(s) are listening on 0.0.0.0 or [::] (all interfaces).", wildcard_count))
-            .recommendation("Bind services to localhost (127.0.0.1) when remote access is not needed.")
-            .metadata("count", &wildcard_count.to_string()));
+            return Some(
+                Finding::new(
+                    "net-wildcard-listening",
+                    "Services Listening on All Interfaces",
+                    Severity::Medium,
+                    Category::Network,
+                )
+                .description(&format!(
+                    "{} service(s) are listening on 0.0.0.0 or [::] (all interfaces).",
+                    wildcard_count
+                ))
+                .recommendation(
+                    "Bind services to localhost (127.0.0.1) when remote access is not needed.",
+                )
+                .metadata("count", &wildcard_count.to_string()),
+            );
         }
     }
 
@@ -239,7 +250,11 @@ fn is_public_ip(ip: &str) -> bool {
     }
 
     // IPv6: check for link-local, unique local, loopback
-    if ip.starts_with("fe80::") || ip.starts_with("fc00::") || ip.starts_with("fd00::") || ip == "::1" {
+    if ip.starts_with("fe80::")
+        || ip.starts_with("fc00::")
+        || ip.starts_with("fd00::")
+        || ip == "::1"
+    {
         return false;
     }
 
@@ -258,15 +273,25 @@ fn is_public_ipv4(ip: &str) -> bool {
     }
 
     // RFC1918 private ranges
-    if octets[0] == 10 { return false; }
-    if octets[0] == 172 && (16..=31).contains(&octets[1]) { return false; }
-    if octets[0] == 192 && octets[1] == 168 { return false; }
+    if octets[0] == 10 {
+        return false;
+    }
+    if octets[0] == 172 && (16..=31).contains(&octets[1]) {
+        return false;
+    }
+    if octets[0] == 192 && octets[1] == 168 {
+        return false;
+    }
 
     // Loopback
-    if octets[0] == 127 { return false; }
+    if octets[0] == 127 {
+        return false;
+    }
 
     // Link-local
-    if octets[0] == 169 && octets[1] == 254 { return false; }
+    if octets[0] == 169 && octets[1] == 254 {
+        return false;
+    }
 
     true
 }

@@ -14,18 +14,22 @@ pub fn audit_bluetooth() -> Vec<Finding> {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("Powered: yes") {
                 if s.contains("Discoverable: yes") {
-                    findings.push(Finding::new(
-                        "bt-discoverable",
-                        "Bluetooth is discoverable",
-                        Severity::Medium,
-                        Category::Network,
-                    )
-                    .description("Your device is visible to all nearby Bluetooth devices.")
-                    .recommendation("Run: pledgeshield harden bluetooth --hide")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "bt-discoverable",
+                            "Bluetooth is discoverable",
+                            Severity::Medium,
+                            Category::Network,
+                        )
+                        .description("Your device is visible to all nearby Bluetooth devices.")
+                        .recommendation("Run: pledgeshield harden bluetooth --hide")
+                        .fixable(true),
+                    );
                 }
                 // Check paired devices
-                let out2 = Command::new("bluetoothctl").args(["devices", "Paired"]).output();
+                let out2 = Command::new("bluetoothctl")
+                    .args(["devices", "Paired"])
+                    .output();
                 if let Ok(o2) = out2 {
                     let s2 = String::from_utf8_lossy(&o2.stdout);
                     let count = s2.lines().filter(|l| l.starts_with("Device")).count();
@@ -50,15 +54,17 @@ pub fn audit_bluetooth() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.trim() == "1" {
-                findings.push(Finding::new(
-                    "bt-on",
-                    "Bluetooth is powered on",
-                    Severity::Low,
-                    Category::Network,
-                )
-                .description("Bluetooth is active. Disable if not in use.")
-                .recommendation("Run: pledgeshield harden bluetooth --disable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "bt-on",
+                        "Bluetooth is powered on",
+                        Severity::Low,
+                        Category::Network,
+                    )
+                    .description("Bluetooth is active. Disable if not in use.")
+                    .recommendation("Run: pledgeshield harden bluetooth --disable")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -71,14 +77,16 @@ pub fn audit_bluetooth() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("Count") {
-                findings.push(Finding::new(
-                    "bt-active",
-                    "Bluetooth devices are active",
-                    Severity::Low,
-                    Category::Network,
-                )
-                .description("Bluetooth is active on this system.")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "bt-active",
+                        "Bluetooth devices are active",
+                        Severity::Low,
+                        Category::Network,
+                    )
+                    .description("Bluetooth is active on this system.")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -91,7 +99,10 @@ pub fn list_paired() -> Vec<String> {
 
     #[cfg(target_os = "linux")]
     {
-        if let Ok(o) = Command::new("bluetoothctl").args(["devices", "Paired"]).output() {
+        if let Ok(o) = Command::new("bluetoothctl")
+            .args(["devices", "Paired"])
+            .output()
+        {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 if line.starts_with("Device ") {
@@ -126,7 +137,9 @@ pub fn hide_discoverable(dry_run: bool) -> HardenResult {
 
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("bluetoothctl").args(["discoverable", "off"]).output();
+        let out = Command::new("bluetoothctl")
+            .args(["discoverable", "off"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "bt-hide".to_string(),

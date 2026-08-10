@@ -11,8 +11,13 @@ pub fn audit_libraries() -> Vec<Finding> {
         if let Ok(content) = std::fs::read_to_string("/etc/ld.so.conf") {
             for line in content.lines() {
                 let line = line.trim();
-                if line.starts_with('#') || line.is_empty() { continue; }
-                if line.starts_with("/tmp/") || line.starts_with("/home/") || line.starts_with("/var/tmp/") {
+                if line.starts_with('#') || line.is_empty() {
+                    continue;
+                }
+                if line.starts_with("/tmp/")
+                    || line.starts_with("/home/")
+                    || line.starts_with("/var/tmp/")
+                {
                     findings.push(Finding::new(
                         &format!("libaudit-ldconf-{}", line.replace('/', "_")),
                         &format!("Suspicious library path in ld.so.conf: {}", line),
@@ -32,16 +37,30 @@ pub fn audit_libraries() -> Vec<Finding> {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 let path = line.trim();
-                if path.is_empty() { continue; }
+                if path.is_empty() {
+                    continue;
+                }
 
                 let out2 = Command::new("readelf").args(["-d", path]).output();
                 if let Ok(o2) = out2 {
                     let elf = String::from_utf8_lossy(&o2.stdout);
                     for line in elf.lines() {
                         if line.contains("RPATH") || line.contains("RUNPATH") {
-                            let rpath = line.split('[').nth(1).and_then(|s| s.trim_end_matches(']').trim().strip_prefix("Path:")).unwrap_or("");
-                            let rpath = line.split('[').nth(1).and_then(|s| s.split(']').next()).unwrap_or("");
-                            if rpath.starts_with("/tmp/") || rpath.starts_with("/home/") || rpath.starts_with("/var/tmp/") || rpath == "." {
+                            let _rpath = line
+                                .split('[')
+                                .nth(1)
+                                .and_then(|s| s.trim_end_matches(']').trim().strip_prefix("Path:"))
+                                .unwrap_or("");
+                            let rpath = line
+                                .split('[')
+                                .nth(1)
+                                .and_then(|s| s.split(']').next())
+                                .unwrap_or("");
+                            if rpath.starts_with("/tmp/")
+                                || rpath.starts_with("/home/")
+                                || rpath.starts_with("/var/tmp/")
+                                || rpath == "."
+                            {
                                 findings.push(Finding::new(
                                     &format!("libaudit-rpath-{}", path.replace('/', "_")),
                                     &format!("{} has RPATH/RUNPATH pointing to writable dir: {}", path, rpath),
@@ -59,11 +78,14 @@ pub fn audit_libraries() -> Vec<Finding> {
         // Check for world-writable library directories
         let lib_dirs = ["/usr/lib", "/usr/lib64", "/lib", "/lib64", "/usr/local/lib"];
         for dir in &lib_dirs {
-            if !std::path::Path::new(dir).exists() { continue; }
+            if !std::path::Path::new(dir).exists() {
+                continue;
+            }
             if let Ok(meta) = std::fs::metadata(dir) {
                 use std::os::unix::fs::PermissionsExt;
                 let mode = meta.permissions().mode();
-                if mode & 0o022 != 0 { // group or world writable
+                if mode & 0o022 != 0 {
+                    // group or world writable
                     findings.push(Finding::new(
                         &format!("libaudit-writable-{}", dir.replace('/', "_")),
                         &format!("Library directory {} is writable", dir),
@@ -77,7 +99,10 @@ pub fn audit_libraries() -> Vec<Finding> {
 
         // Check for libraries in /tmp or /dev/shm
         let out = Command::new("sh")
-            .args(["-c", "find /tmp /dev/shm /var/tmp -name '*.so*' -type f 2>/dev/null"])
+            .args([
+                "-c",
+                "find /tmp /dev/shm /var/tmp -name '*.so*' -type f 2>/dev/null",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);

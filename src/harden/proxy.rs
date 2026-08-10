@@ -1,6 +1,5 @@
 /// Proxy chain manager — configure SOCKS5/HTTP proxy chains for traffic obfuscation.
 use super::HardenResult;
-use std::process::Command;
 
 pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> HardenResult {
     let proxy_url = format!("{}://{}:{}", proxy_type, host, port);
@@ -29,10 +28,16 @@ pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> Hard
         // Write to /etc/environment for persistence
         let mut content = String::new();
         if let Ok(existing) = std::fs::read_to_string("/etc/environment") {
-            content = existing.lines()
-                .filter(|l| !l.starts_with("http_proxy") && !l.starts_with("https_proxy") &&
-                          !l.starts_with("HTTP_PROXY") && !l.starts_with("HTTPS_PROXY") &&
-                          !l.starts_with("all_proxy") && !l.starts_with("ALL_PROXY"))
+            content = existing
+                .lines()
+                .filter(|l| {
+                    !l.starts_with("http_proxy")
+                        && !l.starts_with("https_proxy")
+                        && !l.starts_with("HTTP_PROXY")
+                        && !l.starts_with("HTTPS_PROXY")
+                        && !l.starts_with("all_proxy")
+                        && !l.starts_with("ALL_PROXY")
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
         }
@@ -49,7 +54,10 @@ pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> Hard
         HardenResult {
             action: "proxy-set".to_string(),
             success: true,
-            message: format!("Proxy set to {} (system-wide via /etc/environment)", proxy_url),
+            message: format!(
+                "Proxy set to {} (system-wide via /etc/environment)",
+                proxy_url
+            ),
             findings: vec![],
         }
     }
@@ -78,14 +86,32 @@ pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> Hard
     #[cfg(windows)]
     {
         // Windows: set via registry
-        let _ = Command::new("reg").args([
-            "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
-            "/v", "ProxyServer", "/t", "REG_SZ", "/d", &format!("{}={}:{}", proxy_type, host, port), "/f",
-        ]).output();
-        let _ = Command::new("reg").args([
-            "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
-            "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f",
-        ]).output();
+        let _ = Command::new("reg")
+            .args([
+                "add",
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+                "/v",
+                "ProxyServer",
+                "/t",
+                "REG_SZ",
+                "/d",
+                &format!("{}={}:{}", proxy_type, host, port),
+                "/f",
+            ])
+            .output();
+        let _ = Command::new("reg")
+            .args([
+                "add",
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+                "/v",
+                "ProxyEnable",
+                "/t",
+                "REG_DWORD",
+                "/d",
+                "1",
+                "/f",
+            ])
+            .output();
         HardenResult {
             action: "proxy-set".to_string(),
             success: true,
@@ -110,15 +136,28 @@ pub fn clear_proxy() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/environment") {
-            let new_content: String = content.lines()
-                .filter(|l| !l.starts_with("http_proxy") && !l.starts_with("https_proxy") &&
-                          !l.starts_with("HTTP_PROXY") && !l.starts_with("HTTPS_PROXY") &&
-                          !l.starts_with("all_proxy") && !l.starts_with("ALL_PROXY"))
+            let new_content: String = content
+                .lines()
+                .filter(|l| {
+                    !l.starts_with("http_proxy")
+                        && !l.starts_with("https_proxy")
+                        && !l.starts_with("HTTP_PROXY")
+                        && !l.starts_with("HTTPS_PROXY")
+                        && !l.starts_with("all_proxy")
+                        && !l.starts_with("ALL_PROXY")
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             let _ = std::fs::write("/etc/environment", new_content);
         }
-        for key in &["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"] {
+        for key in &[
+            "http_proxy",
+            "https_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "all_proxy",
+            "ALL_PROXY",
+        ] {
             std::env::remove_var(key);
         }
         HardenResult {
@@ -131,9 +170,15 @@ pub fn clear_proxy() -> HardenResult {
 
     #[cfg(target_os = "macos")]
     {
-        let _ = Command::new("networksetup").args(["-setwebproxystate", "Wi-Fi", "off"]).output();
-        let _ = Command::new("networksetup").args(["-setsecurewebproxystate", "Wi-Fi", "off"]).output();
-        let _ = Command::new("networksetup").args(["-setsocksfirewallproxystate", "Wi-Fi", "off"]).output();
+        let _ = Command::new("networksetup")
+            .args(["-setwebproxystate", "Wi-Fi", "off"])
+            .output();
+        let _ = Command::new("networksetup")
+            .args(["-setsecurewebproxystate", "Wi-Fi", "off"])
+            .output();
+        let _ = Command::new("networksetup")
+            .args(["-setsocksfirewallproxystate", "Wi-Fi", "off"])
+            .output();
         HardenResult {
             action: "proxy-clear".to_string(),
             success: true,
@@ -144,10 +189,19 @@ pub fn clear_proxy() -> HardenResult {
 
     #[cfg(windows)]
     {
-        let _ = Command::new("reg").args([
-            "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
-            "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "0", "/f",
-        ]).output();
+        let _ = Command::new("reg")
+            .args([
+                "add",
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+                "/v",
+                "ProxyEnable",
+                "/t",
+                "REG_DWORD",
+                "/d",
+                "0",
+                "/f",
+            ])
+            .output();
         HardenResult {
             action: "proxy-clear".to_string(),
             success: true,
@@ -169,7 +223,14 @@ pub fn clear_proxy() -> HardenResult {
 
 pub fn show_proxy() -> String {
     let mut out = String::new();
-    for key in &["http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"] {
+    for key in &[
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+    ] {
         if let Ok(val) = std::env::var(key) {
             out.push_str(&format!("  {} = {}\n", key, val));
         }

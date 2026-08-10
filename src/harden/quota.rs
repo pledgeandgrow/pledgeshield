@@ -9,8 +9,11 @@ pub fn audit_quotas() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check if quota is installed
-        let installed = Command::new("which").arg("quotaon").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("quotaon")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
             findings.push(Finding::new(
@@ -30,15 +33,19 @@ pub fn audit_quotas() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.trim().is_empty() {
-                findings.push(Finding::new(
-                    "quota-not-enabled",
-                    "Disk quotas are not enabled",
-                    Severity::Low,
-                    Category::HostConfig,
-                )
-                .description("No disk quotas are active. Ransomware could fill your disk quickly.")
-                .recommendation("Run: pledgeshield harden quota --enable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "quota-not-enabled",
+                        "Disk quotas are not enabled",
+                        Severity::Low,
+                        Category::HostConfig,
+                    )
+                    .description(
+                        "No disk quotas are active. Ransomware could fill your disk quickly.",
+                    )
+                    .recommendation("Run: pledgeshield harden quota --enable")
+                    .fixable(true),
+                );
             }
         }
 
@@ -47,13 +54,15 @@ pub fn audit_quotas() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("none") || s.trim().is_empty() {
-                findings.push(Finding::new(
-                    "quota-none-set",
-                    "No quota set for current user",
-                    Severity::Low,
-                    Category::HostConfig,
-                )
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "quota-none-set",
+                        "No quota set for current user",
+                        Severity::Low,
+                        Category::HostConfig,
+                    )
+                    .fixable(true),
+                );
             }
         }
     }
@@ -74,11 +83,16 @@ pub fn enable_quotas(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Check if quota is installed
-        let installed = Command::new("which").arg("quotaon").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("quotaon")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
-            let _ = Command::new("apt").args(["install", "-y", "quota"]).output();
+            let _ = Command::new("apt")
+                .args(["install", "-y", "quota"])
+                .output();
         }
 
         // Enable quotas on root filesystem
@@ -90,7 +104,8 @@ pub fn enable_quotas(dry_run: bool) -> HardenResult {
             message: if ok {
                 "Quotas enabled. Use 'edquota -u <user>' to set limits.".to_string()
             } else {
-                "Failed to enable quotas (need root? add usrquota,grpquota to /etc/fstab)".to_string()
+                "Failed to enable quotas (need root? add usrquota,grpquota to /etc/fstab)"
+                    .to_string()
             },
             findings: vec![],
         }

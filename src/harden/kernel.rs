@@ -48,7 +48,12 @@ pub fn audit_kernel_modules() -> Vec<Finding> {
         // Check dmesg for module load failures (could indicate attack attempts)
         if let Ok(o) = Command::new("dmesg").output() {
             let s = String::from_utf8_lossy(&o.stdout);
-            let failures = s.lines().filter(|l| l.contains("module verification failed") || l.contains("module signature")).count();
+            let failures = s
+                .lines()
+                .filter(|l| {
+                    l.contains("module verification failed") || l.contains("module signature")
+                })
+                .count();
             if failures > 0 {
                 findings.push(Finding::new(
                     "kernel-module-sign-fail",
@@ -64,19 +69,25 @@ pub fn audit_kernel_modules() -> Vec<Finding> {
     #[cfg(windows)]
     {
         // Check if driver signature enforcement is on
-        let out = Command::new("bcdedit").args(["/enum", "{current}"]).output();
+        let out = Command::new("bcdedit")
+            .args(["/enum", "{current}"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("testsigning") && s.contains("Yes") {
-                findings.push(Finding::new(
-                    "kernel-testsigning",
-                    "Windows test signing is enabled",
-                    Severity::High,
-                    Category::HostConfig,
-                )
-                .description("Test signing allows unsigned drivers to load. This is a security risk.")
-                .recommendation("Run: bcdedit /set testsigning off  (reboot required)")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "kernel-testsigning",
+                        "Windows test signing is enabled",
+                        Severity::High,
+                        Category::HostConfig,
+                    )
+                    .description(
+                        "Test signing allows unsigned drivers to load. This is a security risk.",
+                    )
+                    .recommendation("Run: bcdedit /set testsigning off  (reboot required)")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -91,7 +102,8 @@ pub fn lockdown_kernel(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "kernel-lockdown".to_string(),
             success: true,
-            message: "[dry-run] Would lock kernel module loading (irreversible until reboot).".to_string(),
+            message: "[dry-run] Would lock kernel module loading (irreversible until reboot)."
+                .to_string(),
             findings: vec![],
         };
     }
@@ -100,18 +112,24 @@ pub fn lockdown_kernel(dry_run: bool) -> HardenResult {
     {
         // Set /proc/sys/kernel/modules_disabled = 1
         // This is irreversible until reboot!
-        let out = Command::new("sysctl").args(["-w", "kernel.modules_disabled=1"]).output();
+        let out = Command::new("sysctl")
+            .args(["-w", "kernel.modules_disabled=1"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "kernel-lockdown".to_string(),
                 success: true,
-                message: "Kernel module loading locked. No new modules can be loaded until reboot.".to_string(),
+                message: "Kernel module loading locked. No new modules can be loaded until reboot."
+                    .to_string(),
                 findings: vec![],
             },
             Ok(o) => HardenResult {
                 action: "kernel-lockdown".to_string(),
                 success: false,
-                message: format!("Failed (need root?): {}", String::from_utf8_lossy(&o.stderr)),
+                message: format!(
+                    "Failed (need root?): {}",
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 findings: vec![],
             },
             Err(e) => HardenResult {

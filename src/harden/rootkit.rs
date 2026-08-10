@@ -10,7 +10,8 @@ pub fn scan_rootkits() -> Vec<Finding> {
         // Check 1: Compare /proc ps output vs ps command (hidden processes)
         let proc_pids = get_proc_pids();
         let ps_pids = get_ps_pids();
-        let hidden: Vec<_> = ps_pids.iter()
+        let hidden: Vec<_> = ps_pids
+            .iter()
             .filter(|pid| !proc_pids.contains(pid))
             .collect();
         if !hidden.is_empty() {
@@ -41,7 +42,8 @@ pub fn scan_rootkits() -> Vec<Finding> {
         // Check 3: Check for hidden kernel modules
         let lsmod_modules = get_lsmod_modules();
         let proc_modules = get_proc_modules();
-        let hidden_modules: Vec<_> = lsmod_modules.iter()
+        let hidden_modules: Vec<_> = lsmod_modules
+            .iter()
             .filter(|m| !proc_modules.contains(m))
             .collect();
         if !hidden_modules.is_empty() {
@@ -55,7 +57,8 @@ pub fn scan_rootkits() -> Vec<Finding> {
         }
 
         // Check 4: Check /proc/modules for modules not in lsmod
-        let extra_modules: Vec<_> = proc_modules.iter()
+        let extra_modules: Vec<_> = proc_modules
+            .iter()
             .filter(|m| !lsmod_modules.contains(m))
             .collect();
         if !extra_modules.is_empty() {
@@ -115,16 +118,21 @@ pub fn scan_rootkits() -> Vec<Finding> {
         }
 
         // Check 7: Check if rkhunter/chkrootkit are available
-        let rkhunter = Command::new("which").arg("rkhunter").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let rkhunter = Command::new("which")
+            .arg("rkhunter")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
         if rkhunter {
-            findings.push(Finding::new(
-                "rootkit-scanner-available",
-                "rkhunter is installed — run a full scan",
-                Severity::Info,
-                Category::HostConfig,
-            )
-            .description("Run: sudo rkhunter --check  for a comprehensive rootkit scan."));
+            findings.push(
+                Finding::new(
+                    "rootkit-scanner-available",
+                    "rkhunter is installed — run a full scan",
+                    Severity::Info,
+                    Category::HostConfig,
+                )
+                .description("Run: sudo rkhunter --check  for a comprehensive rootkit scan."),
+            );
         }
     }
 
@@ -169,6 +177,10 @@ fn get_lsmod_modules() -> Vec<String> {
 
 fn get_proc_modules() -> Vec<String> {
     std::fs::read_to_string("/proc/modules")
-        .map(|s| s.lines().filter_map(|l| l.split_whitespace().next().map(String::from)).collect())
+        .map(|s| {
+            s.lines()
+                .filter_map(|l| l.split_whitespace().next().map(String::from))
+                .collect()
+        })
         .unwrap_or_default()
 }

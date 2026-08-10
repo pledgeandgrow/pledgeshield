@@ -13,7 +13,10 @@ pub fn get_chromium_prefs_path(browser: &str) -> Option<PathBuf> {
         let base = match browser {
             "chrome" => config.join("google-chrome").join("Default"),
             "edge" => config.join("microsoft-edge").join("Default"),
-            "brave" => config.join("BraveSoftware").join("Brave-Browser").join("Default"),
+            "brave" => config
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("Default"),
             "chromium" => config.join("chromium").join("Default"),
             _ => return None,
         };
@@ -103,26 +106,32 @@ fn get_firefox_profile_dir() -> Option<PathBuf> {
 fn set_chromium_ua(prefs_path: &std::path::Path, browser: &str, ua: &str) -> HardenResult {
     let content = match std::fs::read_to_string(prefs_path) {
         Ok(c) => c,
-        Err(e) => return HardenResult {
-            action: format!("ua-spoof-{}", browser),
-            success: false,
-            message: format!("Failed to read prefs: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: format!("ua-spoof-{}", browser),
+                success: false,
+                message: format!("Failed to read prefs: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     let mut prefs: serde_json::Value = match serde_json::from_str(&content) {
         Ok(v) => v,
-        Err(e) => return HardenResult {
-            action: format!("ua-spoof-{}", browser),
-            success: false,
-            message: format!("Failed to parse prefs: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: format!("ua-spoof-{}", browser),
+                success: false,
+                message: format!("Failed to parse prefs: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     if let Some(obj) = prefs.as_object_mut() {
-        let ua_settings = obj.entry("user_agent").or_insert_with(|| serde_json::json!({}));
+        let ua_settings = obj
+            .entry("user_agent")
+            .or_insert_with(|| serde_json::json!({}));
         if let Some(u) = ua_settings.as_object_mut() {
             u.insert("ua_override".to_string(), serde_json::json!(ua));
         }
@@ -148,18 +157,23 @@ fn set_chromium_ua(prefs_path: &std::path::Path, browser: &str, ua: &str) -> Har
 fn set_firefox_ua(prefs_path: &std::path::Path, ua: &str) -> HardenResult {
     let content = match std::fs::read_to_string(prefs_path) {
         Ok(c) => c,
-        Err(e) => return HardenResult {
-            action: "ua-spoof-firefox".to_string(),
-            success: false,
-            message: format!("Failed to read: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: "ua-spoof-firefox".to_string(),
+                success: false,
+                message: format!("Failed to read: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     let mut lines: Vec<String> = content.lines().map(String::from).collect();
     let prefix = "user_pref(\"general.useragent.override\"";
     lines.retain(|l| !l.starts_with(prefix));
-    lines.push(format!("user_pref(\"general.useragent.override\", \"{}\");", ua));
+    lines.push(format!(
+        "user_pref(\"general.useragent.override\", \"{}\");",
+        ua
+    ));
 
     match std::fs::write(prefs_path, lines.join("\n") + "\n") {
         Ok(()) => HardenResult {
@@ -189,7 +203,10 @@ pub fn reset_user_agent() -> Vec<HardenResult> {
                     if let Some(obj) = prefs.as_object_mut() {
                         obj.remove("user_agent");
                     }
-                    let _ = std::fs::write(&prefs_path, serde_json::to_string_pretty(&prefs).unwrap_or_default());
+                    let _ = std::fs::write(
+                        &prefs_path,
+                        serde_json::to_string_pretty(&prefs).unwrap_or_default(),
+                    );
                 }
                 results.push(HardenResult {
                     action: format!("ua-reset-{}", browser),
@@ -205,7 +222,8 @@ pub fn reset_user_agent() -> Vec<HardenResult> {
         let prefs_path = ff_dir.join("prefs.js");
         if prefs_path.exists() {
             let content = std::fs::read_to_string(&prefs_path).unwrap_or_default();
-            let lines: Vec<String> = content.lines()
+            let lines: Vec<String> = content
+                .lines()
                 .filter(|l| !l.starts_with("user_pref(\"general.useragent.override\""))
                 .map(String::from)
                 .collect();

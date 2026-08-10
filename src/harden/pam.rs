@@ -19,18 +19,29 @@ pub fn audit_pam() -> Vec<Finding> {
         ];
 
         for file in &pam_files {
-            if !Path::new(file).exists() { continue; }
+            if !Path::new(file).exists() {
+                continue;
+            }
             if let Ok(content) = std::fs::read_to_string(file) {
                 for line in content.lines() {
                     let line = line.trim();
-                    if line.starts_with('#') || line.is_empty() { continue; }
+                    if line.starts_with('#') || line.is_empty() {
+                        continue;
+                    }
 
                     // Check for modules loaded from non-standard paths
-                    if line.contains(".so") && !line.contains("lib/security/") && !line.contains("lib64/security/") {
-                        let so_path = line.split_whitespace()
+                    if line.contains(".so")
+                        && !line.contains("lib/security/")
+                        && !line.contains("lib64/security/")
+                    {
+                        let so_path = line
+                            .split_whitespace()
                             .find(|w| w.ends_with(".so"))
                             .unwrap_or("");
-                        if so_path.starts_with("/tmp/") || so_path.starts_with("/home/") || so_path.starts_with("/var/") {
+                        if so_path.starts_with("/tmp/")
+                            || so_path.starts_with("/home/")
+                            || so_path.starts_with("/var/")
+                        {
                             findings.push(Finding::new(
                                 &format!("pam-backdoor-{}", file.replace('/', "_")),
                                 &format!("PAM module from suspicious path in {}: {}", file, so_path),
@@ -44,15 +55,21 @@ pub fn audit_pam() -> Vec<Finding> {
                     // Check for missing password quality controls
                     if file.ends_with("common-password") && line.contains("pam_unix.so") {
                         if !content.contains("pam_pwquality") && !content.contains("pam_cracklib") {
-                            findings.push(Finding::new(
-                                "pam-no-quality",
-                                "No password quality module in PAM config",
-                                Severity::Medium,
-                                Category::HostConfig,
-                            )
-                            .description("Password quality is not enforced. Weak passwords can be set.")
-                            .recommendation("Install libpam-pwquality and add to common-password")
-                            .fixable(true));
+                            findings.push(
+                                Finding::new(
+                                    "pam-no-quality",
+                                    "No password quality module in PAM config",
+                                    Severity::Medium,
+                                    Category::HostConfig,
+                                )
+                                .description(
+                                    "Password quality is not enforced. Weak passwords can be set.",
+                                )
+                                .recommendation(
+                                    "Install libpam-pwquality and add to common-password",
+                                )
+                                .fixable(true),
+                            );
                         }
                     }
 

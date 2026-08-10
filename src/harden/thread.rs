@@ -9,16 +9,18 @@ pub fn audit_threads() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
 
                 // Count threads via /proc/[pid]/task
                 let task_dir = format!("/proc/{}/task", pid);
-                let thread_count = std::fs::read_dir(&task_dir)
-                    .map(|d| d.count())
-                    .unwrap_or(0);
+                let thread_count = std::fs::read_dir(&task_dir).map(|d| d.count()).unwrap_or(0);
 
-                if thread_count == 0 { continue; }
+                if thread_count == 0 {
+                    continue;
+                }
 
                 let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
                     .map(|s| s.trim().to_string())
@@ -37,7 +39,9 @@ pub fn audit_threads() -> Vec<Finding> {
                 }
 
                 // Flag single-threaded processes that suddenly have many threads
-                let single_thread_procs = ["bash", "sh", "dash", "cat", "ls", "cp", "mv", "rm", "grep", "find"];
+                let single_thread_procs = [
+                    "bash", "sh", "dash", "cat", "ls", "cp", "mv", "rm", "grep", "find",
+                ];
                 if single_thread_procs.contains(&comm.as_str()) && thread_count > 5 {
                     findings.push(Finding::new(
                         &format!("thread-anomaly-{}-{}", pid, comm),

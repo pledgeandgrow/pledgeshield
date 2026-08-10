@@ -113,7 +113,12 @@ pub struct Finding {
 }
 
 impl Finding {
-    pub fn new(id: impl Into<String>, title: impl Into<String>, severity: Severity, category: Category) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        title: impl Into<String>,
+        severity: Severity,
+        category: Category,
+    ) -> Self {
         Self {
             id: id.into(),
             title: title.into(),
@@ -297,16 +302,36 @@ mod tests {
         let mut result = ScanResult::new();
         assert_eq!(result.findings.len(), 0);
 
-        result.add_finding(Finding::new("test-1", "Test", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test",
+            Severity::High,
+            Category::Config,
+        ));
         assert_eq!(result.findings.len(), 1);
     }
 
     #[test]
     fn test_scan_result_finalize() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("c-1", "Critical", Severity::Critical, Category::Config));
-        result.add_finding(Finding::new("h-1", "High", Severity::High, Category::Services));
-        result.add_finding(Finding::new("m-1", "Medium", Severity::Medium, Category::Patches));
+        result.add_finding(Finding::new(
+            "c-1",
+            "Critical",
+            Severity::Critical,
+            Category::Config,
+        ));
+        result.add_finding(Finding::new(
+            "h-1",
+            "High",
+            Severity::High,
+            Category::Services,
+        ));
+        result.add_finding(Finding::new(
+            "m-1",
+            "Medium",
+            Severity::Medium,
+            Category::Patches,
+        ));
 
         result.finalize();
 
@@ -321,8 +346,18 @@ mod tests {
     #[test]
     fn test_scan_result_filter_by_severity() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("c-1", "Critical", Severity::Critical, Category::Config));
-        result.add_finding(Finding::new("h-1", "High", Severity::High, Category::Services));
+        result.add_finding(Finding::new(
+            "c-1",
+            "Critical",
+            Severity::Critical,
+            Category::Config,
+        ));
+        result.add_finding(Finding::new(
+            "h-1",
+            "High",
+            Severity::High,
+            Category::Services,
+        ));
         result.add_finding(Finding::new("l-1", "Low", Severity::Low, Category::Patches));
 
         result.filter_by_severity(Severity::High);

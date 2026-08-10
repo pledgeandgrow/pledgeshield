@@ -9,7 +9,9 @@ pub fn audit_lockscreen() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check GNOME settings
-        let out = Command::new("gsettings").args(["get", "org.gnome.desktop.session", "idle-delay"]).output();
+        let out = Command::new("gsettings")
+            .args(["get", "org.gnome.desktop.session", "idle-delay"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "0" || s == "uint32 0" {
@@ -45,69 +47,92 @@ pub fn audit_lockscreen() -> Vec<Finding> {
         let lightdm_path = "/etc/lightdm/lightdm.conf";
         if let Ok(content) = std::fs::read_to_string(lightdm_path) {
             if content.contains("autologin-user=") && !content.contains("autologin-user=#") {
-                findings.push(Finding::new(
-                    "lightdm-auto-login",
-                    "LightDM auto-login is enabled",
-                    Severity::High,
-                    Category::Privileges,
-                )
-                .description("LightDM is configured to auto-login a user.")
-                .recommendation("Run: pledgeshield harden lockscreen --disable-autologin")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "lightdm-auto-login",
+                        "LightDM auto-login is enabled",
+                        Severity::High,
+                        Category::Privileges,
+                    )
+                    .description("LightDM is configured to auto-login a user.")
+                    .recommendation("Run: pledgeshield harden lockscreen --disable-autologin")
+                    .fixable(true),
+                );
             }
         }
     }
 
     #[cfg(target_os = "macos")]
     {
-        let out = Command::new("defaults").args(["read", "com.apple.screensaver", "idleTime"]).output();
+        let out = Command::new("defaults")
+            .args(["read", "com.apple.screensaver", "idleTime"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "0" || s.is_empty() {
-                findings.push(Finding::new(
-                    "lockscreen-no-timeout",
-                    "Screen saver is disabled",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .description("The screen saver/lock is disabled.")
-                .recommendation("Run: pledgeshield harden lockscreen --enable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "lockscreen-no-timeout",
+                        "Screen saver is disabled",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .description("The screen saver/lock is disabled.")
+                    .recommendation("Run: pledgeshield harden lockscreen --enable")
+                    .fixable(true),
+                );
             }
         }
 
         // Check auto-login
-        let out = Command::new("defaults").args(["read", "/Library/Preferences/com.apple.loginwindow", "autoLoginUser"]).output();
+        let out = Command::new("defaults")
+            .args([
+                "read",
+                "/Library/Preferences/com.apple.loginwindow",
+                "autoLoginUser",
+            ])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if !s.is_empty() && s != "0" {
-                findings.push(Finding::new(
-                    "mac-auto-login",
-                    "macOS auto-login is enabled",
-                    Severity::High,
-                    Category::Privileges,
-                )
-                .description("macOS is configured to auto-login a user.")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "mac-auto-login",
+                        "macOS auto-login is enabled",
+                        Severity::High,
+                        Category::Privileges,
+                    )
+                    .description("macOS is configured to auto-login a user.")
+                    .fixable(true),
+                );
             }
         }
     }
 
     #[cfg(windows)]
     {
-        let out = Command::new("reg").args(["query", r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", "/v", "AutoAdminLogon"]).output();
+        let out = Command::new("reg")
+            .args([
+                "query",
+                r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
+                "/v",
+                "AutoAdminLogon",
+            ])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("1") {
-                findings.push(Finding::new(
-                    "win-auto-login",
-                    "Windows auto-login is enabled",
-                    Severity::High,
-                    Category::Privileges,
-                )
-                .description("Windows is configured to auto-login without a password.")
-                .recommendation("Run: pledgeshield harden lockscreen --disable-autologin")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "win-auto-login",
+                        "Windows auto-login is enabled",
+                        Severity::High,
+                        Category::Privileges,
+                    )
+                    .description("Windows is configured to auto-login without a password.")
+                    .recommendation("Run: pledgeshield harden lockscreen --disable-autologin")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -120,7 +145,10 @@ pub fn enable_lockscreen(timeout_secs: u32, dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "lockscreen-enable".to_string(),
             success: true,
-            message: format!("[dry-run] Would set screen lock timeout to {}s.", timeout_secs),
+            message: format!(
+                "[dry-run] Would set screen lock timeout to {}s.",
+                timeout_secs
+            ),
             findings: vec![],
         };
     }
@@ -128,9 +156,30 @@ pub fn enable_lockscreen(timeout_secs: u32, dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // GNOME
-        let _ = Command::new("gsettings").args(["set", "org.gnome.desktop.session", "idle-delay", &format!("uint32 {}", timeout_secs)]).output();
-        let _ = Command::new("gsettings").args(["set", "org.gnome.desktop.screensaver", "lock-enabled", "true"]).output();
-        let _ = Command::new("gsettings").args(["set", "org.gnome.desktop.screensaver", "lock-delay", "uint32 0"]).output();
+        let _ = Command::new("gsettings")
+            .args([
+                "set",
+                "org.gnome.desktop.session",
+                "idle-delay",
+                &format!("uint32 {}", timeout_secs),
+            ])
+            .output();
+        let _ = Command::new("gsettings")
+            .args([
+                "set",
+                "org.gnome.desktop.screensaver",
+                "lock-enabled",
+                "true",
+            ])
+            .output();
+        let _ = Command::new("gsettings")
+            .args([
+                "set",
+                "org.gnome.desktop.screensaver",
+                "lock-delay",
+                "uint32 0",
+            ])
+            .output();
 
         HardenResult {
             action: "lockscreen-enable".to_string(),
@@ -142,7 +191,15 @@ pub fn enable_lockscreen(timeout_secs: u32, dry_run: bool) -> HardenResult {
 
     #[cfg(target_os = "macos")]
     {
-        let _ = Command::new("defaults").args(["write", "com.apple.screensaver", "idleTime", "-int", &timeout_secs.to_string()]).output();
+        let _ = Command::new("defaults")
+            .args([
+                "write",
+                "com.apple.screensaver",
+                "idleTime",
+                "-int",
+                &timeout_secs.to_string(),
+            ])
+            .output();
         HardenResult {
             action: "lockscreen-enable".to_string(),
             success: true,
@@ -153,7 +210,13 @@ pub fn enable_lockscreen(timeout_secs: u32, dry_run: bool) -> HardenResult {
 
     #[cfg(windows)]
     {
-        let _ = Command::new("powercfg").args(["/change", "standby-timeout-ac", &((timeout_secs / 60).to_string())]).output();
+        let _ = Command::new("powercfg")
+            .args([
+                "/change",
+                "standby-timeout-ac",
+                &((timeout_secs / 60).to_string()),
+            ])
+            .output();
         HardenResult {
             action: "lockscreen-enable".to_string(),
             success: true,
@@ -206,7 +269,13 @@ pub fn disable_autologin(dry_run: bool) -> HardenResult {
 
     #[cfg(target_os = "macos")]
     {
-        let _ = Command::new("defaults").args(["delete", "/Library/Preferences/com.apple.loginwindow", "autoLoginUser"]).output();
+        let _ = Command::new("defaults")
+            .args([
+                "delete",
+                "/Library/Preferences/com.apple.loginwindow",
+                "autoLoginUser",
+            ])
+            .output();
         HardenResult {
             action: "disable-autologin".to_string(),
             success: true,
@@ -217,7 +286,19 @@ pub fn disable_autologin(dry_run: bool) -> HardenResult {
 
     #[cfg(windows)]
     {
-        let _ = Command::new("reg").args(["add", r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", "/v", "AutoAdminLogon", "/t", "REG_SZ", "/d", "0", "/f"]).output();
+        let _ = Command::new("reg")
+            .args([
+                "add",
+                r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
+                "/v",
+                "AutoAdminLogon",
+                "/t",
+                "REG_SZ",
+                "/d",
+                "0",
+                "/f",
+            ])
+            .output();
         HardenResult {
             action: "disable-autologin".to_string(),
             success: true,

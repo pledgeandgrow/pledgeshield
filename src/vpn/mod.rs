@@ -58,7 +58,9 @@ pub fn status() -> VpnStatus {
             let stdout = String::from_utf8_lossy(&o.stdout);
             if !stdout.trim().is_empty() {
                 // First line is the interface name: "interface: wg0"
-                let iface = stdout.lines().next()
+                let iface = stdout
+                    .lines()
+                    .next()
                     .and_then(|l| l.strip_prefix("interface: "))
                     .map(String::from);
                 return VpnStatus {
@@ -80,7 +82,9 @@ pub fn status() -> VpnStatus {
             let stdout = String::from_utf8_lossy(&o.stdout);
             if !stdout.trim().is_empty() {
                 // Extract config path from the process args
-                let config = stdout.lines().next()
+                let config = stdout
+                    .lines()
+                    .next()
                     .and_then(|l| l.split("--config ").nth(1))
                     .map(|s| s.trim().to_string());
                 return VpnStatus {
@@ -120,9 +124,7 @@ pub fn list_wireguard_configs() -> Vec<String> {
 
 /// Connect to a WireGuard VPN by config name (requires root).
 pub fn connect_wireguard(config: &str) -> Result<String, String> {
-    let out = Command::new("wg-quick")
-        .args(["up", config])
-        .output();
+    let out = Command::new("wg-quick").args(["up", config]).output();
     match out {
         Ok(o) if o.status.success() => Ok(format!("WireGuard '{}' connected.", config)),
         Ok(o) => Err(format!(
@@ -135,9 +137,7 @@ pub fn connect_wireguard(config: &str) -> Result<String, String> {
 
 /// Disconnect a WireGuard VPN.
 pub fn disconnect_wireguard(config: &str) -> Result<String, String> {
-    let out = Command::new("wg-quick")
-        .args(["down", config])
-        .output();
+    let out = Command::new("wg-quick").args(["down", config]).output();
     match out {
         Ok(o) if o.status.success() => Ok(format!("WireGuard '{}' disconnected.", config)),
         Ok(o) => Err(format!(
@@ -154,7 +154,9 @@ pub fn connect_openvpn(config_path: &str) -> Result<String, String> {
         .args(["--config", config_path, "--daemon"])
         .output();
     match out {
-        Ok(o) if o.status.success() => Ok(format!("OpenVPN '{}' started (daemonized).", config_path)),
+        Ok(o) if o.status.success() => {
+            Ok(format!("OpenVPN '{}' started (daemonized).", config_path))
+        }
         Ok(o) => Err(format!(
             "openvpn failed: {} (need root?)",
             String::from_utf8_lossy(&o.stderr)
@@ -209,11 +211,19 @@ pub fn enable_kill_switch() -> Result<String, String> {
         ];
         for (cmd, label) in &rules {
             let parts: Vec<&str> = cmd.split_whitespace().collect();
-            if parts.is_empty() { continue; }
+            if parts.is_empty() {
+                continue;
+            }
             let out = Command::new(parts[0]).args(&parts[1..]).output();
             match out {
                 Ok(o) if o.status.success() => {}
-                Ok(o) => return Err(format!("kill-switch step '{}' failed: {}", label, String::from_utf8_lossy(&o.stderr))),
+                Ok(o) => {
+                    return Err(format!(
+                        "kill-switch step '{}' failed: {}",
+                        label,
+                        String::from_utf8_lossy(&o.stderr)
+                    ))
+                }
                 Err(e) => return Err(format!("kill-switch step '{}' failed to run: {}", label, e)),
             }
         }

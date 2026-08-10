@@ -22,20 +22,30 @@ pub fn audit_mounts() -> Vec<Finding> {
             for (mount_point, required_opts) in SECURE_MOUNTS {
                 for line in content.lines() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() < 4 { continue; }
+                    if parts.len() < 4 {
+                        continue;
+                    }
                     if parts[1] == *mount_point {
                         let opts = parts[3];
                         for req in *required_opts {
                             if !opts.contains(req) {
-                                findings.push(Finding::new(
-                                    &format!("mount-{}-{}", mount_point.replace('/', "_"), req),
-                                    &format!("{} is missing {} option", mount_point, req),
-                                    Severity::Medium,
-                                    Category::HostConfig,
-                                )
-                                .description(&format!("Mount point {} should have the {} option for security.", mount_point, req))
-                                .recommendation(&format!("Add {} to {} in /etc/fstab", req, mount_point))
-                                .fixable(true));
+                                findings.push(
+                                    Finding::new(
+                                        &format!("mount-{}-{}", mount_point.replace('/', "_"), req),
+                                        &format!("{} is missing {} option", mount_point, req),
+                                        Severity::Medium,
+                                        Category::HostConfig,
+                                    )
+                                    .description(&format!(
+                                        "Mount point {} should have the {} option for security.",
+                                        mount_point, req
+                                    ))
+                                    .recommendation(&format!(
+                                        "Add {} to {} in /etc/fstab",
+                                        req, mount_point
+                                    ))
+                                    .fixable(true),
+                                );
                             }
                         }
                     }
@@ -69,7 +79,9 @@ pub fn harden_mounts(dry_run: bool) -> Vec<HardenResult> {
                 });
                 continue;
             }
-            let out = Command::new("mount").args(["-o", &format!("remount,{}", opts), mount]).output();
+            let out = Command::new("mount")
+                .args(["-o", &format!("remount,{}", opts), mount])
+                .output();
             let ok = out.as_ref().map(|o| o.status.success()).unwrap_or(false);
             results.push(HardenResult {
                 action: format!("mount-{}", mount),
@@ -87,7 +99,8 @@ pub fn harden_mounts(dry_run: bool) -> Vec<HardenResult> {
             results.push(HardenResult {
                 action: "mount-fstab".to_string(),
                 success: true,
-                message: "Note: Add these options to /etc/fstab for persistence across reboots.".to_string(),
+                message: "Note: Add these options to /etc/fstab for persistence across reboots."
+                    .to_string(),
                 findings: vec![],
             });
         }

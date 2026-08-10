@@ -5,13 +5,21 @@ use std::path::Path;
 
 const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024; // 5MB
 const IGNORE_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", "vendor", "__pycache__",
-    ".cache", ".npm", ".venv", "venv", "dist", "build",
+    ".git",
+    "node_modules",
+    "target",
+    "vendor",
+    "__pycache__",
+    ".cache",
+    ".npm",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
 ];
 const IGNORE_EXTS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "bmp", "ico", "svg",
-    "pdf", "zip", "tar", "gz", "bz2", "7z", "rar",
-    "woff", "woff2", "ttf", "eot", "mp4", "mp3", "avi",
+    "png", "jpg", "jpeg", "gif", "bmp", "ico", "svg", "pdf", "zip", "tar", "gz", "bz2", "7z",
+    "rar", "woff", "woff2", "ttf", "eot", "mp4", "mp3", "avi",
 ];
 
 pub fn scan_pii(dir: &str) -> Vec<Finding> {
@@ -22,7 +30,9 @@ pub fn scan_pii(dir: &str) -> Vec<Finding> {
 }
 
 fn scan_dir_pii(dir: &Path, findings: &mut Vec<Finding>, depth: usize, max_depth: usize) {
-    if depth > max_depth { return; }
+    if depth > max_depth {
+        return;
+    }
 
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
@@ -33,15 +43,21 @@ fn scan_dir_pii(dir: &Path, findings: &mut Vec<Finding>, depth: usize, max_depth
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
 
-        if IGNORE_DIRS.contains(&name.as_str()) { continue; }
+        if IGNORE_DIRS.contains(&name.as_str()) {
+            continue;
+        }
 
         if let Ok(meta) = entry.metadata() {
             if meta.is_dir() {
                 scan_dir_pii(&path, findings, depth + 1, max_depth);
             } else if meta.is_file() {
-                if meta.len() > MAX_FILE_SIZE { continue; }
+                if meta.len() > MAX_FILE_SIZE {
+                    continue;
+                }
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if IGNORE_EXTS.contains(&ext.to_lowercase().as_str()) { continue; }
+                    if IGNORE_EXTS.contains(&ext.to_lowercase().as_str()) {
+                        continue;
+                    }
                 }
                 scan_file_pii(&path, findings);
             }
@@ -78,7 +94,10 @@ fn scan_file_pii(path: &Path, findings: &mut Vec<Finding>) {
     }
 
     // Email addresses
-    let email_count = count_matches(&content, r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b");
+    let email_count = count_matches(
+        &content,
+        r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b",
+    );
     if email_count > 5 {
         found_types.push(("Email (batch)", email_count, Severity::Medium));
     }
@@ -90,8 +109,11 @@ fn scan_file_pii(path: &Path, findings: &mut Vec<Finding>) {
     }
 
     for (pii_type, count, severity) in found_types {
-        let id = format!("pii-{}-{}", pii_type.to_lowercase().replace(' ', "-"),
-            path.file_name().and_then(|n| n.to_str()).unwrap_or("file"));
+        let id = format!(
+            "pii-{}-{}",
+            pii_type.to_lowercase().replace(' ', "-"),
+            path.file_name().and_then(|n| n.to_str()).unwrap_or("file")
+        );
         findings.push(Finding::new(
             &id,
             &format!("{} ({}) found in: {}", pii_type, count, path_str),
@@ -113,16 +135,16 @@ fn count_matches(content: &str, pattern: &str) -> usize {
             let chars: Vec<char> = line.chars().collect();
             for i in 0..chars.len().saturating_sub(11) {
                 if chars[i].is_ascii_digit()
-                    && chars[i+1].is_ascii_digit()
-                    && chars[i+2].is_ascii_digit()
-                    && chars[i+3] == '-'
-                    && chars[i+4].is_ascii_digit()
-                    && chars[i+5].is_ascii_digit()
-                    && chars[i+6] == '-'
-                    && chars[i+7].is_ascii_digit()
-                    && chars[i+8].is_ascii_digit()
-                    && chars[i+9].is_ascii_digit()
-                    && chars[i+10].is_ascii_digit()
+                    && chars[i + 1].is_ascii_digit()
+                    && chars[i + 2].is_ascii_digit()
+                    && chars[i + 3] == '-'
+                    && chars[i + 4].is_ascii_digit()
+                    && chars[i + 5].is_ascii_digit()
+                    && chars[i + 6] == '-'
+                    && chars[i + 7].is_ascii_digit()
+                    && chars[i + 8].is_ascii_digit()
+                    && chars[i + 9].is_ascii_digit()
+                    && chars[i + 10].is_ascii_digit()
                 {
                     count += 1;
                 }
@@ -145,7 +167,7 @@ fn count_matches(content: &str, pattern: &str) -> usize {
                 let at_pos = line.find('@');
                 if let Some(at) = at_pos {
                     let before = &line[..at];
-                    let after = &line[at+1..];
+                    let after = &line[at + 1..];
                     if before.len() >= 3 && after.contains('.') {
                         count += 1;
                     }
@@ -158,8 +180,12 @@ fn count_matches(content: &str, pattern: &str) -> usize {
             let trimmed = line.trim();
             if trimmed.len() >= 15 && trimmed.len() <= 34 {
                 let first4: Vec<char> = trimmed.chars().take(4).collect();
-                if first4.len() == 4 && first4[0].is_ascii_uppercase() && first4[1].is_ascii_uppercase()
-                    && first4[2].is_ascii_digit() && first4[3].is_ascii_digit() {
+                if first4.len() == 4
+                    && first4[0].is_ascii_uppercase()
+                    && first4[1].is_ascii_uppercase()
+                    && first4[2].is_ascii_digit()
+                    && first4[3].is_ascii_digit()
+                {
                     count += 1;
                 }
             }

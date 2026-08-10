@@ -11,77 +11,133 @@ use crate::models::Finding;
 
 pub fn audit_config() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_config() }
+    {
+        windows::audit_config()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_config() }
+    {
+        macos::audit_config()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_config() }
+    {
+        linux::audit_config()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_services() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_services() }
+    {
+        windows::audit_services()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_services() }
+    {
+        macos::audit_services()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_services() }
+    {
+        linux::audit_services()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_privileges() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_privileges() }
+    {
+        windows::audit_privileges()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_privileges() }
+    {
+        macos::audit_privileges()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_privileges() }
+    {
+        linux::audit_privileges()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_persistence() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_persistence() }
+    {
+        windows::audit_persistence()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_persistence() }
+    {
+        macos::audit_persistence()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_persistence() }
+    {
+        linux::audit_persistence()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_credentials() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_credentials() }
+    {
+        windows::audit_credentials()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_credentials() }
+    {
+        macos::audit_credentials()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_credentials() }
+    {
+        linux::audit_credentials()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_shares() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_shares() }
+    {
+        windows::audit_shares()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_shares() }
+    {
+        macos::audit_shares()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_shares() }
+    {
+        linux::audit_shares()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }
 
 pub fn audit_patches() -> Result<Vec<Finding>, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    { windows::audit_patches() }
+    {
+        windows::audit_patches()
+    }
     #[cfg(target_os = "macos")]
-    { macos::audit_patches() }
+    {
+        macos::audit_patches()
+    }
     #[cfg(target_os = "linux")]
-    { linux::audit_patches() }
+    {
+        linux::audit_patches()
+    }
     #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-    { Err("unsupported platform".into()) }
+    {
+        Err("unsupported platform".into())
+    }
 }

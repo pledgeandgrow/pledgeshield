@@ -13,15 +13,17 @@ pub fn audit_firewall() -> Vec<Finding> {
         if let Ok(o) = ufw {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("inactive") || s.contains("Status: inactive") {
-                findings.push(Finding::new(
-                    "fw-linux-ufw-off",
-                    "UFW firewall is disabled",
-                    Severity::Critical,
-                    Category::Network,
-                )
-                .description("No firewall is active. All incoming connections are allowed.")
-                .recommendation("Run: pledgeshield harden firewall --enable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "fw-linux-ufw-off",
+                        "UFW firewall is disabled",
+                        Severity::Critical,
+                        Category::Network,
+                    )
+                    .description("No firewall is active. All incoming connections are allowed.")
+                    .recommendation("Run: pledgeshield harden firewall --enable")
+                    .fixable(true),
+                );
             } else if s.contains("Status: active") {
                 // Check default policy
                 if s.contains("Default:") {
@@ -42,19 +44,23 @@ pub fn audit_firewall() -> Vec<Finding> {
             }
         } else {
             // No UFW — check firewalld
-            let fd = Command::new("systemctl").args(["is-active", "firewalld"]).output();
+            let fd = Command::new("systemctl")
+                .args(["is-active", "firewalld"])
+                .output();
             if let Ok(o) = fd {
                 let s = String::from_utf8_lossy(&o.stdout);
                 if s.trim() == "inactive" || s.trim() == "failed" {
-                    findings.push(Finding::new(
-                        "fw-linux-firewalld-off",
-                        "firewalld is disabled",
-                        Severity::Critical,
-                        Category::Network,
-                    )
-                    .description("No firewall service is active (neither UFW nor firewalld).")
-                    .recommendation("Run: pledgeshield harden firewall --enable")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "fw-linux-firewalld-off",
+                            "firewalld is disabled",
+                            Severity::Critical,
+                            Category::Network,
+                        )
+                        .description("No firewall service is active (neither UFW nor firewalld).")
+                        .recommendation("Run: pledgeshield harden firewall --enable")
+                        .fixable(true),
+                    );
                 }
             }
         }
@@ -68,15 +74,17 @@ pub fn audit_firewall() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.contains("disabled") {
-                findings.push(Finding::new(
-                    "fw-mac-off",
-                    "macOS Application Firewall is disabled",
-                    Severity::High,
-                    Category::Network,
-                )
-                .description("The macOS built-in firewall is not enabled.")
-                .recommendation("Run: pledgeshield harden firewall --enable")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "fw-mac-off",
+                        "macOS Application Firewall is disabled",
+                        Severity::High,
+                        Category::Network,
+                    )
+                    .description("The macOS built-in firewall is not enabled.")
+                    .recommendation("Run: pledgeshield harden firewall --enable")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -91,15 +99,17 @@ pub fn audit_firewall() -> Vec<Finding> {
             for line in s.lines() {
                 let l = line.trim();
                 if l.contains("OFF") {
-                    findings.push(Finding::new(
-                        "fw-win-off",
-                        "Windows Firewall is disabled for one or more profiles",
-                        Severity::Critical,
-                        Category::Network,
-                    )
-                    .description("Windows Firewall is OFF for at least one network profile.")
-                    .recommendation("Run: pledgeshield harden firewall --enable")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "fw-win-off",
+                            "Windows Firewall is disabled for one or more profiles",
+                            Severity::Critical,
+                            Category::Network,
+                        )
+                        .description("Windows Firewall is OFF for at least one network profile.")
+                        .recommendation("Run: pledgeshield harden firewall --enable")
+                        .fixable(true),
+                    );
                     break;
                 }
             }
@@ -139,7 +149,10 @@ pub fn enable_firewall() -> HardenResult {
             Ok(o) => HardenResult {
                 action: "firewall-enable".to_string(),
                 success: false,
-                message: format!("Failed to enable firewall: {}", String::from_utf8_lossy(&o.stderr)),
+                message: format!(
+                    "Failed to enable firewall: {}",
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 findings: vec![],
             },
             Err(e) => HardenResult {
@@ -166,7 +179,10 @@ pub fn enable_firewall() -> HardenResult {
             Ok(o) => HardenResult {
                 action: "firewall-enable".to_string(),
                 success: false,
-                message: format!("socketfilterfw failed: {}", String::from_utf8_lossy(&o.stderr)),
+                message: format!(
+                    "socketfilterfw failed: {}",
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 findings: vec![],
             },
             Err(e) => HardenResult {
@@ -226,7 +242,11 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
             success: true,
             message: format!(
                 "[dry-run] Would set default inbound policy to DROP/deny{}.",
-                if allow_ssh { ", allow SSH (port 22)" } else { "" }
+                if allow_ssh {
+                    ", allow SSH (port 22)"
+                } else {
+                    ""
+                }
             ),
             findings: vec![],
         });
@@ -236,13 +256,20 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
     #[cfg(target_os = "linux")]
     {
         // UFW approach
-        let ufw_available = Command::new("ufw").arg("version").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let ufw_available = Command::new("ufw")
+            .arg("version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if ufw_available {
             // Default deny incoming, allow outgoing
-            let _ = Command::new("ufw").args(["default", "deny", "incoming"]).output();
-            let _ = Command::new("ufw").args(["default", "allow", "outgoing"]).output();
+            let _ = Command::new("ufw")
+                .args(["default", "deny", "incoming"])
+                .output();
+            let _ = Command::new("ufw")
+                .args(["default", "allow", "outgoing"])
+                .output();
 
             if allow_ssh {
                 let _ = Command::new("ufw").args(["allow", "22/tcp"]).output();
@@ -269,7 +296,10 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
                 ("iptables -P INPUT DROP", "set INPUT policy DROP"),
                 ("iptables -P FORWARD DROP", "set FORWARD policy DROP"),
                 ("iptables -P OUTPUT ACCEPT", "set OUTPUT policy ACCEPT"),
-                ("iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT", "allow established connections"),
+                (
+                    "iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
+                    "allow established connections",
+                ),
                 ("iptables -A INPUT -i lo -j ACCEPT", "allow loopback"),
             ];
             for (cmd, label) in &cmds {
@@ -281,7 +311,11 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
                         results.push(HardenResult {
                             action: "firewall-harden".to_string(),
                             success: false,
-                            message: format!("Failed: {} — {}", label, String::from_utf8_lossy(&o.stderr)),
+                            message: format!(
+                                "Failed: {} — {}",
+                                label,
+                                String::from_utf8_lossy(&o.stderr)
+                            ),
                             findings: vec![],
                         });
                         return results;
@@ -298,7 +332,9 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
                 }
             }
             if allow_ssh {
-                let _ = Command::new("iptables").args(["-A", "INPUT", "-p", "tcp", "--dport", "22", "-j", "ACCEPT"]).output();
+                let _ = Command::new("iptables")
+                    .args(["-A", "INPUT", "-p", "tcp", "--dport", "22", "-j", "ACCEPT"])
+                    .output();
                 results.push(HardenResult {
                     action: "firewall-allow-ssh".to_string(),
                     success: true,
@@ -319,9 +355,11 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
     {
         // Enable stealth mode + firewall
         let _ = Command::new("/usr/libexec/ApplicationFirewall/socketfilterfw")
-            .args(["--setglobalstate", "on"]).output();
+            .args(["--setglobalstate", "on"])
+            .output();
         let _ = Command::new("/usr/libexec/ApplicationFirewall/socketfilterfw")
-            .args(["--setstealthmode", "on"]).output();
+            .args(["--setstealthmode", "on"])
+            .output();
         results.push(HardenResult {
             action: "firewall-harden".to_string(),
             success: true,
@@ -334,18 +372,38 @@ pub fn harden_firewall(dry_run: bool, allow_ssh: bool) -> Vec<HardenResult> {
     {
         // Enable all profiles + set default inbound to block
         let _ = Command::new("netsh")
-            .args(["advfirewall", "set", "allprofiles", "state", "on"]).output();
+            .args(["advfirewall", "set", "allprofiles", "state", "on"])
+            .output();
         let _ = Command::new("netsh")
-            .args(["advfirewall", "set", "allprofiles", "firewallpolicy", "blockinbound,allowoutbound"]).output();
+            .args([
+                "advfirewall",
+                "set",
+                "allprofiles",
+                "firewallpolicy",
+                "blockinbound,allowoutbound",
+            ])
+            .output();
         results.push(HardenResult {
             action: "firewall-harden".to_string(),
             success: true,
-            message: "Windows Firewall: all profiles on, inbound=block, outbound=allow.".to_string(),
+            message: "Windows Firewall: all profiles on, inbound=block, outbound=allow."
+                .to_string(),
             findings: vec![],
         });
         if allow_ssh {
             let _ = Command::new("netsh")
-                .args(["advfirewall", "firewall", "add", "rule", "name=PledgeShield-SSH", "dir=in", "action=allow", "protocol=TCP", "localport=22"]).output();
+                .args([
+                    "advfirewall",
+                    "firewall",
+                    "add",
+                    "rule",
+                    "name=PledgeShield-SSH",
+                    "dir=in",
+                    "action=allow",
+                    "protocol=TCP",
+                    "localport=22",
+                ])
+                .output();
             results.push(HardenResult {
                 action: "firewall-allow-ssh".to_string(),
                 success: true,
@@ -383,7 +441,9 @@ pub fn disable_firewall() -> HardenResult {
                 };
             }
         }
-        let out = Command::new("systemctl").args(["disable", "--now", "firewalld"]).output();
+        let out = Command::new("systemctl")
+            .args(["disable", "--now", "firewalld"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "firewall-disable".to_string(),
@@ -403,7 +463,8 @@ pub fn disable_firewall() -> HardenResult {
     #[cfg(target_os = "macos")]
     {
         let out = Command::new("/usr/libexec/ApplicationFirewall/socketfilterfw")
-            .args(["--setglobalstate", "off"]).output();
+            .args(["--setglobalstate", "off"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "firewall-disable".to_string(),
@@ -423,7 +484,8 @@ pub fn disable_firewall() -> HardenResult {
     #[cfg(windows)]
     {
         let out = Command::new("netsh")
-            .args(["advfirewall", "set", "allprofiles", "state", "off"]).output();
+            .args(["advfirewall", "set", "allprofiles", "state", "off"])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "firewall-disable".to_string(),

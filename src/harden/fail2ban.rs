@@ -8,35 +8,46 @@ pub fn audit_fail2ban() -> Vec<Finding> {
 
     #[cfg(target_os = "linux")]
     {
-        let installed = Command::new("which").arg("fail2ban-client").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("fail2ban-client")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
-            findings.push(Finding::new(
-                "fail2ban-not-installed",
-                "fail2ban is not installed",
-                Severity::Medium,
-                Category::HostConfig,
-            )
-            .description("fail2ban automatically blocks IPs with repeated failed login attempts.")
-            .recommendation("Run: pledgeshield harden fail2ban --install")
-            .fixable(true));
+            findings.push(
+                Finding::new(
+                    "fail2ban-not-installed",
+                    "fail2ban is not installed",
+                    Severity::Medium,
+                    Category::HostConfig,
+                )
+                .description(
+                    "fail2ban automatically blocks IPs with repeated failed login attempts.",
+                )
+                .recommendation("Run: pledgeshield harden fail2ban --install")
+                .fixable(true),
+            );
             return findings;
         }
 
         // Check if it's running
-        let out = Command::new("systemctl").args(["is-active", "fail2ban"]).output();
+        let out = Command::new("systemctl")
+            .args(["is-active", "fail2ban"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s != "active" {
-                findings.push(Finding::new(
-                    "fail2ban-not-running",
-                    "fail2ban is not running",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .recommendation("Run: sudo systemctl enable --now fail2ban")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "fail2ban-not-running",
+                        "fail2ban is not running",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .recommendation("Run: sudo systemctl enable --now fail2ban")
+                    .fixable(true),
+                );
             }
         }
 
@@ -45,15 +56,17 @@ pub fn audit_fail2ban() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.contains("sshd") && !s.contains("ssh") {
-                findings.push(Finding::new(
-                    "fail2ban-no-ssh-jail",
-                    "fail2ban SSH jail is not active",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .description("fail2ban is running but not protecting SSH.")
-                .recommendation("Run: pledgeshield harden fail2ban --configure")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "fail2ban-no-ssh-jail",
+                        "fail2ban SSH jail is not active",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .description("fail2ban is running but not protecting SSH.")
+                    .recommendation("Run: pledgeshield harden fail2ban --configure")
+                    .fixable(true),
+                );
             }
         }
     }
@@ -74,7 +87,9 @@ pub fn install_fail2ban(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Install
-        let out = Command::new("apt").args(["install", "-y", "fail2ban"]).output();
+        let out = Command::new("apt")
+            .args(["install", "-y", "fail2ban"])
+            .output();
         if !out.map(|o| o.status.success()).unwrap_or(false) {
             return HardenResult {
                 action: "fail2ban-install".to_string(),
@@ -104,7 +119,8 @@ pub fn configure_fail2ban(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "fail2ban-configure".to_string(),
             success: true,
-            message: "[dry-run] Would configure fail2ban with SSH jail (10 retries, 1h ban).".to_string(),
+            message: "[dry-run] Would configure fail2ban with SSH jail (10 retries, 1h ban)."
+                .to_string(),
             findings: vec![],
         };
     }
@@ -135,7 +151,9 @@ maxretry = 3
         let config_path = "/etc/fail2ban/jail.local";
         match std::fs::write(config_path, config) {
             Ok(()) => {
-                let _ = Command::new("systemctl").args(["enable", "--now", "fail2ban"]).output();
+                let _ = Command::new("systemctl")
+                    .args(["enable", "--now", "fail2ban"])
+                    .output();
                 let _ = Command::new("fail2ban-client").arg("reload").output();
                 HardenResult {
                     action: "fail2ban-configure".to_string(),

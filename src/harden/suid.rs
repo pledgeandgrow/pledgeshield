@@ -5,12 +5,23 @@ use std::path::Path;
 
 /// Known-safe SUID binaries (common on Linux).
 const KNOWN_SUID: &[&str] = &[
-    "/usr/bin/sudo", "/usr/bin/su", "/usr/bin/passwd", "/usr/bin/chsh",
-    "/usr/bin/chfn", "/usr/bin/newgrp", "/usr/bin/gpasswd", "/usr/bin/mount",
-    "/usr/bin/umount", "/usr/bin/pkexec", "/usr/bin/fusermount",
-    "/usr/bin/fusermount3", "/usr/lib/dbus-1.0/dbus-daemon-launch-helper",
-    "/usr/lib/openssh/ssh-keysign", "/usr/sbin/unix_chkpwd",
-    "/usr/bin/bwrap", "/usr/bin/snap-confine",
+    "/usr/bin/sudo",
+    "/usr/bin/su",
+    "/usr/bin/passwd",
+    "/usr/bin/chsh",
+    "/usr/bin/chfn",
+    "/usr/bin/newgrp",
+    "/usr/bin/gpasswd",
+    "/usr/bin/mount",
+    "/usr/bin/umount",
+    "/usr/bin/pkexec",
+    "/usr/bin/fusermount",
+    "/usr/bin/fusermount3",
+    "/usr/lib/dbus-1.0/dbus-daemon-launch-helper",
+    "/usr/lib/openssh/ssh-keysign",
+    "/usr/sbin/unix_chkpwd",
+    "/usr/bin/bwrap",
+    "/usr/bin/snap-confine",
 ];
 
 pub fn audit_suid() -> Vec<Finding> {
@@ -21,7 +32,11 @@ pub fn audit_suid() -> Vec<Finding> {
         let suid_bins = find_suid_binaries("/usr");
         for bin in &suid_bins {
             if !KNOWN_SUID.contains(&bin.as_str()) {
-                let severity = if is_suspicious_suid(bin) { Severity::High } else { Severity::Medium };
+                let severity = if is_suspicious_suid(bin) {
+                    Severity::High
+                } else {
+                    Severity::Medium
+                };
                 findings.push(Finding::new(
                     &format!("suid-{}", bin.replace('/', "_")),
                     &format!("SUID binary: {}", bin),
@@ -38,15 +53,22 @@ pub fn audit_suid() -> Vec<Finding> {
         for dir in &["/opt", "/home", "/tmp", "/var/tmp"] {
             let extra = find_suid_binaries(dir);
             for bin in &extra {
-                findings.push(Finding::new(
-                    &format!("suid-unusual-{}", bin.replace('/', "_")),
-                    &format!("SUID binary in unusual location: {}", bin),
-                    Severity::High,
-                    Category::Privileges,
-                )
-                .description("SUID binaries outside standard system directories are highly suspicious.")
-                .recommendation(&format!("Investigate and remove SUID: sudo chmod u-s {}", bin))
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        &format!("suid-unusual-{}", bin.replace('/', "_")),
+                        &format!("SUID binary in unusual location: {}", bin),
+                        Severity::High,
+                        Category::Privileges,
+                    )
+                    .description(
+                        "SUID binaries outside standard system directories are highly suspicious.",
+                    )
+                    .recommendation(&format!(
+                        "Investigate and remove SUID: sudo chmod u-s {}",
+                        bin
+                    ))
+                    .fixable(true),
+                );
             }
         }
     }
@@ -83,8 +105,16 @@ fn walk_dir(dir: &Path, callback: &mut impl FnMut(&Path)) {
             if let Ok(meta) = entry.metadata() {
                 if meta.is_dir() && !meta.file_type().is_symlink() {
                     // Skip proc, sys, dev
-                    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-                    if name == "proc" || name == "sys" || name == "dev" || name == "run" || name == "snap" {
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    if name == "proc"
+                        || name == "sys"
+                        || name == "dev"
+                        || name == "run"
+                        || name == "snap"
+                    {
                         continue;
                     }
                     walk_dir(&path, callback);
@@ -98,7 +128,9 @@ fn walk_dir(dir: &Path, callback: &mut impl FnMut(&Path)) {
 
 fn is_suspicious_suid(path: &str) -> bool {
     // SUID binaries in /tmp, /home, /var/tmp are always suspicious
-    path.starts_with("/tmp/") || path.starts_with("/home/") || path.starts_with("/var/tmp/")
+    path.starts_with("/tmp/")
+        || path.starts_with("/home/")
+        || path.starts_with("/var/tmp/")
         || path.starts_with("/dev/shm/")
 }
 

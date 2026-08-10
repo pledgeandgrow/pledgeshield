@@ -1,7 +1,6 @@
 /// File permission auditor — find world-readable/writable files in home, config, SSH keys.
 use crate::models::{Category, Finding, Severity};
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
 
 pub fn audit_file_permissions() -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -37,7 +36,9 @@ pub fn audit_file_permissions() -> Vec<Finding> {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with('.') { continue; }
+                    if name.starts_with('.') {
+                        continue;
+                    }
 
                     if let Ok(meta) = std::fs::metadata(&path) {
                         let mode = meta.permissions().mode();
@@ -45,28 +46,48 @@ pub fn audit_file_permissions() -> Vec<Finding> {
                             // Private keys should be 600
                             if name.contains("id_") && !name.ends_with(".pub") {
                                 if mode & 0o077 != 0 {
-                                    findings.push(Finding::new(
-                                        &format!("fileperm-ssh-key-{}", name),
-                                        &format!("SSH private key {} is {} (should be 600)", name, format_mode(mode)),
-                                        Severity::Critical,
-                                        Category::Credentials,
-                                    )
-                                    .description("Your SSH private key is readable by other users!")
-                                    .recommendation(&format!("Run: chmod 600 {}", path.display()))
-                                    .fixable(true));
+                                    findings.push(
+                                        Finding::new(
+                                            &format!("fileperm-ssh-key-{}", name),
+                                            &format!(
+                                                "SSH private key {} is {} (should be 600)",
+                                                name,
+                                                format_mode(mode)
+                                            ),
+                                            Severity::Critical,
+                                            Category::Credentials,
+                                        )
+                                        .description(
+                                            "Your SSH private key is readable by other users!",
+                                        )
+                                        .recommendation(&format!(
+                                            "Run: chmod 600 {}",
+                                            path.display()
+                                        ))
+                                        .fixable(true),
+                                    );
                                 }
                             }
                             // authorized_keys should be 600
                             if name == "authorized_keys" || name == "authorized_keys2" {
                                 if mode & 0o077 != 0 {
-                                    findings.push(Finding::new(
-                                        "fileperm-authorized-keys",
-                                        &format!("{} is {} (should be 600)", name, format_mode(mode)),
-                                        Severity::High,
-                                        Category::Credentials,
-                                    )
-                                    .recommendation(&format!("Run: chmod 600 {}", path.display()))
-                                    .fixable(true));
+                                    findings.push(
+                                        Finding::new(
+                                            "fileperm-authorized-keys",
+                                            &format!(
+                                                "{} is {} (should be 600)",
+                                                name,
+                                                format_mode(mode)
+                                            ),
+                                            Severity::High,
+                                            Category::Credentials,
+                                        )
+                                        .recommendation(&format!(
+                                            "Run: chmod 600 {}",
+                                            path.display()
+                                        ))
+                                        .fixable(true),
+                                    );
                                 }
                             }
                         }
@@ -81,14 +102,16 @@ pub fn audit_file_permissions() -> Vec<Finding> {
             if let Ok(meta) = std::fs::metadata(&gnupg) {
                 let mode = meta.permissions().mode();
                 if mode & 0o077 != 0 {
-                    findings.push(Finding::new(
-                        "fileperm-gnupg",
-                        &format!(".gnupg directory is {} (should be 700)", format_mode(mode)),
-                        Severity::High,
-                        Category::Credentials,
-                    )
-                    .recommendation("Run: chmod 700 ~/.gnupg")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "fileperm-gnupg",
+                            &format!(".gnupg directory is {} (should be 700)", format_mode(mode)),
+                            Severity::High,
+                            Category::Credentials,
+                        )
+                        .recommendation("Run: chmod 700 ~/.gnupg")
+                        .fixable(true),
+                    );
                 }
             }
         }
@@ -97,7 +120,11 @@ pub fn audit_file_permissions() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir(&home) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with(".env") || name == ".netrc" || name == ".my.cnf" || name == ".pgpass" {
+                if name.starts_with(".env")
+                    || name == ".netrc"
+                    || name == ".my.cnf"
+                    || name == ".pgpass"
+                {
                     if let Ok(meta) = std::fs::metadata(entry.path()) {
                         let mode = meta.permissions().mode();
                         if mode & 0o077 != 0 {
@@ -151,17 +178,21 @@ pub fn fix_permissions(dry_run: bool) -> Vec<String> {
             None => return results,
         };
 
-        let fixes = [
-            (home.join(".ssh"), 0o700),
-            (home.join(".gnupg"), 0o700),
-        ];
+        let fixes = [(home.join(".ssh"), 0o700), (home.join(".gnupg"), 0o700)];
 
         for (path, mode) in &fixes {
             if path.exists() {
                 if dry_run {
-                    results.push(format!("[dry-run] Would chmod {:o} {}", mode, path.display()));
+                    results.push(format!(
+                        "[dry-run] Would chmod {:o} {}",
+                        mode,
+                        path.display()
+                    ));
                 } else {
-                    let _ = std::fs::set_permissions(path, std::os::unix::fs::PermissionsExt::from_mode(*mode));
+                    let _ = std::fs::set_permissions(
+                        path,
+                        std::os::unix::fs::PermissionsExt::from_mode(*mode),
+                    );
                     results.push(format!("Set {:o} on {}", mode, path.display()));
                 }
             }
@@ -174,17 +205,31 @@ pub fn fix_permissions(dry_run: bool) -> Vec<String> {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with('.') { continue; }
+                    if name.starts_with('.') {
+                        continue;
+                    }
                     if let Ok(meta) = std::fs::metadata(&path) {
                         if meta.is_file() {
-                            let mode = if name.contains("id_") && !name.ends_with(".pub") { 0o600 }
-                                else if name == "authorized_keys" || name == "authorized_keys2" { 0o600 }
-                                else if name.ends_with(".pub") { 0o644 }
-                                else { 0o600 };
-                            if dry_run {
-                                results.push(format!("[dry-run] Would chmod {:o} {}", mode, path.display()));
+                            let mode = if name.contains("id_") && !name.ends_with(".pub") {
+                                0o600
+                            } else if name == "authorized_keys" || name == "authorized_keys2" {
+                                0o600
+                            } else if name.ends_with(".pub") {
+                                0o644
                             } else {
-                                let _ = std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(mode));
+                                0o600
+                            };
+                            if dry_run {
+                                results.push(format!(
+                                    "[dry-run] Would chmod {:o} {}",
+                                    mode,
+                                    path.display()
+                                ));
+                            } else {
+                                let _ = std::fs::set_permissions(
+                                    &path,
+                                    std::os::unix::fs::PermissionsExt::from_mode(mode),
+                                );
                                 results.push(format!("Set {:o} on {}", mode, path.display()));
                             }
                         }

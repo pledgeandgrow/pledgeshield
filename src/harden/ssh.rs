@@ -7,7 +7,11 @@ const SSHD_CONFIG: &str = "/etc/ssh/sshd_config";
 
 const SECURE_SETTINGS: &[(&str, &str, &str)] = &[
     ("PermitRootLogin", "no", "Disable root login via SSH"),
-    ("PasswordAuthentication", "no", "Disable password authentication (key-only)"),
+    (
+        "PasswordAuthentication",
+        "no",
+        "Disable password authentication (key-only)",
+    ),
     ("PermitEmptyPasswords", "no", "Reject empty passwords"),
     ("X11Forwarding", "no", "Disable X11 forwarding"),
     ("AllowTcpForwarding", "no", "Disable TCP forwarding"),
@@ -38,41 +42,50 @@ pub fn audit_ssh() -> Vec<Finding> {
         match current {
             Some(val) => {
                 if val != *secure_val && !secure_val.is_empty() {
-                    findings.push(Finding::new(
-                        &format!("ssh-{}", key.to_lowercase()),
-                        &format!("{} = {} (should be {})", key, val, secure_val),
-                        Severity::High,
-                        Category::HostConfig,
-                    )
-                    .description(*desc)
-                    .recommendation(&format!("Run: pledgeshield harden ssh --harden  (or edit {})", SSHD_CONFIG))
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            &format!("ssh-{}", key.to_lowercase()),
+                            &format!("{} = {} (should be {})", key, val, secure_val),
+                            Severity::High,
+                            Category::HostConfig,
+                        )
+                        .description(*desc)
+                        .recommendation(&format!(
+                            "Run: pledgeshield harden ssh --harden  (or edit {})",
+                            SSHD_CONFIG
+                        ))
+                        .fixable(true),
+                    );
                 }
             }
             None => {
                 // Setting not present — use default
                 if key == &"PermitRootLogin" {
-                    findings.push(Finding::new(
-                        "ssh-permitrootlogin-default",
-                        "PermitRootLogin not explicitly set (may default to yes)",
-                        Severity::High,
-                        Category::HostConfig,
-                    )
-                    .description("Root login via SSH is not explicitly disabled.")
-                    .recommendation("Run: pledgeshield harden ssh --harden")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "ssh-permitrootlogin-default",
+                            "PermitRootLogin not explicitly set (may default to yes)",
+                            Severity::High,
+                            Category::HostConfig,
+                        )
+                        .description("Root login via SSH is not explicitly disabled.")
+                        .recommendation("Run: pledgeshield harden ssh --harden")
+                        .fixable(true),
+                    );
                 }
                 if key == &"PasswordAuthentication" {
                     // Default is usually yes
-                    findings.push(Finding::new(
-                        "ssh-passwordauth-default",
-                        "PasswordAuthentication not explicitly disabled",
-                        Severity::High,
-                        Category::HostConfig,
-                    )
-                    .description("Password authentication may be enabled by default.")
-                    .recommendation("Run: pledgeshield harden ssh --harden")
-                    .fixable(true));
+                    findings.push(
+                        Finding::new(
+                            "ssh-passwordauth-default",
+                            "PasswordAuthentication not explicitly disabled",
+                            Severity::High,
+                            Category::HostConfig,
+                        )
+                        .description("Password authentication may be enabled by default.")
+                        .recommendation("Run: pledgeshield harden ssh --harden")
+                        .fixable(true),
+                    );
                 }
             }
         }
@@ -81,7 +94,9 @@ pub fn audit_ssh() -> Vec<Finding> {
     // Check if SSH is even running
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("systemctl").args(["is-active", "sshd"]).output();
+        let out = Command::new("systemctl")
+            .args(["is-active", "sshd"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "inactive" || s == "disabled" {
@@ -97,7 +112,9 @@ pub fn audit_ssh() -> Vec<Finding> {
 fn get_sshd_value(content: &str, key: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
-        if line.starts_with('#') || line.is_empty() { continue; }
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
         if line.to_lowercase().starts_with(&key.to_lowercase()) {
             let parts: Vec<&str> = line.splitn(2, char::is_whitespace).collect();
             if parts.len() >= 2 {
@@ -124,7 +141,11 @@ pub fn harden_ssh(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "ssh-harden".to_string(),
             success: true,
-            message: format!("[dry-run] Would harden {} with {} secure settings", SSHD_CONFIG, SECURE_SETTINGS.len()),
+            message: format!(
+                "[dry-run] Would harden {} with {} secure settings",
+                SSHD_CONFIG,
+                SECURE_SETTINGS.len()
+            ),
             findings: vec![],
         };
     }
@@ -136,11 +157,14 @@ pub fn harden_ssh(dry_run: bool) -> HardenResult {
     // Apply settings
     let mut new_content = content.clone();
     for (key, secure_val, _) in SECURE_SETTINGS {
-        if secure_val.is_empty() { continue; }
+        if secure_val.is_empty() {
+            continue;
+        }
 
-        let pattern = format!("{} {}", key, secure_val);
+        let _pattern = format!("{} {}", key, secure_val);
         // Remove existing setting (commented or not)
-        new_content = new_content.lines()
+        new_content = new_content
+            .lines()
             .filter(|l| {
                 let ll = l.trim().to_lowercase();
                 !ll.starts_with(&key.to_lowercase()) || ll.starts_with('#')
@@ -169,7 +193,10 @@ pub fn harden_ssh(dry_run: bool) -> HardenResult {
             HardenResult {
                 action: "ssh-harden".to_string(),
                 success: true,
-                message: format!("SSH hardened (backup at {}). Restart sshd to apply.", backup),
+                message: format!(
+                    "SSH hardened (backup at {}). Restart sshd to apply.",
+                    backup
+                ),
                 findings: vec![],
             }
         }

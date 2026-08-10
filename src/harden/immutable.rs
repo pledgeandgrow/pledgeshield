@@ -19,7 +19,9 @@ pub fn audit_immutable() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         for file in CRITICAL_FILES {
-            if !std::path::Path::new(file).exists() { continue; }
+            if !std::path::Path::new(file).exists() {
+                continue;
+            }
             let out = Command::new("lsattr").arg(file).output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
@@ -48,7 +50,9 @@ pub fn set_immutable(dry_run: bool) -> Vec<HardenResult> {
     #[cfg(target_os = "linux")]
     {
         for file in CRITICAL_FILES {
-            if !std::path::Path::new(file).exists() { continue; }
+            if !std::path::Path::new(file).exists() {
+                continue;
+            }
             if dry_run {
                 results.push(HardenResult {
                     action: format!("immutable-{}", file),
@@ -92,7 +96,9 @@ pub fn unset_immutable() -> Vec<HardenResult> {
     #[cfg(target_os = "linux")]
     {
         for file in CRITICAL_FILES {
-            if !std::path::Path::new(file).exists() { continue; }
+            if !std::path::Path::new(file).exists() {
+                continue;
+            }
             let out = Command::new("chattr").args(["-i", file]).output();
             results.push(HardenResult {
                 action: format!("immutable-unset-{}", file),

@@ -11,7 +11,9 @@ pub fn audit_polkit() -> Vec<Finding> {
         // Check polkit rules directory
         let rules_dirs = ["/etc/polkit-1/rules.d", "/usr/share/polkit-1/rules.d"];
         for dir in &rules_dirs {
-            if !Path::new(dir).exists() { continue; }
+            if !Path::new(dir).exists() {
+                continue;
+            }
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
@@ -28,7 +30,8 @@ pub fn audit_polkit() -> Vec<Finding> {
                         }
 
                         // Check for rules that allow admin actions without password
-                        if content.contains("auth_admin_keep") || content.contains("auth_yes_keep") {
+                        if content.contains("auth_admin_keep") || content.contains("auth_yes_keep")
+                        {
                             findings.push(Finding::new(
                                 &format!("polkit-keep-auth-{}", path.file_name().unwrap_or_default().to_string_lossy()),
                                 &format!("Polkit rule keeps authentication: {}", path.display()),
@@ -48,7 +51,8 @@ pub fn audit_polkit() -> Vec<Finding> {
             if let Ok(meta) = std::fs::metadata(pkexec) {
                 use std::os::unix::fs::PermissionsExt;
                 let mode = meta.permissions().mode();
-                if mode & 0o4000 != 0 { // SUID
+                if mode & 0o4000 != 0 {
+                    // SUID
                     // pkexec with SUID is normal, but check for known CVEs
                     findings.push(Finding::new(
                         "polkit-pkexec-suid",
@@ -62,7 +66,9 @@ pub fn audit_polkit() -> Vec<Finding> {
         }
 
         // Check if polkit service is running
-        let out = Command::new("systemctl").args(["is-active", "polkit"]).output();
+        let out = Command::new("systemctl")
+            .args(["is-active", "polkit"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "inactive" || s == "failed" {

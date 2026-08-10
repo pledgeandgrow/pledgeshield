@@ -39,15 +39,17 @@ pub fn audit_dns() -> Vec<Finding> {
                         if ns.starts_with("127.") || ns == "127.0.0.1" {
                             // Local resolver — could be dnscrypt-proxy
                         } else {
-                            findings.push(Finding::new(
-                                "dns-plaintext-resolver",
-                                &format!("DNS resolver {} is plaintext", ns),
-                                Severity::Medium,
-                                Category::Network,
-                            )
-                            .description("Your DNS resolver does not support encryption.")
-                            .recommendation("Run: pledgeshield harden doh --enable cloudflare")
-                            .fixable(true));
+                            findings.push(
+                                Finding::new(
+                                    "dns-plaintext-resolver",
+                                    &format!("DNS resolver {} is plaintext", ns),
+                                    Severity::Medium,
+                                    Category::Network,
+                                )
+                                .description("Your DNS resolver does not support encryption.")
+                                .recommendation("Run: pledgeshield harden doh --enable cloudflare")
+                                .fixable(true),
+                            );
                             break;
                         }
                     }
@@ -62,32 +64,38 @@ pub fn audit_dns() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.contains("tls") && !s.contains("https") {
-                findings.push(Finding::new(
-                    "dns-no-encryption",
-                    "DNS queries are not encrypted",
-                    Severity::Medium,
-                    Category::Network,
-                )
-                .description("macOS DNS is not configured for DoH/DoT.")
-                .recommendation("Run: pledgeshield harden doh --enable cloudflare")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "dns-no-encryption",
+                        "DNS queries are not encrypted",
+                        Severity::Medium,
+                        Category::Network,
+                    )
+                    .description("macOS DNS is not configured for DoH/DoT.")
+                    .recommendation("Run: pledgeshield harden doh --enable cloudflare")
+                    .fixable(true),
+                );
             }
         }
     }
 
     #[cfg(windows)]
     {
-        let out = Command::new("netsh").args(["interface", "show", "interface"]).output();
+        let out = Command::new("netsh")
+            .args(["interface", "show", "interface"])
+            .output();
         let _ = out;
-        findings.push(Finding::new(
-            "dns-no-encryption",
-            "DNS encryption not detected",
-            Severity::Medium,
-            Category::Network,
-        )
-        .description("Windows DNS encryption requires manual configuration or a DoH client.")
-        .recommendation("Run: pledgeshield harden doh --enable cloudflare")
-        .fixable(true));
+        findings.push(
+            Finding::new(
+                "dns-no-encryption",
+                "DNS encryption not detected",
+                Severity::Medium,
+                Category::Network,
+            )
+            .description("Windows DNS encryption requires manual configuration or a DoH client.")
+            .recommendation("Run: pledgeshield harden doh --enable cloudflare")
+            .fixable(true),
+        );
     }
 
     findings
@@ -99,7 +107,11 @@ pub fn enable_doh(provider: &str, dry_run: bool) -> HardenResult {
         .find(|(name, _)| *name == provider)
         .map(|(_, url)| *url)
         .unwrap_or_else(|| {
-            if provider.starts_with("https://") { provider } else { "https://cloudflare-dns.com/dns-query" }
+            if provider.starts_with("https://") {
+                provider
+            } else {
+                "https://cloudflare-dns.com/dns-query"
+            }
         });
 
     if dry_run {
@@ -114,8 +126,11 @@ pub fn enable_doh(provider: &str, dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Try systemd-resolved first
-        let resolved = Command::new("resolvectl").arg("status").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let resolved = Command::new("resolvectl")
+            .arg("status")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if resolved {
             // Configure systemd-resolved for DoT
@@ -125,19 +140,27 @@ pub fn enable_doh(provider: &str, dry_run: bool) -> HardenResult {
             let conf_path = "/etc/systemd/resolved.conf.d/doh.conf";
             let _ = std::fs::create_dir_all("/etc/systemd/resolved.conf.d");
             if std::fs::write(conf_path, conf).is_ok() {
-                let _ = Command::new("systemctl").args(["restart", "systemd-resolved"]).output();
+                let _ = Command::new("systemctl")
+                    .args(["restart", "systemd-resolved"])
+                    .output();
                 return HardenResult {
                     action: "doh-enable".to_string(),
                     success: true,
-                    message: format!("systemd-resolved configured with DoT (provider: {})", provider),
+                    message: format!(
+                        "systemd-resolved configured with DoT (provider: {})",
+                        provider
+                    ),
                     findings: vec![],
                 };
             }
         }
 
         // Fallback: install/configure dnscrypt-proxy
-        let dnscrypt = Command::new("which").arg("dnscrypt-proxy").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let dnscrypt = Command::new("which")
+            .arg("dnscrypt-proxy")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if dnscrypt {
             let conf = format!(
@@ -145,7 +168,9 @@ pub fn enable_doh(provider: &str, dry_run: bool) -> HardenResult {
                 provider, url
             );
             let _ = std::fs::write("/etc/dnscrypt-proxy/dnscrypt-proxy.toml", conf);
-            let _ = Command::new("systemctl").args(["restart", "dnscrypt-proxy"]).output();
+            let _ = Command::new("systemctl")
+                .args(["restart", "dnscrypt-proxy"])
+                .output();
             HardenResult {
                 action: "doh-enable".to_string(),
                 success: true,
@@ -179,7 +204,9 @@ pub fn disable_doh() -> HardenResult {
         let p = "/etc/systemd/resolved.conf.d/doh.conf";
         if std::path::Path::new(p).exists() {
             let _ = std::fs::remove_file(p);
-            let _ = Command::new("systemctl").args(["restart", "systemd-resolved"]).output();
+            let _ = Command::new("systemctl")
+                .args(["restart", "systemd-resolved"])
+                .output();
             return HardenResult {
                 action: "doh-disable".to_string(),
                 success: true,
@@ -207,5 +234,8 @@ pub fn disable_doh() -> HardenResult {
 }
 
 pub fn list_providers() -> Vec<String> {
-    DOH_PROVIDERS.iter().map(|(name, url)| format!("  {:12} — {}", name, url)).collect()
+    DOH_PROVIDERS
+        .iter()
+        .map(|(name, url)| format!("  {:12} — {}", name, url))
+        .collect()
 }

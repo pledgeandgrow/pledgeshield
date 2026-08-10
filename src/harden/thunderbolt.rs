@@ -9,8 +9,11 @@ pub fn audit_thunderbolt() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check if bolt (Thunderbolt daemon) is installed
-        let installed = Command::new("which").arg("boltctl").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("boltctl")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if installed {
             // Check Thunderbolt security level
@@ -20,9 +23,12 @@ pub fn audit_thunderbolt() -> Vec<Finding> {
                 if !s.trim().is_empty() {
                     for line in s.lines() {
                         if line.contains("connected") || line.contains("authorized") {
-                            if line.contains("authorized: true") && line.contains("security: user") {
+                            if line.contains("authorized: true") && line.contains("security: user")
+                            {
                                 // Good — requires user approval
-                            } else if line.contains("security: none") || line.contains("security: pci") {
+                            } else if line.contains("security: none")
+                                || line.contains("security: pci")
+                            {
                                 findings.push(Finding::new(
                                     "thunderbolt-no-security",
                                     "Thunderbolt security is set to 'none'",
@@ -56,7 +62,10 @@ pub fn audit_thunderbolt() -> Vec<Finding> {
 
         // Check if IOMMU is enabled (DMA protection)
         if let Ok(content) = std::fs::read_to_string("/proc/cmdline") {
-            if !content.contains("iommu=on") && !content.contains("intel_iommu=on") && !content.contains("amd_iommu=on") {
+            if !content.contains("iommu=on")
+                && !content.contains("intel_iommu=on")
+                && !content.contains("amd_iommu=on")
+            {
                 findings.push(Finding::new(
                     "thunderbolt-no-iommu",
                     "IOMMU is not enabled — no DMA protection",

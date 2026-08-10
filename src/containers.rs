@@ -82,10 +82,17 @@ fn check_docker_security() -> Vec<Finding> {
             // Check for AppArmor/SELinux
             if !security_opts.contains("apparmor") && !security_opts.contains("selinux") {
                 findings.push(
-                    Finding::new("ctr-docker-no-mac", "Docker No Mandatory Access Control", Severity::Low, Category::Containers)
-                        .description("Neither AppArmor nor SELinux is enforced for Docker containers.")
-                        .recommendation("Enable AppArmor or SELinux for additional container isolation.")
-                        .metadata("runtime", "docker")
+                    Finding::new(
+                        "ctr-docker-no-mac",
+                        "Docker No Mandatory Access Control",
+                        Severity::Low,
+                        Category::Containers,
+                    )
+                    .description("Neither AppArmor nor SELinux is enforced for Docker containers.")
+                    .recommendation(
+                        "Enable AppArmor or SELinux for additional container isolation.",
+                    )
+                    .metadata("runtime", "docker"),
                 );
             }
         }
@@ -101,7 +108,9 @@ fn check_docker_security() -> Vec<Finding> {
             let containers = String::from_utf8_lossy(&output.stdout);
             for line in containers.lines() {
                 let parts: Vec<&str> = line.splitn(2, ' ').collect();
-                if parts.len() < 2 { continue; }
+                if parts.len() < 2 {
+                    continue;
+                }
                 let id = parts[0];
                 let name = parts[1];
 
@@ -187,7 +196,13 @@ fn check_kubernetes_security() -> Vec<Finding> {
 
     // Check for pods running as root
     let output = std::process::Command::new("kubectl")
-        .args(["get", "pods", "--all-namespaces", "-o", "jsonpath={.items[*].spec.containers[*].securityContext.runAsNonRoot}"])
+        .args([
+            "get",
+            "pods",
+            "--all-namespaces",
+            "-o",
+            "jsonpath={.items[*].spec.containers[*].securityContext.runAsNonRoot}",
+        ])
         .output();
 
     if let Ok(output) = output {
@@ -209,7 +224,13 @@ fn check_kubernetes_security() -> Vec<Finding> {
 
     // Check for pods without resource limits
     let limits_output = std::process::Command::new("kubectl")
-        .args(["get", "pods", "--all-namespaces", "-o", "jsonpath={.items[*].spec.containers[*].resources.limits}"])
+        .args([
+            "get",
+            "pods",
+            "--all-namespaces",
+            "-o",
+            "jsonpath={.items[*].spec.containers[*].resources.limits}",
+        ])
         .output();
 
     if let Ok(output) = limits_output {

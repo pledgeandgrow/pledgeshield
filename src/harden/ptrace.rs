@@ -1,6 +1,5 @@
 /// Debugger/ptrace detector — alert if any process is being debugged or ptraced.
 use crate::models::{Category, Finding, Severity};
-use std::process::Command;
 
 pub fn audit_ptrace() -> Vec<Finding> {
     let mut findings = Vec::new();
@@ -27,18 +26,22 @@ pub fn audit_ptrace() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
 
                 // Read status file to check TracerPid
                 if let Ok(status) = std::fs::read_to_string(format!("/proc/{}/status", pid)) {
-                    let comm = status.lines()
+                    let comm = status
+                        .lines()
                         .find(|l| l.starts_with("Name:"))
                         .and_then(|l| l.split(':').nth(1))
                         .map(|s| s.trim().to_string())
                         .unwrap_or_default();
 
-                    let tracer_pid = status.lines()
+                    let tracer_pid = status
+                        .lines()
                         .find(|l| l.starts_with("TracerPid:"))
                         .and_then(|l| l.split(':').nth(1))
                         .map(|s| s.trim().to_string())
@@ -46,16 +49,26 @@ pub fn audit_ptrace() -> Vec<Finding> {
 
                     if tracer_pid != "0" {
                         // Get tracer name
-                        let tracer_name = std::fs::read_to_string(format!("/proc/{}/comm", tracer_pid))
-                            .map(|s| s.trim().to_string())
-                            .unwrap_or("unknown".to_string());
+                        let tracer_name =
+                            std::fs::read_to_string(format!("/proc/{}/comm", tracer_pid))
+                                .map(|s| s.trim().to_string())
+                                .unwrap_or("unknown".to_string());
 
                         // Known debuggers
-                        let debuggers = ["gdb", "lldb", "strace", "ltrace", "frida", "x64dbg", "radare2", "r2", "ida"];
-                        let tracers = ["gdb", "lldb", "strace", "ltrace", "frida", "radare2", "r2", "ida", "py-spy", "perf"];
+                        let _debuggers = [
+                            "gdb", "lldb", "strace", "ltrace", "frida", "x64dbg", "radare2", "r2",
+                            "ida",
+                        ];
+                        let tracers = [
+                            "gdb", "lldb", "strace", "ltrace", "frida", "radare2", "r2", "ida",
+                            "py-spy", "perf",
+                        ];
 
-                        let severity = if tracers.contains(&tracer_name.as_str()) { Severity::Low }
-                                       else { Severity::Medium };
+                        let severity = if tracers.contains(&tracer_name.as_str()) {
+                            Severity::Low
+                        } else {
+                            Severity::Medium
+                        };
 
                         findings.push(Finding::new(
                             &format!("ptrace-{}-{}", pid, comm),

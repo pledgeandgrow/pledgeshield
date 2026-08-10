@@ -30,7 +30,9 @@ fn audit_cert_file(path: &str, findings: &mut Vec<Finding>) {
 
     // Use openssl to check the cert
     let out = Command::new("openssl")
-        .args(["x509", "-in", path, "-noout", "-dates", "-subject", "-issuer"])
+        .args([
+            "x509", "-in", path, "-noout", "-dates", "-subject", "-issuer",
+        ])
         .output();
 
     if let Ok(o) = out {
@@ -54,22 +56,26 @@ fn audit_cert_file(path: &str, findings: &mut Vec<Finding>) {
             .description("1024-bit RSA keys are deprecated. Use at least 2048 bits (prefer 4096 or ECDSA)."));
         }
         if s.contains("SHA1") {
-            findings.push(Finding::new(
-                "cert-sha1",
-                "Certificate uses SHA-1 signature (deprecated)",
-                Severity::High,
-                Category::HostConfig,
-            )
-            .description("SHA-1 is collision-vulnerable. Use SHA-256 or higher."));
+            findings.push(
+                Finding::new(
+                    "cert-sha1",
+                    "Certificate uses SHA-1 signature (deprecated)",
+                    Severity::High,
+                    Category::HostConfig,
+                )
+                .description("SHA-1 is collision-vulnerable. Use SHA-256 or higher."),
+            );
         }
         if s.contains("MD5") {
-            findings.push(Finding::new(
-                "cert-md5",
-                "Certificate uses MD5 signature (broken)",
-                Severity::Critical,
-                Category::HostConfig,
-            )
-            .description("MD5 is broken. Replace this certificate immediately."));
+            findings.push(
+                Finding::new(
+                    "cert-md5",
+                    "Certificate uses MD5 signature (broken)",
+                    Severity::Critical,
+                    Category::HostConfig,
+                )
+                .description("MD5 is broken. Replace this certificate immediately."),
+            );
         }
     }
 }
@@ -77,7 +83,13 @@ fn audit_cert_file(path: &str, findings: &mut Vec<Finding>) {
 fn audit_cert_host(host: &str, findings: &mut Vec<Finding>) {
     let host_clean = host.split(':').next().unwrap_or(host);
     let out = Command::new("openssl")
-        .args(["s_client", "-connect", &format!("{}:443", host_clean), "-servername", host_clean])
+        .args([
+            "s_client",
+            "-connect",
+            &format!("{}:443", host_clean),
+            "-servername",
+            host_clean,
+        ])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -121,21 +133,25 @@ fn check_cert_dates(cert_text: &str, findings: &mut Vec<Finding>) {
                     )
                     .description("This certificate has expired. Services using it will be rejected by clients."));
                 } else if days_left < 7 {
-                    findings.push(Finding::new(
-                        "cert-expiring-critical",
-                        &format!("Certificate expires in {} days", days_left),
-                        Severity::High,
-                        Category::HostConfig,
-                    )
-                    .description("Certificate expires very soon. Renew immediately."));
+                    findings.push(
+                        Finding::new(
+                            "cert-expiring-critical",
+                            &format!("Certificate expires in {} days", days_left),
+                            Severity::High,
+                            Category::HostConfig,
+                        )
+                        .description("Certificate expires very soon. Renew immediately."),
+                    );
                 } else if days_left < 30 {
-                    findings.push(Finding::new(
-                        "cert-expiring-soon",
-                        &format!("Certificate expires in {} days", days_left),
-                        Severity::Medium,
-                        Category::HostConfig,
-                    )
-                    .description("Certificate will expire soon. Start renewal process."));
+                    findings.push(
+                        Finding::new(
+                            "cert-expiring-soon",
+                            &format!("Certificate expires in {} days", days_left),
+                            Severity::Medium,
+                            Category::HostConfig,
+                        )
+                        .description("Certificate will expire soon. Start renewal process."),
+                    );
                 }
             }
         }

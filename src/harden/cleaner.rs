@@ -1,6 +1,5 @@
 /// Recent files & activity cleaner — clear recent docs, shell history, command history, temp files.
 use super::HardenResult;
-use std::process::Command;
 
 pub fn clean_activity(dry_run: bool) -> Vec<HardenResult> {
     let mut results = Vec::new();
@@ -67,7 +66,8 @@ pub fn clean_activity(dry_run: bool) -> Vec<HardenResult> {
                             // Try to get metadata
                             if let Ok(meta) = std::fs::metadata(&path) {
                                 if let Ok(time) = meta.modified() {
-                                    if time.elapsed().map(|d| d.as_secs() > 86400).unwrap_or(false) {
+                                    if time.elapsed().map(|d| d.as_secs() > 86400).unwrap_or(false)
+                                    {
                                         if std::fs::remove_file(&path).is_ok() {
                                             cleaned += 1;
                                         }
@@ -140,8 +140,12 @@ pub fn clean_activity(dry_run: bool) -> Vec<HardenResult> {
                 findings: vec![],
             });
         } else {
-            let _ = Command::new("del").args(["/q", "%APPDATA%\\Microsoft\\Windows\\Recent\\*"]).output();
-            let _ = Command::new("del").args(["/q", "%WINDIR%\\Prefetch\\*"]).output();
+            let _ = Command::new("del")
+                .args(["/q", "%APPDATA%\\Microsoft\\Windows\\Recent\\*"])
+                .output();
+            let _ = Command::new("del")
+                .args(["/q", "%WINDIR%\\Prefetch\\*"])
+                .output();
             results.push(HardenResult {
                 action: "clean-win-recent".to_string(),
                 success: true,

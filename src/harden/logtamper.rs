@@ -61,8 +61,11 @@ pub fn audit_log_tampering() -> Vec<Finding> {
                     // Parse timestamp (format: "Jan  1 12:00:00")
                     let parts: Vec<&str> = line.split_whitespace().take(3).collect();
                     if parts.len() >= 3 {
-                        let time_str = format!("2024 {} {}", parts[0], parts[1]);
-                        if let Ok(t) = chrono::NaiveDateTime::parse_from_str(&format!("{} 0 00:00:00", parts[0]), "%b %d %H:%M:%S") {
+                        let _time_str = format!("2024 {} {}", parts[0], parts[1]);
+                        if let Ok(t) = chrono::NaiveDateTime::parse_from_str(
+                            &format!("{} 0 00:00:00", parts[0]),
+                            "%b %d %H:%M:%S",
+                        ) {
                             if let Some(prev) = prev_time {
                                 let gap = prev.signed_duration_since(t).num_hours();
                                 if gap > 24 {

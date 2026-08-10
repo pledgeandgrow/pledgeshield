@@ -1,6 +1,6 @@
 /// Real-time security monitor — watches for new listening ports, suspicious processes,
 /// and firewall changes. Runs as a foreground daemon until Ctrl+C.
-use crate::models::{Category, Finding, Severity};
+use crate::models::{Finding, Severity};
 use std::collections::HashSet;
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -38,8 +38,10 @@ pub fn run_monitor(config: &MonitorConfig) {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║       PledgeShield Real-Time Security Monitor            ║");
     println!("╚══════════════════════════════════════════════════════════╝");
-    println!("  Polling every {}s | ports={} processes={} firewall={}",
-        config.interval, config.watch_ports, config.watch_processes, config.watch_firewall);
+    println!(
+        "  Polling every {}s | ports={} processes={} firewall={}",
+        config.interval, config.watch_ports, config.watch_processes, config.watch_firewall
+    );
     println!("  Press Ctrl+C to stop.\n");
 
     // Establish baseline
@@ -49,11 +51,17 @@ pub fn run_monitor(config: &MonitorConfig) {
 
     if config.watch_ports {
         known_ports = get_listening_ports();
-        println!("  [baseline] {} ports currently listening", known_ports.len());
+        println!(
+            "  [baseline] {} ports currently listening",
+            known_ports.len()
+        );
     }
     if config.watch_processes {
         known_processes = get_root_processes();
-        println!("  [baseline] {} root/SYSTEM processes running", known_processes.len());
+        println!(
+            "  [baseline] {} root/SYSTEM processes running",
+            known_processes.len()
+        );
     }
     if config.watch_firewall {
         firewall_was_up = is_firewall_up();
@@ -69,7 +77,10 @@ pub fn run_monitor(config: &MonitorConfig) {
 
         // Check max runtime
         if config.max_runtime > 0 && start.elapsed().as_secs() >= config.max_runtime {
-            println!("\n  Max runtime reached ({}s). Stopping.", config.max_runtime);
+            println!(
+                "\n  Max runtime reached ({}s). Stopping.",
+                config.max_runtime
+            );
             break;
         }
 
@@ -82,8 +93,15 @@ pub fn run_monitor(config: &MonitorConfig) {
             let closed_ports: Vec<_> = known_ports.difference(&current).cloned().collect();
 
             for (port, proto) in &new_ports {
-                let sev = if is_sensitive_port(*port) { Severity::High } else { Severity::Medium };
-                println!("  {} [{}] NEW port {}/{} is now listening", now, sev, port, proto);
+                let sev = if is_sensitive_port(*port) {
+                    Severity::High
+                } else {
+                    Severity::Medium
+                };
+                println!(
+                    "  {} [{}] NEW port {}/{} is now listening",
+                    now, sev, port, proto
+                );
                 if is_sensitive_port(*port) {
                     println!("    ⚠ This is a sensitive port (SSH, RDP, SMB, etc.)!");
                 }
@@ -106,7 +124,11 @@ pub fn run_monitor(config: &MonitorConfig) {
             }
             // Only report ended processes if there are many (avoid noise)
             if ended_procs.len() > 5 {
-                println!("  {} [info] {} root processes ended", now, ended_procs.len());
+                println!(
+                    "  {} [info] {} root processes ended",
+                    now,
+                    ended_procs.len()
+                );
             }
 
             known_processes = current;
@@ -145,9 +167,13 @@ fn get_listening_ports() -> HashSet<(u16, String)> {
                     continue;
                 }
                 let lower = line.to_lowercase();
-                let proto = if lower.starts_with("tcp") { "tcp" }
-                    else if lower.starts_with("udp") { "udp" }
-                    else { continue };
+                let proto = if lower.starts_with("tcp") {
+                    "tcp"
+                } else if lower.starts_with("udp") {
+                    "udp"
+                } else {
+                    continue;
+                };
                 for token in line.split_whitespace() {
                     if token.contains(':') {
                         if let Some(port_str) = token.rsplit(':').next() {
@@ -168,11 +194,17 @@ fn get_listening_ports() -> HashSet<(u16, String)> {
             let stdout = String::from_utf8_lossy(&o.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if !line.contains("LISTENING") { continue; }
+                if !line.contains("LISTENING") {
+                    continue;
+                }
                 let lower = line.to_lowercase();
-                let proto = if lower.starts_with("tcp") { "tcp" }
-                    else if lower.starts_with("udp") { "udp" }
-                    else { continue };
+                let proto = if lower.starts_with("tcp") {
+                    "tcp"
+                } else if lower.starts_with("udp") {
+                    "udp"
+                } else {
+                    continue;
+                };
                 for token in line.split_whitespace() {
                     if token.contains(':') {
                         if let Some(port_str) = token.rsplit(':').next() {
@@ -197,7 +229,10 @@ fn get_root_processes() -> HashSet<String> {
     #[cfg(target_os = "linux")]
     {
         // ps with root user
-        if let Ok(o) = Command::new("ps").args(["-u", "root", "-o", "comm="]).output() {
+        if let Ok(o) = Command::new("ps")
+            .args(["-u", "root", "-o", "comm="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&o.stdout);
             for line in stdout.lines() {
                 let name = line.trim();
@@ -210,7 +245,10 @@ fn get_root_processes() -> HashSet<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(o) = Command::new("ps").args(["-u", "root", "-o", "comm="]).output() {
+        if let Ok(o) = Command::new("ps")
+            .args(["-u", "root", "-o", "comm="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&o.stdout);
             for line in stdout.lines() {
                 let name = line.trim();
@@ -225,7 +263,13 @@ fn get_root_processes() -> HashSet<String> {
     {
         // Use wmic to get processes running as SYSTEM
         if let Ok(o) = Command::new("wmic")
-            .args(["process", "where", "(ExecutablePath is not null)", "get", "Name"])
+            .args([
+                "process",
+                "where",
+                "(ExecutablePath is not null)",
+                "get",
+                "Name",
+            ])
             .output()
         {
             let stdout = String::from_utf8_lossy(&o.stdout);
@@ -252,7 +296,9 @@ fn is_firewall_up() -> bool {
                 return true;
             }
         }
-        let out = Command::new("systemctl").args(["is-active", "firewalld"]).output();
+        let out = Command::new("systemctl")
+            .args(["is-active", "firewalld"])
+            .output();
         if let Ok(o) = out {
             return String::from_utf8_lossy(&o.stdout).trim() == "active";
         }
@@ -297,7 +343,8 @@ fn is_firewall_up() -> bool {
 
 /// Ports that are sensitive and should trigger a high-severity alert.
 fn is_sensitive_port(port: u16) -> bool {
-    matches!(port,
+    matches!(
+        port,
         22 |   // SSH
         23 |   // Telnet
         21 |   // FTP

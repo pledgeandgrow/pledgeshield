@@ -21,7 +21,9 @@ pub fn audit_tpm() -> Vec<Finding> {
             .description("No Trusted Platform Module found. TPM enables disk encryption with hardware-backed keys and measured boot."));
         } else {
             // TPM exists — check if it's being used
-            let out = Command::new("systemctl").args(["is-active", "tpm2-abrmd"]).output();
+            let out = Command::new("systemctl")
+                .args(["is-active", "tpm2-abrmd"])
+                .output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
                 if s != "active" {
@@ -36,7 +38,9 @@ pub fn audit_tpm() -> Vec<Finding> {
             }
 
             // Check TPM version
-            let out = Command::new("cat").arg("/sys/class/tpm/tpm0/tpm_version_major").output();
+            let out = Command::new("cat")
+                .arg("/sys/class/tpm/tpm0/tpm_version_major")
+                .output();
             if let Ok(o) = out {
                 let ver = String::from_utf8_lossy(&o.stdout).trim().to_string();
                 if ver == "1" {
@@ -51,7 +55,9 @@ pub fn audit_tpm() -> Vec<Finding> {
             }
 
             // Check if disk encryption uses TPM
-            let out = Command::new("cryptsetup").args(["luksDump", "/dev/sda1"]).output();
+            let out = Command::new("cryptsetup")
+                .args(["luksDump", "/dev/sda1"])
+                .output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
                 if !s.contains("tpm2") && !s.contains("systemd-tpm2") {
@@ -70,7 +76,10 @@ pub fn audit_tpm() -> Vec<Finding> {
     #[cfg(windows)]
     {
         let out = Command::new("powershell")
-            .args(["-Command", "Get-Tpm | Select-Object TpmPresent, TpmReady, TpmEnabled"])
+            .args([
+                "-Command",
+                "Get-Tpm | Select-Object TpmPresent, TpmReady, TpmEnabled",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);

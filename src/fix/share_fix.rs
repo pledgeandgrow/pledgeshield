@@ -7,7 +7,12 @@ pub fn fix_share_permissions(share: &str) -> Result<(), Box<dyn std::error::Erro
     {
         // Remove "Everyone" from the share and grant Administrators full control
         let output = std::process::Command::new("net")
-            .args(["share", share, "/grant:Administrators,FULL", "/remove:Everyone"])
+            .args([
+                "share",
+                share,
+                "/grant:Administrators,FULL",
+                "/remove:Everyone",
+            ])
             .output()?;
 
         if !output.status.success() {
@@ -23,15 +28,14 @@ pub fn fix_share_permissions(share: &str) -> Result<(), Box<dyn std::error::Erro
         }
 
         println!("  ✓ Removed 'Everyone' from share '{}' permissions", share);
+        Ok(())
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        log::info!("Share fixes not supported on this platform");
-        return Err("Share fixes are only supported on Windows".into());
+        let _ = share;
+        Err("Share fixes are only supported on Windows".into())
     }
-
-    Ok(())
 }
 
 pub fn disable_admin_share(share: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -49,14 +53,14 @@ pub fn disable_admin_share(share: &str) -> Result<(), Box<dyn std::error::Error>
         }
 
         println!("  ✓ Admin share '{}' deleted", share);
+        Ok(())
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        return Err("Share fixes are only supported on Windows".into());
+        let _ = share;
+        Err("Share fixes are only supported on Windows".into())
     }
-
-    Ok(())
 }
 
 pub fn disable_smbv1() -> Result<(), Box<dyn std::error::Error>> {
@@ -73,16 +77,18 @@ pub fn disable_smbv1() -> Result<(), Box<dyn std::error::Error>> {
 
         // Also try PowerShell to disable the feature
         let _ = std::process::Command::new("powershell")
-            .args(["-Command", "Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart"])
+            .args([
+                "-Command",
+                "Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart",
+            ])
             .output();
 
         println!("  ✓ SMBv1 disabled (reboot required for full effect)");
+        Ok(())
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        return Err("SMBv1 fixes are only supported on Windows".into());
+        Err("SMBv1 fixes are only supported on Windows".into())
     }
-
-    Ok(())
 }

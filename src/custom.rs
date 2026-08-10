@@ -38,9 +38,15 @@ pub struct CustomCheck {
     pub registry_expected: Option<String>,
 }
 
-fn default_severity() -> String { "medium".to_string() }
-fn default_category() -> String { "config".to_string() }
-fn default_check_type() -> String { "command".to_string() }
+fn default_severity() -> String {
+    "medium".to_string()
+}
+fn default_category() -> String {
+    "config".to_string()
+}
+fn default_check_type() -> String {
+    "command".to_string()
+}
 
 /// Configuration for custom audit checks.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -59,13 +65,8 @@ pub fn run_custom_checks(config: &CustomAuditConfig) -> Vec<Finding> {
             let severity = Severity::from_str(&check.severity).unwrap_or(Severity::Medium);
             let category = parse_category(&check.category);
 
-            let mut finding = Finding::new(
-                &check.id,
-                &check.title,
-                severity,
-                category,
-            )
-            .description(&check.description);
+            let mut finding = Finding::new(&check.id, &check.title, severity, category)
+                .description(&check.description);
 
             if !check.recommendation.is_empty() {
                 finding = finding.recommendation(&check.recommendation);
@@ -85,9 +86,7 @@ fn run_check(check: &CustomCheck) -> bool {
             if let Some(cmd) = &check.command {
                 #[cfg(windows)]
                 {
-                    let output = std::process::Command::new("cmd")
-                        .args(["/C", cmd])
-                        .output();
+                    let output = std::process::Command::new("cmd").args(["/C", cmd]).output();
                     match output {
                         Ok(o) => !o.status.success(),
                         Err(_) => false,
@@ -95,9 +94,7 @@ fn run_check(check: &CustomCheck) -> bool {
                 }
                 #[cfg(not(windows))]
                 {
-                    let output = std::process::Command::new("sh")
-                        .args(["-c", cmd])
-                        .output();
+                    let output = std::process::Command::new("sh").args(["-c", cmd]).output();
                     match output {
                         Ok(o) => !o.status.success(),
                         Err(_) => false,
@@ -190,14 +187,18 @@ fn parse_category(s: &str) -> Category {
 }
 
 /// Load custom checks from a TOML file.
-pub fn load_custom_checks(path: &std::path::Path) -> Result<CustomAuditConfig, Box<dyn std::error::Error>> {
+pub fn load_custom_checks(
+    path: &std::path::Path,
+) -> Result<CustomAuditConfig, Box<dyn std::error::Error>> {
     let content = std::fs::read_to_string(path)?;
     let config: CustomAuditConfig = toml::from_str(&content)?;
     Ok(config)
 }
 
 /// Load custom checks from a YAML file.
-pub fn load_custom_checks_yaml(path: &std::path::Path) -> Result<CustomAuditConfig, Box<dyn std::error::Error>> {
+pub fn load_custom_checks_yaml(
+    path: &std::path::Path,
+) -> Result<CustomAuditConfig, Box<dyn std::error::Error>> {
     let content = std::fs::read_to_string(path)?;
     let config: CustomAuditConfig = serde_yaml::from_str(&content)?;
     Ok(config)

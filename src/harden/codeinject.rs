@@ -12,15 +12,19 @@ pub fn audit_code_injection() -> Vec<Finding> {
         if let Ok(content) = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope") {
             let scope = content.trim();
             if scope == "0" || scope == "1" {
-                findings.push(Finding::new(
-                    "codeinject-ptrace-weak",
-                    &format!("ptrace_scope is {} (should be 2 or 3)", scope),
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .description("Weak ptrace scope allows processes to read/write other processes' memory.")
-                .recommendation("Run: pledgeshield harden codeinject --block")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "codeinject-ptrace-weak",
+                        &format!("ptrace_scope is {} (should be 2 or 3)", scope),
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .description(
+                        "Weak ptrace scope allows processes to read/write other processes' memory.",
+                    )
+                    .recommendation("Run: pledgeshield harden codeinject --block")
+                    .fixable(true),
+                );
             }
         }
 
@@ -28,14 +32,18 @@ pub fn audit_code_injection() -> Vec<Finding> {
         // Check for unprivileged_bpf_disabled
         if let Ok(content) = std::fs::read_to_string("/proc/sys/kernel/unprivileged_bpf_disabled") {
             if content.trim() == "0" {
-                findings.push(Finding::new(
-                    "codeinject-bpf-enabled",
-                    "Unprivileged BPF is enabled",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .description("Unprivileged BPF can be used for code injection and kernel exploitation.")
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "codeinject-bpf-enabled",
+                        "Unprivileged BPF is enabled",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .description(
+                        "Unprivileged BPF can be used for code injection and kernel exploitation.",
+                    )
+                    .fixable(true),
+                );
             }
         }
 
@@ -62,7 +70,9 @@ pub fn block_injection(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "codeinject-block".to_string(),
             success: true,
-            message: "[dry-run] Would harden ptrace_scope, disable unprivileged BPF, restrict dmesg.".to_string(),
+            message:
+                "[dry-run] Would harden ptrace_scope, disable unprivileged BPF, restrict dmesg."
+                    .to_string(),
             findings: vec![],
         };
     }
@@ -78,14 +88,20 @@ pub fn block_injection(dry_run: bool) -> HardenResult {
         ];
 
         for (key, val) in &settings {
-            let out = Command::new("sysctl").args(["-w", &format!("{}={}", key, val)]).output();
+            let out = Command::new("sysctl")
+                .args(["-w", &format!("{}={}", key, val)])
+                .output();
             if out.map(|o| o.status.success()).unwrap_or(false) {
                 fixed += 1;
             }
         }
 
         // Persist
-        let conf: String = settings.iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("\n");
+        let conf: String = settings
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("\n");
         let _ = std::fs::write("/etc/sysctl.d/99-pledgeshield-injection.conf", conf + "\n");
 
         HardenResult {

@@ -11,12 +11,18 @@ pub fn audit_exfiltration() -> Vec<Finding> {
         if let Ok(content) = std::fs::read_to_string("/proc/mounts") {
             for line in content.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() < 2 { continue; }
+                if parts.len() < 2 {
+                    continue;
+                }
                 let dev = parts[0];
                 let mount = parts[1];
 
                 // Check for USB mounts
-                if dev.contains("/dev/sd") || dev.contains("/dev/usb") || mount.contains("/media") || mount.contains("/mnt") {
+                if dev.contains("/dev/sd")
+                    || dev.contains("/dev/usb")
+                    || mount.contains("/media")
+                    || mount.contains("/mnt")
+                {
                     // Check if large files were recently copied
                     if let Ok(entries) = std::fs::read_dir(mount) {
                         for entry in entries.flatten() {
@@ -72,13 +78,17 @@ pub fn audit_exfiltration() -> Vec<Finding> {
             let s = String::from_utf8_lossy(&o.stdout);
             for tool in &cloud_tools {
                 if s.contains(tool) {
-                    findings.push(Finding::new(
-                        &format!("exfil-cloud-{}", tool),
-                        &format!("Cloud sync tool running: {}", tool),
-                        Severity::Low,
-                        Category::Network,
-                    )
-                    .description("A cloud sync tool is running. Files may be uploaded to cloud storage."));
+                    findings.push(
+                        Finding::new(
+                            &format!("exfil-cloud-{}", tool),
+                            &format!("Cloud sync tool running: {}", tool),
+                            Severity::Low,
+                            Category::Network,
+                        )
+                        .description(
+                            "A cloud sync tool is running. Files may be uploaded to cloud storage.",
+                        ),
+                    );
                 }
             }
         }

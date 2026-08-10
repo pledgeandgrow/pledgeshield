@@ -10,14 +10,18 @@ pub fn audit_uefi() -> Vec<Finding> {
         // Check if UEFI mode (not Legacy BIOS)
         let efivars = std::path::Path::new("/sys/firmware/efi/efivars");
         if !efivars.exists() {
-            findings.push(Finding::new(
-                "uefi-legacy-boot",
-                "System is booting in Legacy BIOS mode",
-                Severity::Medium,
-                Category::HostConfig,
-            )
-            .description("Legacy BIOS mode lacks Secure Boot and other UEFI security features.")
-            .recommendation("Switch to UEFI mode in firmware settings (may require reinstall)."));
+            findings.push(
+                Finding::new(
+                    "uefi-legacy-boot",
+                    "System is booting in Legacy BIOS mode",
+                    Severity::Medium,
+                    Category::HostConfig,
+                )
+                .description("Legacy BIOS mode lacks Secure Boot and other UEFI security features.")
+                .recommendation(
+                    "Switch to UEFI mode in firmware settings (may require reinstall).",
+                ),
+            );
         }
 
         // Check Secure Boot status
@@ -36,17 +40,20 @@ pub fn audit_uefi() -> Vec<Finding> {
             }
         } else {
             // Try reading from sysfs
-            let sb_path = "/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c";
+            let sb_path =
+                "/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c";
             if let Ok(data) = std::fs::read(sb_path) {
                 // Last byte: 1 = enabled, 0 = disabled
                 if data.len() > 4 && data[data.len() - 1] == 0 {
-                    findings.push(Finding::new(
-                        "uefi-secure-boot-off",
-                        "Secure Boot is disabled",
-                        Severity::Medium,
-                        Category::HostConfig,
-                    )
-                    .description("Secure Boot is disabled in firmware."));
+                    findings.push(
+                        Finding::new(
+                            "uefi-secure-boot-off",
+                            "Secure Boot is disabled",
+                            Severity::Medium,
+                            Category::HostConfig,
+                        )
+                        .description("Secure Boot is disabled in firmware."),
+                    );
                 }
             }
         }
@@ -57,13 +64,17 @@ pub fn audit_uefi() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.contains("BootOrder") && !s.is_empty() {
-                findings.push(Finding::new(
-                    "uefi-no-bootmgr",
-                    "Cannot read UEFI boot manager",
-                    Severity::Low,
-                    Category::HostConfig,
-                )
-                .description("efibootmgr cannot read boot entries. Boot order may not be secured."));
+                findings.push(
+                    Finding::new(
+                        "uefi-no-bootmgr",
+                        "Cannot read UEFI boot manager",
+                        Severity::Low,
+                        Category::HostConfig,
+                    )
+                    .description(
+                        "efibootmgr cannot read boot entries. Boot order may not be secured.",
+                    ),
+                );
             }
         }
     }
@@ -76,13 +87,15 @@ pub fn audit_uefi() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if s.trim() == "False" {
-                findings.push(Finding::new(
-                    "uefi-secure-boot-off",
-                    "Secure Boot is disabled",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .description("Secure Boot is disabled. Bootkits can load unsigned kernels."));
+                findings.push(
+                    Finding::new(
+                        "uefi-secure-boot-off",
+                        "Secure Boot is disabled",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .description("Secure Boot is disabled. Bootkits can load unsigned kernels."),
+                );
             }
         }
     }

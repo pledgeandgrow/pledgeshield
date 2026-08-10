@@ -26,8 +26,11 @@ pub fn audit_usb() -> Vec<Finding> {
         }
 
         // Check if USBGuard is installed
-        let guard = Command::new("which").arg("usbguard").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let guard = Command::new("which")
+            .arg("usbguard")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
         if !guard {
             findings.push(Finding::new(
                 "usb-no-guard",
@@ -59,11 +62,17 @@ pub fn list_usb() -> Vec<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(o) = Command::new("system_profiler").args(["SPUSBDataType"]).output() {
+        if let Ok(o) = Command::new("system_profiler")
+            .args(["SPUSBDataType"])
+            .output()
+        {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 let l = line.trim();
-                if l.contains("Vendor ID:") || l.contains("Product ID:") || (l.contains(":") && !l.starts_with(" ")) {
+                if l.contains("Vendor ID:")
+                    || l.contains("Product ID:")
+                    || (l.contains(":") && !l.starts_with(" "))
+                {
                     devices.push(l.to_string());
                 }
             }
@@ -95,7 +104,8 @@ pub fn lockdown_usb(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "usb-lockdown".to_string(),
             success: true,
-            message: "[dry-run] Would install USBGuard with current devices whitelisted.".to_string(),
+            message: "[dry-run] Would install USBGuard with current devices whitelisted."
+                .to_string(),
             findings: vec![],
         };
     }
@@ -103,8 +113,11 @@ pub fn lockdown_usb(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Check if usbguard is installed
-        let installed = Command::new("which").arg("usbguard").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("usbguard")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
             return HardenResult {
@@ -120,11 +133,14 @@ pub fn lockdown_usb(dry_run: bool) -> HardenResult {
         if let Ok(o) = out {
             let policy = String::from_utf8_lossy(&o.stdout);
             let _ = std::fs::write("/etc/usbguard/rules.conf", policy.as_ref());
-            let _ = Command::new("systemctl").args(["enable", "--now", "usbguard"]).output();
+            let _ = Command::new("systemctl")
+                .args(["enable", "--now", "usbguard"])
+                .output();
             return HardenResult {
                 action: "usb-lockdown".to_string(),
                 success: true,
-                message: "USBGuard enabled. Only currently connected devices are allowed.".to_string(),
+                message: "USBGuard enabled. Only currently connected devices are allowed."
+                    .to_string(),
                 findings: vec![],
             };
         }
@@ -151,7 +167,9 @@ pub fn lockdown_usb(dry_run: bool) -> HardenResult {
 pub fn restore_usb() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let _ = Command::new("systemctl").args(["disable", "--now", "usbguard"]).output();
+        let _ = Command::new("systemctl")
+            .args(["disable", "--now", "usbguard"])
+            .output();
         HardenResult {
             action: "usb-restore".to_string(),
             success: true,

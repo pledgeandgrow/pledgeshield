@@ -1,7 +1,6 @@
 /// Bandwidth/traffic monitor — track per-process network usage, flag anomalous data exfiltration.
 use crate::models::{Category, Finding, Severity};
 use std::collections::HashMap;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 /// Per-process network usage snapshot.
@@ -42,14 +41,27 @@ pub fn get_process_traffic() -> Vec<ProcessTraffic> {
                         let mut recv = 0u64;
                         for line in io_content.lines() {
                             if line.starts_with("write_bytes:") {
-                                sent = line.split(':').nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+                                sent = line
+                                    .split(':')
+                                    .nth(1)
+                                    .and_then(|s| s.trim().parse().ok())
+                                    .unwrap_or(0);
                             }
                             if line.starts_with("read_bytes:") {
-                                recv = line.split(':').nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+                                recv = line
+                                    .split(':')
+                                    .nth(1)
+                                    .and_then(|s| s.trim().parse().ok())
+                                    .unwrap_or(0);
                             }
                         }
                         if sent > 0 || recv > 0 {
-                            results.push(ProcessTraffic { pid, name: proc_name, bytes_sent: sent, bytes_recv: recv });
+                            results.push(ProcessTraffic {
+                                pid,
+                                name: proc_name,
+                                bytes_sent: sent,
+                                bytes_recv: recv,
+                            });
                         }
                     }
                 }
@@ -89,7 +101,16 @@ pub fn monitor_traffic(interval: u64, max_runtime: u64, top_n: usize) {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║       PledgeShield Traffic Monitor                        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
-    println!("  Polling every {}s | top {} processes | max runtime: {}s", interval, top_n, if max_runtime == 0 { "∞".to_string() } else { max_runtime.to_string() });
+    println!(
+        "  Polling every {}s | top {} processes | max runtime: {}s",
+        interval,
+        top_n,
+        if max_runtime == 0 {
+            "∞".to_string()
+        } else {
+            max_runtime.to_string()
+        }
+    );
     println!();
 
     let mut prev: HashMap<u32, ProcessTraffic> = HashMap::new();
@@ -115,8 +136,13 @@ pub fn monitor_traffic(interval: u64, max_runtime: u64, top_n: usize) {
         if !deltas.is_empty() {
             println!("  {} — Top {} by bandwidth:", now, top_n.min(deltas.len()));
             for (name, pid, sent, recv) in deltas.iter().take(top_n) {
-                println!("    {:20} pid:{:6}  ↑{}/s  ↓{}/s",
-                    name, pid, format_bytes(*sent / interval), format_bytes(*recv / interval));
+                println!(
+                    "    {:20} pid:{:6}  ↑{}/s  ↓{}/s",
+                    name,
+                    pid,
+                    format_bytes(*sent / interval),
+                    format_bytes(*recv / interval)
+                );
             }
         }
 
@@ -131,8 +157,13 @@ pub fn monitor_traffic(interval: u64, max_runtime: u64, top_n: usize) {
 }
 
 fn format_bytes(b: u64) -> String {
-    if b < 1024 { format!("{}B", b) }
-    else if b < 1048576 { format!("{:.1}KB", b as f64 / 1024.0) }
-    else if b < 1073741824 { format!("{:.1}MB", b as f64 / 1048576.0) }
-    else { format!("{:.1}GB", b as f64 / 1073741824.0) }
+    if b < 1024 {
+        format!("{}B", b)
+    } else if b < 1048576 {
+        format!("{:.1}KB", b as f64 / 1024.0)
+    } else if b < 1073741824 {
+        format!("{:.1}MB", b as f64 / 1048576.0)
+    } else {
+        format!("{:.1}GB", b as f64 / 1073741824.0)
+    }
 }

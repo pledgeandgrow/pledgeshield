@@ -84,7 +84,9 @@ fn random_mac() -> String {
     // Simple LCG for pseudo-random bytes
     let mut state = seed;
     let mut next = || {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((state >> 33) & 0xFF) as u8
     };
 
@@ -104,9 +106,15 @@ pub fn spoof_mac(iface: &str, new_mac: Option<&str>) -> String {
     #[cfg(target_os = "linux")]
     {
         // Bring interface down, set MAC, bring back up
-        let _down = Command::new("ip").args(["link", "set", iface, "down"]).output();
-        let out = Command::new("ip").args(["link", "set", iface, "address", &mac]).output();
-        let _up = Command::new("ip").args(["link", "set", iface, "up"]).output();
+        let _down = Command::new("ip")
+            .args(["link", "set", iface, "down"])
+            .output();
+        let out = Command::new("ip")
+            .args(["link", "set", iface, "address", &mac])
+            .output();
+        let _up = Command::new("ip")
+            .args(["link", "set", iface, "up"])
+            .output();
 
         let ok = out.as_ref().map(|o| o.status.success()).unwrap_or(false);
         if ok {
@@ -118,7 +126,9 @@ pub fn spoof_mac(iface: &str, new_mac: Option<&str>) -> String {
 
     #[cfg(target_os = "macos")]
     {
-        let out = Command::new("ifconfig").args([iface, "ether", &mac]).output();
+        let out = Command::new("ifconfig")
+            .args([iface, "ether", &mac])
+            .output();
         let ok = out.as_ref().map(|o| o.status.success()).unwrap_or(false);
         if ok {
             format!("  ✓ {} MAC set to {}", iface, mac)
@@ -140,7 +150,9 @@ pub fn restore_mac(iface: &str) -> String {
     {
         // On Linux, the permanent MAC can often be read from /sys/class/net/<iface>/address
         // before spoofing, but we don't store it. Best effort: reload the driver.
-        let _down = Command::new("ip").args(["link", "set", iface, "down"]).output();
+        let _down = Command::new("ip")
+            .args(["link", "set", iface, "down"])
+            .output();
 
         // Try to read the permanent address from ethtool
         let perm = Command::new("ethtool")
@@ -158,16 +170,25 @@ pub fn restore_mac(iface: &str) -> String {
             });
 
         if let Some(p) = perm {
-            let out = Command::new("ip").args(["link", "set", iface, "address", &p]).output();
-            let _up = Command::new("ip").args(["link", "set", iface, "up"]).output();
+            let out = Command::new("ip")
+                .args(["link", "set", iface, "address", &p])
+                .output();
+            let _up = Command::new("ip")
+                .args(["link", "set", iface, "up"])
+                .output();
             let ok = out.as_ref().map(|o| o.status.success()).unwrap_or(false);
             if ok {
                 return format!("  ✓ {} MAC restored to {}", iface, p);
             }
         }
 
-        let _up = Command::new("ip").args(["link", "set", iface, "up"]).output();
-        format!("  ⚠ Could not determine permanent MAC for {}. A reboot may fully restore it.", iface)
+        let _up = Command::new("ip")
+            .args(["link", "set", iface, "up"])
+            .output();
+        format!(
+            "  ⚠ Could not determine permanent MAC for {}. A reboot may fully restore it.",
+            iface
+        )
     }
 
     #[cfg(target_os = "macos")]

@@ -4,9 +4,15 @@ use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
 const BLOCKLIST_URLS: &[(&str, &str)] = &[
-    ("StevenBlack", "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"),
+    (
+        "StevenBlack",
+        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+    ),
     ("adaway", "https://adaway.org/hosts.txt"),
-    ("malware", "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-domains.txt"),
+    (
+        "malware",
+        "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-domains.txt",
+    ),
 ];
 
 pub fn audit_hosts() -> Vec<Finding> {
@@ -14,7 +20,10 @@ pub fn audit_hosts() -> Vec<Finding> {
 
     let hosts_path = get_hosts_path();
     if let Ok(content) = std::fs::read_to_string(&hosts_path) {
-        let blocked = content.lines().filter(|l| l.contains("0.0.0.0") || l.contains("127.0.0.1")).count();
+        let blocked = content
+            .lines()
+            .filter(|l| l.contains("0.0.0.0") || l.contains("127.0.0.1"))
+            .count();
         if blocked < 10 {
             findings.push(Finding::new(
                 "hosts-no-blocking",
@@ -35,9 +44,13 @@ pub fn audit_hosts() -> Vec<Finding> {
 
 fn get_hosts_path() -> String {
     #[cfg(windows)]
-    { r"C:\Windows\System32\drivers\etc\hosts".to_string() }
+    {
+        r"C:\Windows\System32\drivers\etc\hosts".to_string()
+    }
     #[cfg(not(windows))]
-    { "/etc/hosts".to_string() }
+    {
+        "/etc/hosts".to_string()
+    }
 }
 
 pub fn update_hosts(dry_run: bool) -> HardenResult {
@@ -47,7 +60,10 @@ pub fn update_hosts(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "hosts-update".to_string(),
             success: true,
-            message: format!("[dry-run] Would download blocklists and add to {}", hosts_path),
+            message: format!(
+                "[dry-run] Would download blocklists and add to {}",
+                hosts_path
+            ),
             findings: vec![],
         };
     }
@@ -67,12 +83,18 @@ pub fn update_hosts(dry_run: bool) -> HardenResult {
     // Download and append blocklists
     let mut total_blocked = 0;
     for (name, url) in BLOCKLIST_URLS {
-        if let Ok(out) = Command::new("curl").args(["-s", "--max-time", "30", url]).output() {
+        if let Ok(out) = Command::new("curl")
+            .args(["-s", "--max-time", "30", url])
+            .output()
+        {
             let list = String::from_utf8_lossy(&out.stdout);
-            let count = list.lines()
+            let count = list
+                .lines()
                 .filter(|l| {
                     let l = l.trim();
-                    !l.is_empty() && !l.starts_with('#') && (l.contains("0.0.0.0") || l.contains("127.0.0.1"))
+                    !l.is_empty()
+                        && !l.starts_with('#')
+                        && (l.contains("0.0.0.0") || l.contains("127.0.0.1"))
                 })
                 .count();
             content.push_str(&format!("# --- {} ({} entries) ---\n", name, count));
@@ -97,7 +119,10 @@ pub fn update_hosts(dry_run: bool) -> HardenResult {
         Ok(()) => HardenResult {
             action: "hosts-update".to_string(),
             success: true,
-            message: format!("Added {} blocked domains to {} (backup at {})", total_blocked, hosts_path, backup),
+            message: format!(
+                "Added {} blocked domains to {} (backup at {})",
+                total_blocked, hosts_path, backup
+            ),
             findings: vec![],
         },
         Err(e) => HardenResult {
@@ -172,8 +197,11 @@ pub fn add_custom_block(domain: &str) -> HardenResult {
 
 pub fn count_blocked() -> usize {
     let hosts_path = get_hosts_path();
-    std::fs::read_to_string(&hosts_path).unwrap_or_default()
+    std::fs::read_to_string(&hosts_path)
+        .unwrap_or_default()
         .lines()
-        .filter(|l| l.trim_start().starts_with("0.0.0.0") || l.trim_start().starts_with("127.0.0.1"))
+        .filter(|l| {
+            l.trim_start().starts_with("0.0.0.0") || l.trim_start().starts_with("127.0.0.1")
+        })
         .count()
 }

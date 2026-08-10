@@ -13,7 +13,9 @@ pub fn audit_module_signatures() -> Vec<Finding> {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines().skip(1) {
                 let name = line.split_whitespace().next().unwrap_or("");
-                if name.is_empty() { continue; }
+                if name.is_empty() {
+                    continue;
+                }
 
                 // Check module info for signature
                 let out2 = Command::new("modinfo").arg(name).output();
@@ -37,7 +39,9 @@ pub fn audit_module_signatures() -> Vec<Finding> {
         }
 
         // Check if kernel enforces module signing
-        let out = Command::new("cat").arg("/proc/sys/kernel/modules_disabled").output();
+        let out = Command::new("cat")
+            .arg("/proc/sys/kernel/modules_disabled")
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
             if s == "0" {
@@ -54,7 +58,9 @@ pub fn audit_module_signatures() -> Vec<Finding> {
 
         // Check CONFIG_MODULE_SIG_FORCE in kernel config
         if let Ok(config) = std::fs::read_to_string("/boot/config-$(uname -r)") {
-            if config.contains("CONFIG_MODULE_SIG_FORCE=n") || !config.contains("CONFIG_MODULE_SIG_FORCE=y") {
+            if config.contains("CONFIG_MODULE_SIG_FORCE=n")
+                || !config.contains("CONFIG_MODULE_SIG_FORCE=y")
+            {
                 // Module signing is not enforced at kernel level
             }
         }

@@ -9,19 +9,35 @@ pub fn audit_systemd() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Get all unit files
-        let unit_dirs = ["/etc/systemd/system", "/usr/lib/systemd/system", "/run/systemd/system"];
+        let unit_dirs = [
+            "/etc/systemd/system",
+            "/usr/lib/systemd/system",
+            "/run/systemd/system",
+        ];
         for dir in &unit_dirs {
-            if !Path::new(dir).exists() { continue; }
+            if !Path::new(dir).exists() {
+                continue;
+            }
             scan_systemd_dir(dir, &mut findings);
         }
 
         // Check running services for sandboxing
-        let out = Command::new("systemctl").args(["list-units", "--type=service", "--state=running", "--no-pager", "--no-legend"]).output();
+        let out = Command::new("systemctl")
+            .args([
+                "list-units",
+                "--type=service",
+                "--state=running",
+                "--no-pager",
+                "--no-legend",
+            ])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
                 let unit = line.split_whitespace().next().unwrap_or("");
-                if unit.is_empty() { continue; }
+                if unit.is_empty() {
+                    continue;
+                }
 
                 // Get unit properties
                 let out2 = Command::new("systemctl")
@@ -34,7 +50,10 @@ pub fn audit_systemd() -> Vec<Finding> {
                     if props.contains("User=root") || props.contains("User=") == false {
                         if !props.contains("PrivateTmp=yes") && !props.contains("ProtectSystem=") {
                             // Only flag non-essential services
-                            let essential = ["systemd", "dbus", "networkd", "resolved", "logind", "journal", "udev", "init"];
+                            let essential = [
+                                "systemd", "dbus", "networkd", "resolved", "logind", "journal",
+                                "udev", "init",
+                            ];
                             if !essential.iter().any(|e| unit.contains(e)) {
                                 findings.push(Finding::new(
                                     &format!("systemd-no-sandbox-{}", unit.replace('.', "_")),
@@ -63,7 +82,9 @@ fn scan_systemd_dir(dir: &str, findings: &mut Vec<Finding>) {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().to_string();
-            if !name.ends_with(".service") { continue; }
+            if !name.ends_with(".service") {
+                continue;
+            }
 
             if let Ok(content) = std::fs::read_to_string(&path) {
                 // Check ExecStart for suspicious paths
@@ -72,9 +93,16 @@ fn scan_systemd_dir(dir: &str, findings: &mut Vec<Finding>) {
                     if line.starts_with("ExecStart=") {
                         let exec = line.strip_prefix("ExecStart=").unwrap_or("");
                         // Remove quotes and arguments
-                        let exec_path = exec.trim_start_matches('"').split_whitespace().next().unwrap_or("");
+                        let exec_path = exec
+                            .trim_start_matches('"')
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("");
 
-                        if exec_path.starts_with("/tmp/") || exec_path.starts_with("/dev/shm/") || exec_path.starts_with("/var/tmp/") {
+                        if exec_path.starts_with("/tmp/")
+                            || exec_path.starts_with("/dev/shm/")
+                            || exec_path.starts_with("/var/tmp/")
+                        {
                             findings.push(Finding::new(
                                 &format!("systemd-tmp-exec-{}", name.replace('.', "_")),
                                 &format!("Unit {} executes from temp: {}", name, exec_path),
@@ -99,7 +127,9 @@ fn scan_systemd_dir(dir: &str, findings: &mut Vec<Finding>) {
                     }
 
                     // Check for User=root with no hardening
-                    if line.starts_with("User=root") || (line.starts_with("User=") && !content.contains("ProtectSystem")) {
+                    if line.starts_with("User=root")
+                        || (line.starts_with("User=") && !content.contains("ProtectSystem"))
+                    {
                         // Flag only if the service is not a known system service
                     }
                 }

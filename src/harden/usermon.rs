@@ -16,14 +16,20 @@ pub fn audit_user_changes() -> Vec<Finding> {
         let curr_users = current.get("users").unwrap_or(&empty);
         let curr_set: HashSet<&str> = curr_users.split(',').collect();
         for user in curr_set.difference(&base_set) {
-            if user.is_empty() { continue; }
-            findings.push(Finding::new(
-                &format!("usermon-new-{}", user),
-                &format!("New user account: {}", user),
-                Severity::High,
-                Category::Privileges,
-            )
-            .description("A new user account was created since last check. Verify this is authorized."));
+            if user.is_empty() {
+                continue;
+            }
+            findings.push(
+                Finding::new(
+                    &format!("usermon-new-{}", user),
+                    &format!("New user account: {}", user),
+                    Severity::High,
+                    Category::Privileges,
+                )
+                .description(
+                    "A new user account was created since last check. Verify this is authorized.",
+                ),
+            );
         }
     }
 
@@ -36,13 +42,17 @@ pub fn audit_user_changes() -> Vec<Finding> {
                 if parts.len() >= 3 {
                     if let Ok(uid) = parts[2].parse::<u32>() {
                         if uid == 0 && parts[0] != "root" {
-                            findings.push(Finding::new(
-                                &format!("usermon-uid0-{}", parts[0]),
-                                &format!("Non-root user with UID 0: {}", parts[0]),
-                                Severity::Critical,
-                                Category::Privileges,
-                            )
-                            .description("A non-root user has UID 0, giving them full root privileges!"));
+                            findings.push(
+                                Finding::new(
+                                    &format!("usermon-uid0-{}", parts[0]),
+                                    &format!("Non-root user with UID 0: {}", parts[0]),
+                                    Severity::Critical,
+                                    Category::Privileges,
+                                )
+                                .description(
+                                    "A non-root user has UID 0, giving them full root privileges!",
+                                ),
+                            );
                         }
                     }
                 }
@@ -111,7 +121,8 @@ fn get_current_state() -> HashMap<String, String> {
     #[cfg(unix)]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/passwd") {
-            let users: Vec<String> = content.lines()
+            let users: Vec<String> = content
+                .lines()
                 .filter_map(|l| l.split(':').next().map(String::from))
                 .collect();
             state.insert("users".to_string(), users.join(","));
@@ -121,7 +132,10 @@ fn get_current_state() -> HashMap<String, String> {
         {
             let out = Command::new("ls").args(["-la", "/etc/sudoers.d/"]).output();
             if let Ok(o) = out {
-                state.insert("sudoers".to_string(), String::from_utf8_lossy(&o.stdout).to_string());
+                state.insert(
+                    "sudoers".to_string(),
+                    String::from_utf8_lossy(&o.stdout).to_string(),
+                );
             }
         }
     }
@@ -152,9 +166,7 @@ fn save_baseline(state: &HashMap<String, String>) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let content: Vec<String> = state.iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect();
+    let content: Vec<String> = state.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
     let _ = std::fs::write(&path, content.join("\n"));
 }
 

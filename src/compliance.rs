@@ -72,7 +72,10 @@ pub fn generate_compliance_report(findings: &[Finding]) -> String {
     let mut buf = String::new();
 
     buf.push_str("── Compliance Mapping ─────────────────────────────────\n");
-    buf.push_str(&format!("{:<30} {:<15} {:<15} {:<10}\n", "Finding ID", "CIS Control", "NIST 800-53", "Severity"));
+    buf.push_str(&format!(
+        "{:<30} {:<15} {:<15} {:<10}\n",
+        "Finding ID", "CIS Control", "NIST 800-53", "Severity"
+    ));
     buf.push_str(&"─".repeat(75));
     buf.push('\n');
 
@@ -118,7 +121,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_uac() {
-        let finding = Finding::new("win-uac-disabled", "UAC Disabled", Severity::High, Category::Config);
+        let finding = Finding::new(
+            "win-uac-disabled",
+            "UAC Disabled",
+            Severity::High,
+            Category::Config,
+        );
         let mapping = map_finding(&finding);
         assert_eq!(mapping.cis_control, Some("CIS 1.1".to_string()));
         assert_eq!(mapping.nist_control, Some("AC-3".to_string()));
@@ -126,7 +134,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_firewall() {
-        let finding = Finding::new("win-firewall-disabled", "Firewall Disabled", Severity::High, Category::Config);
+        let finding = Finding::new(
+            "win-firewall-disabled",
+            "Firewall Disabled",
+            Severity::High,
+            Category::Config,
+        );
         let mapping = map_finding(&finding);
         assert_eq!(mapping.cis_control, Some("CIS 9.1".to_string()));
         assert_eq!(mapping.nist_control, Some("SC-7".to_string()));
@@ -134,7 +147,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_macos_filevault() {
-        let finding = Finding::new("mac-filevault-disabled", "FileVault Disabled", Severity::High, Category::Config);
+        let finding = Finding::new(
+            "mac-filevault-disabled",
+            "FileVault Disabled",
+            Severity::High,
+            Category::Config,
+        );
         let mapping = map_finding(&finding);
         assert_eq!(mapping.cis_control, Some("CIS 5.1".to_string()));
         assert_eq!(mapping.nist_control, Some("SC-28".to_string()));
@@ -142,7 +160,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_linux_ufw() {
-        let finding = Finding::new("linux-ufw-disabled", "UFW Disabled", Severity::High, Category::Config);
+        let finding = Finding::new(
+            "linux-ufw-disabled",
+            "UFW Disabled",
+            Severity::High,
+            Category::Config,
+        );
         let mapping = map_finding(&finding);
         assert_eq!(mapping.cis_control, Some("CIS 3.5.1".to_string()));
         assert_eq!(mapping.nist_control, Some("SC-7".to_string()));
@@ -150,7 +173,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_cve() {
-        let finding = Finding::new("cve-2024-1234", "CVE 2024-1234", Severity::Critical, Category::Cve);
+        let finding = Finding::new(
+            "cve-2024-1234",
+            "CVE 2024-1234",
+            Severity::Critical,
+            Category::Cve,
+        );
         let mapping = map_finding(&finding);
         assert_eq!(mapping.cis_control, Some("CIS 3.4".to_string()));
         assert_eq!(mapping.nist_control, Some("SI-2".to_string()));
@@ -158,7 +186,12 @@ mod tests {
 
     #[test]
     fn test_map_finding_unknown() {
-        let finding = Finding::new("unknown-finding", "Unknown", Severity::Low, Category::Config);
+        let finding = Finding::new(
+            "unknown-finding",
+            "Unknown",
+            Severity::Low,
+            Category::Config,
+        );
         let mapping = map_finding(&finding);
         assert!(mapping.cis_control.is_none());
         assert!(mapping.nist_control.is_none());
@@ -168,8 +201,18 @@ mod tests {
     fn test_compliance_summary() {
         let findings = vec![
             Finding::new("win-uac-disabled", "UAC", Severity::High, Category::Config),
-            Finding::new("win-firewall-disabled", "Firewall", Severity::High, Category::Config),
-            Finding::new("unknown-finding", "Unknown", Severity::Low, Category::Config),
+            Finding::new(
+                "win-firewall-disabled",
+                "Firewall",
+                Severity::High,
+                Category::Config,
+            ),
+            Finding::new(
+                "unknown-finding",
+                "Unknown",
+                Severity::Low,
+                Category::Config,
+            ),
         ];
 
         let (mapped, cis, nist) = compliance_summary(&findings);
@@ -180,9 +223,12 @@ mod tests {
 
     #[test]
     fn test_generate_compliance_report() {
-        let findings = vec![
-            Finding::new("win-uac-disabled", "UAC", Severity::High, Category::Config),
-        ];
+        let findings = vec![Finding::new(
+            "win-uac-disabled",
+            "UAC",
+            Severity::High,
+            Category::Config,
+        )];
 
         let report = generate_compliance_report(&findings);
         assert!(report.contains("Compliance Mapping"));

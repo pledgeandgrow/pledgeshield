@@ -1,8 +1,8 @@
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 use pledgeshield::cli::{Cli, Commands, HardenAction, OutputFormat, TorAction, VpnAction};
 use pledgeshield::models::{ScanResult, Severity};
 use pledgeshield::modules::{Module, ModuleRegistry};
-use indicatif::{ProgressBar, ProgressStyle};
 use std::io::Write;
 
 #[tokio::main]
@@ -67,7 +67,11 @@ async fn main() {
         Commands::Trend { limit } => {
             run_trend(limit);
         }
-        Commands::Schedule { cron, command, remove } => {
+        Commands::Schedule {
+            cron,
+            command,
+            remove,
+        } => {
             run_schedule(cron, command, remove);
         }
         Commands::Harden { action } => {
@@ -76,7 +80,13 @@ async fn main() {
         Commands::Vpn { action } => {
             run_vpn(action);
         }
-        Commands::Monitor { interval, no_ports, no_processes, no_firewall, max_runtime } => {
+        Commands::Monitor {
+            interval,
+            no_ports,
+            no_processes,
+            no_firewall,
+            max_runtime,
+        } => {
             let config = pledgeshield::monitor::MonitorConfig {
                 interval,
                 watch_ports: !no_ports,
@@ -156,7 +166,10 @@ async fn run_scan(
     }
 
     let total_modules = modules_to_run.len() + if effective_cve { 1 } else { 0 };
-    println!("PledgeShield — scanning {} modules...\n", modules_to_run.len());
+    println!(
+        "PledgeShield — scanning {} modules...\n",
+        modules_to_run.len()
+    );
 
     let pb = ProgressBar::new(total_modules as u64);
     pb.set_style(
@@ -268,7 +281,11 @@ async fn run_scan(
     // Apply threshold limits
     if let Some(ref cfg) = &cfg {
         if let Some(max_info) = cfg.thresholds.max_info {
-            let info_count = result.findings.iter().filter(|f| f.severity == Severity::Info).count();
+            let info_count = result
+                .findings
+                .iter()
+                .filter(|f| f.severity == Severity::Info)
+                .count();
             if info_count > max_info {
                 let mut kept = 0;
                 result.findings.retain(|f| {
@@ -341,16 +358,26 @@ async fn run_scan(
     if compliance {
         let (mapped, cis, nist) = pledgeshield::compliance::compliance_summary(&result.findings);
         println!("\n── Compliance Mapping ──────────────────────────");
-        println!("  {} of {} findings mapped (CIS: {}, NIST: {})",
-            mapped, result.findings.len(), cis, nist);
-        print!("{}", pledgeshield::compliance::generate_compliance_report(&result.findings));
+        println!(
+            "  {} of {} findings mapped (CIS: {}, NIST: {})",
+            mapped,
+            result.findings.len(),
+            cis,
+            nist
+        );
+        print!(
+            "{}",
+            pledgeshield::compliance::generate_compliance_report(&result.findings)
+        );
     }
 
     // Record scan in history database
-    let should_save_history = save_history
-        || cfg.as_ref().map(|c| c.history.enabled).unwrap_or(false);
+    let should_save_history =
+        save_history || cfg.as_ref().map(|c| c.history.enabled).unwrap_or(false);
     if should_save_history {
-        let hist_path = cfg.as_ref().and_then(|c| c.history.path.as_deref())
+        let hist_path = cfg
+            .as_ref()
+            .and_then(|c| c.history.path.as_deref())
             .map(std::path::PathBuf::from);
         match pledgeshield::history::ScanHistory::open(hist_path.as_deref()) {
             Ok(history) => {
@@ -374,7 +401,9 @@ async fn run_scan(
                 webhook_type: pledgeshield::notify::webhook::WebhookType::from_url(&url),
                 url,
             };
-            if let Err(e) = pledgeshield::notify::webhook::send_webhook_notification(&wh_cfg, &result).await {
+            if let Err(e) =
+                pledgeshield::notify::webhook::send_webhook_notification(&wh_cfg, &result).await
+            {
                 eprintln!("Webhook notification failed: {}", e);
             } else {
                 println!("Webhook notification sent.");
@@ -400,7 +429,12 @@ async fn run_scan(
 
     // Exit code based on fail_on threshold
     if let Some(ref cfg) = &cfg {
-        if let Some(fail_sev) = cfg.thresholds.fail_on.as_deref().and_then(Severity::from_str) {
+        if let Some(fail_sev) = cfg
+            .thresholds
+            .fail_on
+            .as_deref()
+            .and_then(Severity::from_str)
+        {
             let has_fail = result.findings.iter().any(|f| f.severity <= fail_sev);
             if has_fail {
                 std::process::exit(2);
@@ -449,14 +483,12 @@ fn run_history(limit: u32, clear: bool) {
 
 fn run_trend(limit: u32) {
     match pledgeshield::history::ScanHistory::open(None) {
-        Ok(history) => {
-            match pledgeshield::trend::get_trend_data(&history, limit) {
-                Ok(trend) => {
-                    print!("{}", pledgeshield::trend::format_dashboard(&trend));
-                }
-                Err(e) => eprintln!("Failed to read trend data: {}", e),
+        Ok(history) => match pledgeshield::trend::get_trend_data(&history, limit) {
+            Ok(trend) => {
+                print!("{}", pledgeshield::trend::format_dashboard(&trend));
             }
-        }
+            Err(e) => eprintln!("Failed to read trend data: {}", e),
+        },
         Err(e) => eprintln!("Failed to open history database: {}", e),
     }
 }
@@ -478,7 +510,11 @@ fn run_schedule(cron: String, command: String, remove: bool) {
 
 fn run_harden(action: HardenAction) {
     match action {
-        HardenAction::Ports { all, dry_run, restore } => {
+        HardenAction::Ports {
+            all,
+            dry_run,
+            restore,
+        } => {
             if restore {
                 println!("\n── Restoring firewall (removing PledgeShield block rules) ──");
                 for r in pledgeshield::harden::ports::restore_ports() {
@@ -501,7 +537,12 @@ fn run_harden(action: HardenAction) {
                 println!("{}", r);
             }
         }
-        HardenAction::Mac { interface, mac, list, restore } => {
+        HardenAction::Mac {
+            interface,
+            mac,
+            list,
+            restore,
+        } => {
             if list {
                 let ifaces = pledgeshield::harden::mac::list_interfaces();
                 if ifaces.is_empty() {
@@ -547,7 +588,13 @@ fn run_harden(action: HardenAction) {
                 println!("{}", r);
             }
         }
-        HardenAction::Firewall { enable, harden, allow_ssh, disable, dry_run } => {
+        HardenAction::Firewall {
+            enable,
+            harden,
+            allow_ssh,
+            disable,
+            dry_run,
+        } => {
             if disable {
                 println!("\n── Disabling firewall ───────────────────────────");
                 let r = pledgeshield::harden::firewall::disable_firewall();
@@ -584,11 +631,16 @@ fn run_harden(action: HardenAction) {
                 for f in &findings {
                     println!("  [{}] {} — {}", f.severity, f.id, f.title);
                 }
-                println!("\n  Run: pledgeshield harden firewall --harden{} to fix.",
-                    if allow_ssh { " --allow-ssh" } else { "" });
+                println!(
+                    "\n  Run: pledgeshield harden firewall --harden{} to fix.",
+                    if allow_ssh { " --allow-ssh" } else { "" }
+                );
             }
         }
-        HardenAction::Browser { dry_run, clear_data } => {
+        HardenAction::Browser {
+            dry_run,
+            clear_data,
+        } => {
             if clear_data {
                 println!("\n── Clearing browser data ────────────────────────");
                 println!("  (Make sure browsers are closed.)");
@@ -614,8 +666,12 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Network & Traffic ===
-
-        HardenAction::Doh { enable, disable, list, dry_run } => {
+        HardenAction::Doh {
+            enable,
+            disable,
+            list,
+            dry_run,
+        } => {
             if list {
                 println!("\n── Available DoH providers ──────────────────────");
                 for p in pledgeshield::harden::doh::list_providers() {
@@ -630,7 +686,10 @@ fn run_harden(action: HardenAction) {
             }
             if let Some(provider) = enable {
                 println!("\n── Enabling DoH ─────────────────────────────────");
-                println!("{}", pledgeshield::harden::doh::enable_doh(&provider, dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::doh::enable_doh(&provider, dry_run)
+                );
                 return;
             }
             // Audit
@@ -665,7 +724,11 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Arp { monitor, interval, max_runtime } => {
+        HardenAction::Arp {
+            monitor,
+            interval,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::arp::monitor_arp(interval, max_runtime);
                 return;
@@ -681,7 +744,11 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Isolation { allow, disable, dry_run } => {
+        HardenAction::Isolation {
+            allow,
+            disable,
+            dry_run,
+        } => {
             if disable {
                 println!("\n── Disabling network isolation ──────────────────");
                 println!("{}", pledgeshield::harden::isolation::disable_isolation());
@@ -698,7 +765,12 @@ fn run_harden(action: HardenAction) {
             println!("         pledgeshield harden isolation --disable");
         }
 
-        HardenAction::Proxy { set, clear, show, dry_run } => {
+        HardenAction::Proxy {
+            set,
+            clear,
+            show,
+            dry_run,
+        } => {
             if show {
                 println!("\n── Current proxy settings ───────────────────────");
                 print!("{}", pledgeshield::harden::proxy::show_proxy());
@@ -715,7 +787,12 @@ fn run_harden(action: HardenAction) {
                 if parts.len() == 3 {
                     if let Ok(port) = parts[2].parse::<u16>() {
                         println!("\n── Setting proxy ────────────────────────────────");
-                        println!("{}", pledgeshield::harden::proxy::set_proxy(parts[0], parts[1], port, dry_run));
+                        println!(
+                            "{}",
+                            pledgeshield::harden::proxy::set_proxy(
+                                parts[0], parts[1], port, dry_run
+                            )
+                        );
                         return;
                     }
                 }
@@ -727,7 +804,12 @@ fn run_harden(action: HardenAction) {
             println!("         pledgeshield harden proxy --clear");
         }
 
-        HardenAction::Ipv6 { disable, firewall, restore, dry_run } => {
+        HardenAction::Ipv6 {
+            disable,
+            firewall,
+            restore,
+            dry_run,
+        } => {
             if restore {
                 println!("\n── Restoring IPv6 ───────────────────────────────");
                 println!("{}", pledgeshield::harden::ipv6::restore_ipv6());
@@ -754,9 +836,18 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Hosts { update, restore, block, count, dry_run } => {
+        HardenAction::Hosts {
+            update,
+            restore,
+            block,
+            count,
+            dry_run,
+        } => {
             if count {
-                println!("\n  {} domains blocked in hosts file.", pledgeshield::harden::hosts::count_blocked());
+                println!(
+                    "\n  {} domains blocked in hosts file.",
+                    pledgeshield::harden::hosts::count_blocked()
+                );
                 return;
             }
             if restore {
@@ -776,7 +867,10 @@ fn run_harden(action: HardenAction) {
             }
             let findings = pledgeshield::harden::hosts::audit_hosts();
             if findings.is_empty() {
-                println!("\n  ✓ Hosts file has good domain blocking ({} entries).", pledgeshield::harden::hosts::count_blocked());
+                println!(
+                    "\n  ✓ Hosts file has good domain blocking ({} entries).",
+                    pledgeshield::harden::hosts::count_blocked()
+                );
             } else {
                 println!("\n── Hosts file issues ────────────────────────────");
                 for f in &findings {
@@ -785,7 +879,12 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Traffic { monitor, interval, max_runtime, top } => {
+        HardenAction::Traffic {
+            monitor,
+            interval,
+            max_runtime,
+            top,
+        } => {
             if monitor {
                 pledgeshield::harden::traffic::monitor_traffic(interval, max_runtime, top);
                 return;
@@ -802,27 +901,47 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Identity & Privacy ===
-
-        HardenAction::Hostname { randomize, install_boot, show, dry_run } => {
+        HardenAction::Hostname {
+            randomize,
+            install_boot,
+            show,
+            dry_run,
+        } => {
             if show {
-                println!("\n  Current hostname: {}", pledgeshield::harden::hostname::get_hostname());
+                println!(
+                    "\n  Current hostname: {}",
+                    pledgeshield::harden::hostname::get_hostname()
+                );
                 return;
             }
             if install_boot {
                 println!("\n── Installing boot-time hostname randomizer ─────");
-                println!("{}", pledgeshield::harden::hostname::install_boot_randomizer(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::hostname::install_boot_randomizer(dry_run)
+                );
                 return;
             }
             if randomize {
                 println!("\n── Randomizing hostname ─────────────────────────");
-                println!("{}", pledgeshield::harden::hostname::randomize_hostname(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::hostname::randomize_hostname(dry_run)
+                );
                 return;
             }
-            println!("\n  Current hostname: {}", pledgeshield::harden::hostname::get_hostname());
+            println!(
+                "\n  Current hostname: {}",
+                pledgeshield::harden::hostname::get_hostname()
+            );
             println!("  Use --randomize to change, --install-boot for boot-time randomization.");
         }
 
-        HardenAction::Useragent { set, reset, dry_run } => {
+        HardenAction::Useragent {
+            set,
+            reset,
+            dry_run,
+        } => {
             if reset {
                 println!("\n── Resetting user-agent ─────────────────────────");
                 for r in pledgeshield::harden::useragent::reset_user_agent() {
@@ -842,7 +961,11 @@ fn run_harden(action: HardenAction) {
             println!("         pledgeshield harden useragent --reset");
         }
 
-        HardenAction::Webrtc { block, restore, dry_run } => {
+        HardenAction::Webrtc {
+            block,
+            restore,
+            dry_run,
+        } => {
             if restore {
                 println!("\n── Restoring WebRTC ─────────────────────────────");
                 for r in pledgeshield::harden::webrtc::restore_webrtc() {
@@ -868,7 +991,13 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Bluetooth { list, hide, disable, remove, dry_run } => {
+        HardenAction::Bluetooth {
+            list,
+            hide,
+            disable,
+            remove,
+            dry_run,
+        } => {
             if list {
                 println!("\n── Paired Bluetooth devices ─────────────────────");
                 let devices = pledgeshield::harden::bluetooth::list_paired();
@@ -888,12 +1017,18 @@ fn run_harden(action: HardenAction) {
             }
             if disable {
                 println!("\n── Disabling Bluetooth ──────────────────────────");
-                println!("{}", pledgeshield::harden::bluetooth::disable_bluetooth(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::bluetooth::disable_bluetooth(dry_run)
+                );
                 return;
             }
             if hide {
                 println!("\n── Hiding Bluetooth discoverability ─────────────");
-                println!("{}", pledgeshield::harden::bluetooth::hide_discoverable(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::bluetooth::hide_discoverable(dry_run)
+                );
                 return;
             }
             let findings = pledgeshield::harden::bluetooth::audit_bluetooth();
@@ -907,7 +1042,10 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Devices { block_camera, restore_camera } => {
+        HardenAction::Devices {
+            block_camera,
+            restore_camera,
+        } => {
             if restore_camera {
                 println!("\n── Restoring camera access ──────────────────────");
                 for msg in pledgeshield::harden::devices::restore_camera() {
@@ -933,10 +1071,17 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Clipboard { clear, watch, dry_run } => {
+        HardenAction::Clipboard {
+            clear,
+            watch,
+            dry_run,
+        } => {
             if let Some(secs) = watch {
                 println!("\n── Installing clipboard watcher ─────────────────");
-                println!("{}", pledgeshield::harden::clipboard::install_clipboard_watcher(secs, dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::clipboard::install_clipboard_watcher(secs, dry_run)
+                );
                 return;
             }
             if clear {
@@ -956,8 +1101,12 @@ fn run_harden(action: HardenAction) {
         }
 
         // === System Hardening ===
-
-        HardenAction::Usb { list, lockdown, restore, dry_run } => {
+        HardenAction::Usb {
+            list,
+            lockdown,
+            restore,
+            dry_run,
+        } => {
             if list {
                 println!("\n── Connected USB devices ────────────────────────");
                 let devices = pledgeshield::harden::usb::list_usb();
@@ -991,7 +1140,11 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Kernel { list, lockdown, dry_run } => {
+        HardenAction::Kernel {
+            list,
+            lockdown,
+            dry_run,
+        } => {
             if list {
                 println!("\n── Loaded kernel modules ────────────────────────");
                 let modules = pledgeshield::harden::kernel::list_modules();
@@ -1051,7 +1204,11 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Integrity { baseline, check, remove } => {
+        HardenAction::Integrity {
+            baseline,
+            check,
+            remove,
+        } => {
             if remove {
                 println!("\n── Removing integrity baseline ──────────────────");
                 println!("{}", pledgeshield::harden::integrity::remove_baseline());
@@ -1090,15 +1247,25 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Lockscreen { enable, disable_autologin, dry_run } => {
+        HardenAction::Lockscreen {
+            enable,
+            disable_autologin,
+            dry_run,
+        } => {
             if disable_autologin {
                 println!("\n── Disabling auto-login ─────────────────────────");
-                println!("{}", pledgeshield::harden::lockscreen::disable_autologin(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::lockscreen::disable_autologin(dry_run)
+                );
                 return;
             }
             if let Some(timeout) = enable {
                 println!("\n── Enabling lock screen ─────────────────────────");
-                println!("{}", pledgeshield::harden::lockscreen::enable_lockscreen(timeout, dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::lockscreen::enable_lockscreen(timeout, dry_run)
+                );
                 return;
             }
             let findings = pledgeshield::harden::lockscreen::audit_lockscreen();
@@ -1132,7 +1299,6 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Detection & Response ===
-
         HardenAction::Rootkit => {
             println!("\n── Scanning for rootkits ────────────────────────");
             let findings = pledgeshield::harden::rootkit::scan_rootkits();
@@ -1146,7 +1312,12 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Canary { plant, check, remove, dry_run } => {
+        HardenAction::Canary {
+            plant,
+            check,
+            remove,
+            dry_run,
+        } => {
             if remove {
                 println!("\n── Removing canary files ────────────────────────");
                 println!("{}", pledgeshield::harden::canary::remove_canaries());
@@ -1195,7 +1366,10 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Dnsmon { monitor, max_runtime } => {
+        HardenAction::Dnsmon {
+            monitor,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::dnsmon::monitor_dns(max_runtime);
                 return;
@@ -1212,8 +1386,11 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Privacy Tools ===
-
-        HardenAction::Shredder { file, passes, dry_run } => {
+        HardenAction::Shredder {
+            file,
+            passes,
+            dry_run,
+        } => {
             if let Some(path) = file {
                 let p = std::path::Path::new(&path);
                 if p.is_dir() {
@@ -1223,14 +1400,23 @@ fn run_harden(action: HardenAction) {
                     }
                 } else {
                     println!("\n── Shredding file ───────────────────────────────");
-                    println!("{}", pledgeshield::harden::shredder::shred_file(&path, passes, dry_run));
+                    println!(
+                        "{}",
+                        pledgeshield::harden::shredder::shred_file(&path, passes, dry_run)
+                    );
                 }
                 return;
             }
             println!("\n  Usage: pledgeshield harden shredder --file <path> [--passes 3]");
         }
 
-        HardenAction::Memwipe { wipe_swap, encrypt_swap, install_ramwipe, drop_caches, dry_run } => {
+        HardenAction::Memwipe {
+            wipe_swap,
+            encrypt_swap,
+            install_ramwipe,
+            drop_caches,
+            dry_run,
+        } => {
             if drop_caches {
                 println!("\n── Dropping kernel caches ───────────────────────");
                 println!("{}", pledgeshield::harden::memwipe::drop_caches());
@@ -1238,12 +1424,18 @@ fn run_harden(action: HardenAction) {
             }
             if install_ramwipe {
                 println!("\n── Installing RAM wipe on shutdown ──────────────");
-                println!("{}", pledgeshield::harden::memwipe::install_ram_wipe(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::memwipe::install_ram_wipe(dry_run)
+                );
                 return;
             }
             if encrypt_swap {
                 println!("\n── Setting up encrypted swap ────────────────────");
-                println!("{}", pledgeshield::harden::memwipe::setup_encrypted_swap(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::memwipe::setup_encrypted_swap(dry_run)
+                );
                 return;
             }
             if wipe_swap {
@@ -1263,7 +1455,12 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Metadata { strip, output, list, dry_run } => {
+        HardenAction::Metadata {
+            strip,
+            output,
+            list,
+            dry_run,
+        } => {
             if let Some(path) = list {
                 println!("\n── Metadata in {} ──────────────────────", path);
                 let info = pledgeshield::harden::metadata::list_metadata(&path);
@@ -1278,7 +1475,14 @@ fn run_harden(action: HardenAction) {
             }
             if let Some(path) = strip {
                 println!("\n── Stripping metadata ───────────────────────────");
-                println!("{}", pledgeshield::harden::metadata::strip_metadata(&path, output.as_deref(), dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::metadata::strip_metadata(
+                        &path,
+                        output.as_deref(),
+                        dry_run
+                    )
+                );
                 return;
             }
             println!("\n  Usage: pledgeshield harden metadata --strip <file> [--output <path>]");
@@ -1286,7 +1490,6 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Boot & Firmware ===
-
         HardenAction::Uefi => {
             let findings = pledgeshield::harden::uefi::audit_uefi();
             if findings.is_empty() {
@@ -1360,7 +1563,6 @@ fn run_harden(action: HardenAction) {
         }
 
         // === File & Data Protection ===
-
         HardenAction::Fileperms { fix, dry_run } => {
             if fix {
                 println!("\n── Fixing file permissions ──────────────────────");
@@ -1392,7 +1594,10 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Exfil { monitor, max_runtime } => {
+        HardenAction::Exfil {
+            monitor,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::exfil::monitor_exfiltration(max_runtime);
                 return;
@@ -1411,7 +1616,10 @@ fn run_harden(action: HardenAction) {
         HardenAction::Backup { dir, verify, hash } => {
             if let (Some(path), Some(expected)) = (verify, hash) {
                 println!("\n── Verifying backup hash ────────────────────────");
-                println!("{}", pledgeshield::harden::backup::verify_backup_hash(&path, &expected));
+                println!(
+                    "{}",
+                    pledgeshield::harden::backup::verify_backup_hash(&path, &expected)
+                );
                 return;
             }
             let backup_dir = dir.as_deref().unwrap_or("/var/backups");
@@ -1426,7 +1634,11 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Diskmon { monitor, interval, max_runtime } => {
+        HardenAction::Diskmon {
+            monitor,
+            interval,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::diskmon::monitor_disk_usage(interval, max_runtime);
                 return;
@@ -1455,7 +1667,6 @@ fn run_harden(action: HardenAction) {
         }
 
         // === SSH & Remote Access ===
-
         HardenAction::Ssh { harden, restore } => {
             if restore {
                 println!("\n── Restoring SSH config ─────────────────────────");
@@ -1498,14 +1709,21 @@ fn run_harden(action: HardenAction) {
             }
             if !install.is_empty() {
                 println!("\n── Installing port knocking ─────────────────────");
-                println!("{}", pledgeshield::harden::knock::install_knockd(&install, false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::knock::install_knockd(&install, false)
+                );
                 return;
             }
             println!("\n  Usage: pledgeshield harden knock --install 7000,8000,9000");
             println!("         pledgeshield harden knock --remove");
         }
 
-        HardenAction::Fail2ban { install, configure, status } => {
+        HardenAction::Fail2ban {
+            install,
+            configure,
+            status,
+        } => {
             if status {
                 println!("\n── fail2ban status ──────────────────────────────");
                 println!("{}", pledgeshield::harden::fail2ban::fail2ban_status());
@@ -1513,12 +1731,18 @@ fn run_harden(action: HardenAction) {
             }
             if install {
                 println!("\n── Installing fail2ban ──────────────────────────");
-                println!("{}", pledgeshield::harden::fail2ban::install_fail2ban(false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::fail2ban::install_fail2ban(false)
+                );
                 return;
             }
             if configure {
                 println!("\n── Configuring fail2ban ─────────────────────────");
-                println!("{}", pledgeshield::harden::fail2ban::configure_fail2ban(false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::fail2ban::configure_fail2ban(false)
+                );
                 return;
             }
             let findings = pledgeshield::harden::fail2ban::audit_fail2ban();
@@ -1533,14 +1757,16 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Application Hardening ===
-
         HardenAction::Tls { check } => {
             if let Some(target) = check {
                 let findings = pledgeshield::harden::tls::audit_cert(&target);
                 if findings.is_empty() {
                     println!("\n  ✓ Certificate for {} looks good.", target);
                 } else {
-                    println!("\n── Certificate issues for {} ────────────────────", target);
+                    println!(
+                        "\n── Certificate issues for {} ────────────────────",
+                        target
+                    );
                     for f in &findings {
                         println!("  [{}] {} — {}", f.severity, f.id, f.title);
                     }
@@ -1591,7 +1817,10 @@ fn run_harden(action: HardenAction) {
         HardenAction::Autorun { disable, dry_run } => {
             if disable {
                 println!("\n── Disabling autorun/autoplay ───────────────────");
-                println!("{}", pledgeshield::harden::autorun::disable_autorun(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::autorun::disable_autorun(dry_run)
+                );
                 return;
             }
             let findings = pledgeshield::harden::autorun::audit_autorun();
@@ -1606,8 +1835,11 @@ fn run_harden(action: HardenAction) {
         }
 
         // === System Monitoring ===
-
-        HardenAction::Resource { monitor, interval, max_runtime } => {
+        HardenAction::Resource {
+            monitor,
+            interval,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::resource::monitor_resources(interval, max_runtime);
                 return;
@@ -1623,7 +1855,12 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Filewatch { monitor, baseline, interval, max_runtime } => {
+        HardenAction::Filewatch {
+            monitor,
+            baseline,
+            interval,
+            max_runtime,
+        } => {
             if baseline {
                 println!("\n── Creating file watch baseline ─────────────────");
                 println!("  {}", pledgeshield::harden::filewatch::create_baseline());
@@ -1681,7 +1918,12 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Cronmon { monitor, baseline, interval, max_runtime } => {
+        HardenAction::Cronmon {
+            monitor,
+            baseline,
+            interval,
+            max_runtime,
+        } => {
             if baseline {
                 println!("\n── Creating cron monitor baseline ───────────────");
                 println!("  {}", pledgeshield::harden::cronmon::create_baseline());
@@ -1703,7 +1945,6 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Privacy & Compliance ===
-
         HardenAction::Pii { dir } => {
             let target = dir.as_deref().unwrap_or(".");
             let findings = pledgeshield::harden::pii::scan_pii(target);
@@ -1736,20 +1977,34 @@ fn run_harden(action: HardenAction) {
             }
         }
 
-        HardenAction::Freespace { wipe, install_schedule, remove_schedule, dry_run } => {
+        HardenAction::Freespace {
+            wipe,
+            install_schedule,
+            remove_schedule,
+            dry_run,
+        } => {
             if remove_schedule {
                 println!("\n── Removing free space wipe schedule ────────────");
-                println!("{}", pledgeshield::harden::freespace::remove_wipe_schedule());
+                println!(
+                    "{}",
+                    pledgeshield::harden::freespace::remove_wipe_schedule()
+                );
                 return;
             }
             if install_schedule {
                 println!("\n── Installing free space wipe schedule ──────────");
-                println!("{}", pledgeshield::harden::freespace::install_wipe_schedule(dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::freespace::install_wipe_schedule(dry_run)
+                );
                 return;
             }
             if let Some(path) = wipe {
                 println!("\n── Wiping free space ────────────────────────────");
-                println!("{}", pledgeshield::harden::freespace::wipe_freespace(&path, dry_run));
+                println!(
+                    "{}",
+                    pledgeshield::harden::freespace::wipe_freespace(&path, dry_run)
+                );
                 return;
             }
             println!("\n  Usage: pledgeshield harden freespace --wipe /");
@@ -1776,7 +2031,10 @@ fn run_harden(action: HardenAction) {
 
         HardenAction::Profile { apply, audit } => {
             if let Some(profile) = apply {
-                println!("\n── Applying {} profile ─────────────────────", profile.as_str());
+                println!(
+                    "\n── Applying {} profile ─────────────────────",
+                    profile.as_str()
+                );
                 for r in pledgeshield::harden::profile::apply_profile(profile, false) {
                     println!("{}", r);
                 }
@@ -1787,7 +2045,10 @@ fn run_harden(action: HardenAction) {
                 if findings.is_empty() {
                     println!("\n  ✓ System complies with {} profile.", profile.as_str());
                 } else {
-                    println!("\n── {} compliance gaps ─────────────────────", profile.as_str());
+                    println!(
+                        "\n── {} compliance gaps ─────────────────────",
+                        profile.as_str()
+                    );
                     for f in &findings {
                         println!("  [{}] {} — {}", f.severity, f.id, f.title);
                     }
@@ -1800,14 +2061,15 @@ fn run_harden(action: HardenAction) {
         }
 
         // === Process & Memory Defense ===
-
         HardenAction::Procinj => {
             let findings = pledgeshield::harden::procinj::audit_injections();
             if findings.is_empty() {
                 println!("\n  ✓ No process injection indicators detected.");
             } else {
                 println!("\n── Process injection indicators ──────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1817,7 +2079,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No hollow processes detected.");
             } else {
                 println!("\n── Hollow process indicators ─────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1827,7 +2091,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No malware signatures found in process memory.");
             } else {
                 println!("\n── Malware signatures detected ───────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1837,7 +2103,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No debugging/ptrace activity detected.");
             } else {
                 println!("\n── Ptrace/debugging alerts ───────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1847,14 +2115,19 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No thread anomalies detected.");
             } else {
                 println!("\n── Thread anomalies ──────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         HardenAction::Codeinject { block } => {
             if block {
                 println!("\n── Blocking code injection ──────────────────────");
-                println!("{}", pledgeshield::harden::codeinject::block_injection(false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::codeinject::block_injection(false)
+                );
                 return;
             }
             let findings = pledgeshield::harden::codeinject::audit_code_injection();
@@ -1862,12 +2135,13 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Code injection defenses look good.");
             } else {
                 println!("\n── Code injection risks ──────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         // === Network Defense ===
-
         HardenAction::Ratelimit { enable, disable } => {
             if disable {
                 println!("\n── Disabling rate limit ──────────────────────────");
@@ -1876,7 +2150,10 @@ fn run_harden(action: HardenAction) {
             }
             if let Some(max) = enable {
                 println!("\n── Enabling rate limit ───────────────────────────");
-                println!("{}", pledgeshield::harden::ratelimit::enable_rate_limit(max, false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::ratelimit::enable_rate_limit(max, false)
+                );
                 return;
             }
             println!("\n  Usage: pledgeshield harden ratelimit --enable 60");
@@ -1891,7 +2168,10 @@ fn run_harden(action: HardenAction) {
             }
             if enable {
                 println!("\n── Enabling geo-IP filter ────────────────────────");
-                println!("{}", pledgeshield::harden::geoip::enable_geoip_filter(&[], false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::geoip::enable_geoip_filter(&[], false)
+                );
                 return;
             }
             let findings = pledgeshield::harden::geoip::audit_geoip();
@@ -1899,7 +2179,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Geo-IP filter is enabled.");
             } else {
                 println!("\n── Geo-IP issues ─────────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1919,7 +2201,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ DNS encryption is enforced.");
             } else {
                 println!("\n── DNS enforcement issues ────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1929,7 +2213,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No packet capture detected.");
             } else {
                 println!("\n── Packet capture indicators ─────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -1939,11 +2225,16 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No rogue DHCP detected.");
             } else {
                 println!("\n── Rogue DHCP indicators ─────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
-        HardenAction::Deauth { monitor, max_runtime } => {
+        HardenAction::Deauth {
+            monitor,
+            max_runtime,
+        } => {
             if monitor {
                 pledgeshield::harden::deauth::monitor_deauth(max_runtime);
                 return;
@@ -1953,21 +2244,26 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No WiFi deauth attacks detected.");
             } else {
                 println!("\n── WiFi deauth alerts ────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         // === Filesystem & Storage ===
-
         HardenAction::Immutable { set, unset } => {
             if unset {
                 println!("\n── Removing immutable flags ──────────────────────");
-                for r in pledgeshield::harden::immutable::unset_immutable() { println!("{}", r); }
+                for r in pledgeshield::harden::immutable::unset_immutable() {
+                    println!("{}", r);
+                }
                 return;
             }
             if set {
                 println!("\n── Setting immutable flags ───────────────────────");
-                for r in pledgeshield::harden::immutable::set_immutable(false) { println!("{}", r); }
+                for r in pledgeshield::harden::immutable::set_immutable(false) {
+                    println!("{}", r);
+                }
                 return;
             }
             let findings = pledgeshield::harden::immutable::audit_immutable();
@@ -1975,14 +2271,18 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Critical files are immutable.");
             } else {
                 println!("\n── Immutable flag issues ─────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         HardenAction::Mount { harden } => {
             if harden {
                 println!("\n── Hardening mount options ───────────────────────");
-                for r in pledgeshield::harden::mount::harden_mounts(false) { println!("{}", r); }
+                for r in pledgeshield::harden::mount::harden_mounts(false) {
+                    println!("{}", r);
+                }
                 return;
             }
             let findings = pledgeshield::harden::mount::audit_mounts();
@@ -1990,14 +2290,18 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Mount options are secure.");
             } else {
                 println!("\n── Mount option issues ───────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         HardenAction::Tmpsan { clean } => {
             if clean {
                 println!("\n── Cleaning temp directories ─────────────────────");
-                for r in pledgeshield::harden::tmpsan::clean_temp(false) { println!("{}", r); }
+                for r in pledgeshield::harden::tmpsan::clean_temp(false) {
+                    println!("{}", r);
+                }
                 return;
             }
             let findings = pledgeshield::harden::tmpsan::audit_temp();
@@ -2005,7 +2309,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Temp directories look clean.");
             } else {
                 println!("\n── Temp directory issues ─────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2020,7 +2326,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Disk quotas are enabled.");
             } else {
                 println!("\n── Disk quota issues ─────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2035,19 +2343,22 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No file attribute changes detected.");
             } else {
                 println!("\n── File attribute changes ────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         // === Access Control ===
-
         HardenAction::Pam => {
             let findings = pledgeshield::harden::pam::audit_pam();
             if findings.is_empty() {
                 println!("\n  ✓ PAM configuration looks secure.");
             } else {
                 println!("\n── PAM issues ────────────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2057,7 +2368,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Polkit rules look secure.");
             } else {
                 println!("\n── Polkit issues ─────────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2067,7 +2380,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ MAC (AppArmor/SELinux) is enforcing.");
             } else {
                 println!("\n── MAC issues ────────────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2077,7 +2392,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No dangerous capabilities found.");
             } else {
                 println!("\n── Capability findings ───────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2087,16 +2404,20 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Namespace isolation looks good.");
             } else {
                 println!("\n── Namespace issues ──────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         // === Hardware & Peripherals ===
-
         HardenAction::Thunderbolt { block } => {
             if block {
                 println!("\n── Blocking Thunderbolt devices ──────────────────");
-                println!("{}", pledgeshield::harden::thunderbolt::block_thunderbolt(false));
+                println!(
+                    "{}",
+                    pledgeshield::harden::thunderbolt::block_thunderbolt(false)
+                );
                 return;
             }
             let findings = pledgeshield::harden::thunderbolt::audit_thunderbolt();
@@ -2104,7 +2425,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Thunderbolt security looks good.");
             } else {
                 println!("\n── Thunderbolt issues ────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2124,7 +2447,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No webcam issues detected.");
             } else {
                 println!("\n── Webcam issues ─────────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2144,7 +2469,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ Microphone is muted or not in use.");
             } else {
                 println!("\n── Microphone issues ─────────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2164,19 +2491,22 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No Firewire/DMA issues detected.");
             } else {
                 println!("\n── Firewire/DMA issues ───────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
         // === System Integrity ===
-
         HardenAction::Systemd => {
             let findings = pledgeshield::harden::systemd::audit_systemd();
             if findings.is_empty() {
                 println!("\n  ✓ No suspicious systemd units found.");
             } else {
                 println!("\n── Systemd unit issues ───────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2186,7 +2516,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No secrets found in environment variables.");
             } else {
                 println!("\n── Environment variable leaks ────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2196,7 +2528,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ No library issues detected.");
             } else {
                 println!("\n── Shared library issues ─────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
 
@@ -2206,7 +2540,9 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ All binary hashes match package manager records.");
             } else {
                 println!("\n── Binary hash mismatches ────────────────────────");
-                for f in &findings { println!("  [{}] {} — {}", f.severity, f.id, f.title); }
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
             }
         }
     }
@@ -2218,23 +2554,20 @@ fn run_vpn(action: VpnAction) {
             let s = pledgeshield::vpn::status();
             println!("\n{}", s);
         }
-        VpnAction::Connect { config, vpn_type } => {
-            match vpn_type.as_str() {
-                "wireguard" | "wg" => {
-                    match pledgeshield::vpn::connect_wireguard(&config) {
-                        Ok(msg) => println!("\n  ✓ {}", msg),
-                        Err(e) => eprintln!("\n  ✗ {}", e),
-                    }
-                }
-                "openvpn" | "ovpn" => {
-                    match pledgeshield::vpn::connect_openvpn(&config) {
-                        Ok(msg) => println!("\n  ✓ {}", msg),
-                        Err(e) => eprintln!("\n  ✗ {}", e),
-                    }
-                }
-                _ => eprintln!("Unknown VPN type '{}'. Use: wireguard or openvpn.", vpn_type),
-            }
-        }
+        VpnAction::Connect { config, vpn_type } => match vpn_type.as_str() {
+            "wireguard" | "wg" => match pledgeshield::vpn::connect_wireguard(&config) {
+                Ok(msg) => println!("\n  ✓ {}", msg),
+                Err(e) => eprintln!("\n  ✗ {}", e),
+            },
+            "openvpn" | "ovpn" => match pledgeshield::vpn::connect_openvpn(&config) {
+                Ok(msg) => println!("\n  ✓ {}", msg),
+                Err(e) => eprintln!("\n  ✗ {}", e),
+            },
+            _ => eprintln!(
+                "Unknown VPN type '{}'. Use: wireguard or openvpn.",
+                vpn_type
+            ),
+        },
         VpnAction::Disconnect { vpn_type, config } => {
             match vpn_type.as_str() {
                 "wireguard" | "wg" => {
@@ -2260,13 +2593,14 @@ fn run_vpn(action: VpnAction) {
                         Err(e) => eprintln!("\n  ✗ {}", e),
                     }
                 }
-                "openvpn" | "ovpn" => {
-                    match pledgeshield::vpn::disconnect_openvpn() {
-                        Ok(msg) => println!("\n  ✓ {}", msg),
-                        Err(e) => eprintln!("\n  ✗ {}", e),
-                    }
-                }
-                _ => eprintln!("Unknown VPN type '{}'. Use: wireguard or openvpn.", vpn_type),
+                "openvpn" | "ovpn" => match pledgeshield::vpn::disconnect_openvpn() {
+                    Ok(msg) => println!("\n  ✓ {}", msg),
+                    Err(e) => eprintln!("\n  ✗ {}", e),
+                },
+                _ => eprintln!(
+                    "Unknown VPN type '{}'. Use: wireguard or openvpn.",
+                    vpn_type
+                ),
             }
         }
         VpnAction::List => {
@@ -2280,18 +2614,14 @@ fn run_vpn(action: VpnAction) {
                 }
             }
         }
-        VpnAction::KillSwitchOn => {
-            match pledgeshield::vpn::enable_kill_switch() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
-        VpnAction::KillSwitchOff => {
-            match pledgeshield::vpn::disable_kill_switch() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
+        VpnAction::KillSwitchOn => match pledgeshield::vpn::enable_kill_switch() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
+        VpnAction::KillSwitchOff => match pledgeshield::vpn::disable_kill_switch() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
         VpnAction::Tor { action } => {
             run_tor(action);
         }
@@ -2307,30 +2637,22 @@ fn run_tor(action: TorAction) {
                 println!("  ⚠ Tor is not installed. Install with: sudo apt install tor");
             }
         }
-        TorAction::Start => {
-            match pledgeshield::vpn::tor::start() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
-        TorAction::Stop => {
-            match pledgeshield::vpn::tor::stop() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
-        TorAction::Route => {
-            match pledgeshield::vpn::tor::route_traffic() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
-        TorAction::Unroute => {
-            match pledgeshield::vpn::tor::unroute_traffic() {
-                Ok(msg) => println!("\n  ✓ {}", msg),
-                Err(e) => eprintln!("\n  ✗ {}", e),
-            }
-        }
+        TorAction::Start => match pledgeshield::vpn::tor::start() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
+        TorAction::Stop => match pledgeshield::vpn::tor::stop() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
+        TorAction::Route => match pledgeshield::vpn::tor::route_traffic() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
+        TorAction::Unroute => match pledgeshield::vpn::tor::unroute_traffic() {
+            Ok(msg) => println!("\n  ✓ {}", msg),
+            Err(e) => eprintln!("\n  ✗ {}", e),
+        },
         TorAction::CheckIp => {
             if !pledgeshield::vpn::tor::is_tor_running() {
                 eprintln!("\n  ✗ Tor is not running. Start it first: pledgeshield vpn tor start");
@@ -2340,7 +2662,9 @@ fn run_tor(action: TorAction) {
             std::io::stdout().flush().ok();
             match pledgeshield::vpn::tor::check_exit_ip() {
                 Some(ip) => println!("\n  ✓ Your Tor exit IP: {}", ip),
-                None => println!("\n  ✗ Could not determine exit IP (Tor may still be bootstrapping)."),
+                None => {
+                    println!("\n  ✗ Could not determine exit IP (Tor may still be bootstrapping).")
+                }
             }
         }
     }

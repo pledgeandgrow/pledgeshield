@@ -24,14 +24,16 @@ pub fn audit_namespaces() -> Vec<Finding> {
         }
 
         // Check if any process is running in isolated namespaces
-        let mut isolated_count = 0;
-        let mut total_count = 0;
+        let mut _isolated_count = 0;
+        let mut _total_count = 0;
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
-                total_count += 1;
+                _total_count += 1;
 
                 // Check namespace isolation via /proc/[pid]/ns
                 let ns_path = format!("/proc/{}/ns", pid);
@@ -52,7 +54,7 @@ pub fn audit_namespaces() -> Vec<Finding> {
                         }
                     }
                     if has_own_ns {
-                        isolated_count += 1;
+                        _isolated_count += 1;
                     }
                 }
             }
@@ -63,7 +65,15 @@ pub fn audit_namespaces() -> Vec<Finding> {
         let out = Command::new("ps").args(["-eo", "comm"]).output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
-            let should_isolate = ["nginx", "apache2", "httpd", "mysqld", "postgres", "redis-server", "mongod"];
+            let should_isolate = [
+                "nginx",
+                "apache2",
+                "httpd",
+                "mysqld",
+                "postgres",
+                "redis-server",
+                "mongod",
+            ];
             for proc_name in &should_isolate {
                 if s.contains(proc_name) {
                     // Check if it's in its own namespace
@@ -75,7 +85,9 @@ pub fn audit_namespaces() -> Vec<Finding> {
                         if !pid.is_empty() {
                             let mnt_ns = format!("/proc/{}/ns/mnt", pid);
                             let init_mnt = "/proc/1/ns/mnt";
-                            if let (Ok(t1), Ok(t2)) = (std::fs::read_link(&mnt_ns), std::fs::read_link(init_mnt)) {
+                            if let (Ok(t1), Ok(t2)) =
+                                (std::fs::read_link(&mnt_ns), std::fs::read_link(init_mnt))
+                            {
                                 if t1 == t2 {
                                     findings.push(Finding::new(
                                         &format!("ns-not-isolated-{}", proc_name),

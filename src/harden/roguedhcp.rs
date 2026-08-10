@@ -8,15 +8,25 @@ pub fn audit_rogue_dhcp() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check current DHCP lease info
-        let lease_files = ["/var/lib/dhcp/dhclient.leases", "/var/lib/NetworkManager/dhclient-*.lease"];
+        let lease_files = [
+            "/var/lib/dhcp/dhclient.leases",
+            "/var/lib/NetworkManager/dhclient-*.lease",
+        ];
         for pattern in &lease_files {
-            let out = Command::new("sh").args(["-c", &format!("cat {} 2>/dev/null", pattern)]).output();
+            let out = Command::new("sh")
+                .args(["-c", &format!("cat {} 2>/dev/null", pattern)])
+                .output();
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
                 // Look for DHCP server IP
                 for line in s.lines() {
                     if line.contains("dhcp-server-identifier") {
-                        let server_ip = line.split(' ').nth(2).unwrap_or("").trim_end_matches(';').trim_end_matches('"');
+                        let server_ip = line
+                            .split(' ')
+                            .nth(2)
+                            .unwrap_or("")
+                            .trim_end_matches(';')
+                            .trim_end_matches('"');
                         if !server_ip.is_empty() {
                             // Check if this is the expected gateway
                             let gateway = get_default_gateway();
@@ -57,7 +67,9 @@ pub fn audit_rogue_dhcp() -> Vec<Finding> {
 fn get_default_gateway() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("ip").args(["route", "show", "default"]).output();
+        let out = Command::new("ip")
+            .args(["route", "show", "default"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {

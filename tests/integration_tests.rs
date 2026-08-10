@@ -5,26 +5,41 @@ fn test_full_scan_result_pipeline() {
     let mut result = ScanResult::new();
 
     result.add_finding(
-        Finding::new("win-uac-disabled", "UAC Disabled", Severity::High, Category::Config)
-            .description("User Account Control is disabled")
-            .recommendation("Enable UAC in Control Panel")
-            .fixable(true)
-            .metadata("setting", "EnableLUA")
-            .metadata("value", "0"),
+        Finding::new(
+            "win-uac-disabled",
+            "UAC Disabled",
+            Severity::High,
+            Category::Config,
+        )
+        .description("User Account Control is disabled")
+        .recommendation("Enable UAC in Control Panel")
+        .fixable(true)
+        .metadata("setting", "EnableLUA")
+        .metadata("value", "0"),
     );
 
     result.add_finding(
-        Finding::new("win-rdp-exposed", "RDP Exposed to Internet", Severity::Critical, Category::Services)
-            .description("RDP is listening on 0.0.0.0:3389")
-            .recommendation("Restrict RDP to localhost or VPN")
-            .metadata("port", "3389")
-            .metadata("protocol", "tcp"),
+        Finding::new(
+            "win-rdp-exposed",
+            "RDP Exposed to Internet",
+            Severity::Critical,
+            Category::Services,
+        )
+        .description("RDP is listening on 0.0.0.0:3389")
+        .recommendation("Restrict RDP to localhost or VPN")
+        .metadata("port", "3389")
+        .metadata("protocol", "tcp"),
     );
 
     result.add_finding(
-        Finding::new("ssh-no-passphrase", "SSH Key Without Passphrase", Severity::Medium, Category::Credentials)
-            .description("SSH key at ~/.ssh/id_rsa has no passphrase")
-            .recommendation("Add a passphrase with ssh-keygen -p"),
+        Finding::new(
+            "ssh-no-passphrase",
+            "SSH Key Without Passphrase",
+            Severity::Medium,
+            Category::Credentials,
+        )
+        .description("SSH key at ~/.ssh/id_rsa has no passphrase")
+        .recommendation("Add a passphrase with ssh-keygen -p"),
     );
 
     result.finalize();
@@ -48,7 +63,12 @@ fn test_severity_filtering_pipeline() {
             3 => Severity::Low,
             _ => Severity::Info,
         };
-        result.add_finding(Finding::new(&format!("finding-{}", i), &format!("Finding {}", i), sev, Category::Config));
+        result.add_finding(Finding::new(
+            &format!("finding-{}", i),
+            &format!("Finding {}", i),
+            sev,
+            Category::Config,
+        ));
     }
 
     result.finalize();
@@ -77,11 +97,16 @@ fn test_finding_metadata_operations() {
 fn test_scan_result_serde_roundtrip() {
     let mut result = ScanResult::new();
     result.add_finding(
-        Finding::new("test-1", "Test Finding", Severity::Critical, Category::Config)
-            .description("A critical finding")
-            .recommendation("Fix immediately")
-            .fixable(true)
-            .metadata("key", "value"),
+        Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::Critical,
+            Category::Config,
+        )
+        .description("A critical finding")
+        .recommendation("Fix immediately")
+        .fixable(true)
+        .metadata("key", "value"),
     );
     result.finalize();
 

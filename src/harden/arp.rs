@@ -18,7 +18,9 @@ pub fn get_arp_table() -> Vec<ArpEntry> {
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        let out = Command::new("arp").args(["-a"]).output()
+        let out = Command::new("arp")
+            .args(["-a"])
+            .output()
             .or_else(|_| Command::new("ip").args(["neigh"]).output());
 
         if let Ok(o) = out {
@@ -32,7 +34,11 @@ pub fn get_arp_table() -> Vec<ArpEntry> {
                     if parts.len() >= 4 {
                         let ip = parts[1].trim_matches(|c| c == '(' || c == ')');
                         let mac = parts[3];
-                        let iface = parts.iter().rposition(|p| *p != "").map(|i| parts[i]).unwrap_or("?");
+                        let iface = parts
+                            .iter()
+                            .rposition(|p| *p != "")
+                            .map(|i| parts[i])
+                            .unwrap_or("?");
                         if !mac.contains("incomplete") {
                             entries.push(ArpEntry {
                                 ip: ip.to_string(),
@@ -85,27 +91,35 @@ pub fn detect_arp_spoof() -> Vec<Finding> {
     // Check for MAC conflicts — multiple IPs with same MAC (could be MITM)
     let mut mac_to_ips: HashMap<String, Vec<String>> = HashMap::new();
     for e in &entries {
-        mac_to_ips.entry(e.mac.clone()).or_default().push(e.ip.clone());
+        mac_to_ips
+            .entry(e.mac.clone())
+            .or_default()
+            .push(e.ip.clone());
     }
 
     for (mac, ips) in &mac_to_ips {
         if ips.len() > 2 {
             // Many IPs sharing one MAC — could be a router (normal) or MITM
             // Flag only if it's not the gateway
-            findings.push(Finding::new(
-                "arp-mac-shared",
-                &format!("MAC {} has {} IPs (possible ARP spoofing)", mac, ips.len()),
-                Severity::Medium,
-                Category::Network,
-            )
-            .description(format!("IPs: {}", ips.join(", "))));
+            findings.push(
+                Finding::new(
+                    "arp-mac-shared",
+                    &format!("MAC {} has {} IPs (possible ARP spoofing)", mac, ips.len()),
+                    Severity::Medium,
+                    Category::Network,
+                )
+                .description(format!("IPs: {}", ips.join(", "))),
+            );
         }
     }
 
     // Check gateway MAC consistency
     let gateway = get_gateway();
     if let Some(gw_ip) = gateway {
-        let gw_mac = entries.iter().find(|e| e.ip == gw_ip).map(|e| e.mac.clone());
+        let gw_mac = entries
+            .iter()
+            .find(|e| e.ip == gw_ip)
+            .map(|e| e.mac.clone());
         if let Some(mac) = gw_mac {
             // Store in a known-good file for comparison
             let cache_path = "/tmp/pledgeshield-arp-gateway";
@@ -132,7 +146,9 @@ pub fn detect_arp_spoof() -> Vec<Finding> {
 fn get_gateway() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("ip").args(["route", "show", "default"]).output();
+        let out = Command::new("ip")
+            .args(["route", "show", "default"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
@@ -146,7 +162,9 @@ fn get_gateway() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        let out = Command::new("route").args(["-n", "get", "default"]).output();
+        let out = Command::new("route")
+            .args(["-n", "get", "default"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
@@ -184,7 +202,15 @@ pub fn monitor_arp(interval: u64, max_runtime: u64) {
     println!("╔══════════════════════════════════════════════════════════╗");
     println!("║       PledgeShield ARP Spoofing Monitor                   ║");
     println!("╚══════════════════════════════════════════════════════════╝");
-    println!("  Polling every {}s | max runtime: {}s", interval, if max_runtime == 0 { "∞".to_string() } else { max_runtime.to_string() });
+    println!(
+        "  Polling every {}s | max runtime: {}s",
+        interval,
+        if max_runtime == 0 {
+            "∞".to_string()
+        } else {
+            max_runtime.to_string()
+        }
+    );
     println!();
 
     let mut known: HashMap<String, ArpEntry> = HashMap::new();
@@ -203,13 +229,17 @@ pub fn monitor_arp(interval: u64, max_runtime: u64) {
 
         let now = chrono::Utc::now().format("%H:%M:%S");
         let current = get_arp_table();
-        let current_map: HashMap<String, ArpEntry> = current.into_iter().map(|e| (e.ip.clone(), e)).collect();
+        let current_map: HashMap<String, ArpEntry> =
+            current.into_iter().map(|e| (e.ip.clone(), e)).collect();
 
         // Check for MAC changes
         for (ip, entry) in &current_map {
             if let Some(old) = known.get(ip) {
                 if old.mac != entry.mac {
-                    println!("  {} [HIGH] {} MAC changed: {} -> {}", now, ip, old.mac, entry.mac);
+                    println!(
+                        "  {} [HIGH] {} MAC changed: {} -> {}",
+                        now, ip, old.mac, entry.mac
+                    );
                 }
             } else {
                 println!("  {} [info] New ARP entry: {} ({})", now, ip, entry.mac);

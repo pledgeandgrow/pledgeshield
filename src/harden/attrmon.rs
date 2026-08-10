@@ -6,11 +6,20 @@ use std::path::Path;
 use std::process::Command;
 
 const WATCH_FILES: &[&str] = &[
-    "/etc/passwd", "/etc/shadow", "/etc/group", "/etc/sudoers",
-    "/etc/ssh/sshd_config", "/etc/crontab", "/etc/fstab",
-    "/etc/hosts", "/etc/resolv.conf",
-    "/bin/su", "/bin/sudo", "/usr/bin/sudo",
-    "/bin/mount", "/bin/umount",
+    "/etc/passwd",
+    "/etc/shadow",
+    "/etc/group",
+    "/etc/sudoers",
+    "/etc/ssh/sshd_config",
+    "/etc/crontab",
+    "/etc/fstab",
+    "/etc/hosts",
+    "/etc/resolv.conf",
+    "/bin/su",
+    "/bin/sudo",
+    "/usr/bin/sudo",
+    "/bin/mount",
+    "/bin/umount",
 ];
 
 pub fn audit_attr_changes() -> Vec<Finding> {
@@ -49,11 +58,15 @@ fn get_current_attrs() -> Vec<(String, (u32, bool))> {
     let mut attrs = Vec::new();
 
     for file in WATCH_FILES {
-        if !Path::new(file).exists() { continue; }
+        if !Path::new(file).exists() {
+            continue;
+        }
 
         let mode = if let Ok(meta) = std::fs::metadata(file) {
             meta.permissions().mode() & 0o7777
-        } else { 0 };
+        } else {
+            0
+        };
 
         let immutable = check_immutable(file);
 
@@ -90,7 +103,8 @@ fn save_baseline(attrs: &[(String, (u32, bool))]) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let content: Vec<String> = attrs.iter()
+    let content: Vec<String> = attrs
+        .iter()
         .map(|(f, (m, i))| format!("{},{},{}", f, m, i))
         .collect();
     let _ = std::fs::write(&path, content.join("\n"));
@@ -104,7 +118,9 @@ pub fn create_baseline() -> String {
 
 #[cfg(target_os = "linux")]
 fn check_immutable(file: &str) -> bool {
-    Command::new("lsattr").arg(file).output()
+    Command::new("lsattr")
+        .arg(file)
+        .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).contains("i"))
         .unwrap_or(false)
 }

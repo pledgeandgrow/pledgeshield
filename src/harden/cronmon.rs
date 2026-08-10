@@ -15,7 +15,9 @@ pub fn audit_cron_changes() -> Vec<Finding> {
 
     // New entries
     for entry in curr_set.difference(&base_set) {
-        if entry.is_empty() { continue; }
+        if entry.is_empty() {
+            continue;
+        }
         findings.push(Finding::new(
             &format!("cronmon-new-{}", entry.split_whitespace().next().unwrap_or("entry")),
             &format!("New scheduled task: {}", entry),
@@ -27,9 +29,14 @@ pub fn audit_cron_changes() -> Vec<Finding> {
 
     // Removed entries (less suspicious but worth noting)
     for entry in base_set.difference(&curr_set) {
-        if entry.is_empty() { continue; }
+        if entry.is_empty() {
+            continue;
+        }
         findings.push(Finding::new(
-            &format!("cronmon-removed-{}", entry.split_whitespace().next().unwrap_or("entry")),
+            &format!(
+                "cronmon-removed-{}",
+                entry.split_whitespace().next().unwrap_or("entry")
+            ),
             &format!("Scheduled task removed: {}", entry),
             Severity::Info,
             Category::Persistence,
@@ -48,7 +55,9 @@ fn get_current_cron_state() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
         // User crontabs
-        let out = Command::new("sh").args(["-c", "crontab -l 2>/dev/null"]).output();
+        let out = Command::new("sh")
+            .args(["-c", "crontab -l 2>/dev/null"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
@@ -59,7 +68,13 @@ fn get_current_cron_state() -> Vec<String> {
         }
 
         // System crontabs
-        let cron_dirs = ["/etc/cron.d", "/etc/cron.daily", "/etc/cron.hourly", "/etc/cron.weekly", "/etc/cron.monthly"];
+        let cron_dirs = [
+            "/etc/cron.d",
+            "/etc/cron.daily",
+            "/etc/cron.hourly",
+            "/etc/cron.weekly",
+            "/etc/cron.monthly",
+        ];
         for dir in &cron_dirs {
             if let Ok(files) = std::fs::read_dir(dir) {
                 for file in files.flatten() {
@@ -78,7 +93,9 @@ fn get_current_cron_state() -> Vec<String> {
         }
 
         // systemd timers
-        let out = Command::new("systemctl").args(["list-timers", "--all", "--no-pager"]).output();
+        let out = Command::new("systemctl")
+            .args(["list-timers", "--all", "--no-pager"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines().skip(1) {

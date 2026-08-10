@@ -7,7 +7,10 @@ pub fn enable_rate_limit(max_per_min: u32, dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "ratelimit-enable".to_string(),
             success: true,
-            message: format!("[dry-run] Would limit new outbound connections to {}/min per process", max_per_min),
+            message: format!(
+                "[dry-run] Would limit new outbound connections to {}/min per process",
+                max_per_min
+            ),
             findings: vec![],
         };
     }
@@ -16,12 +19,26 @@ pub fn enable_rate_limit(max_per_min: u32, dry_run: bool) -> HardenResult {
     {
         // Use iptables hashlimit to rate-limit new outbound connections
         let out = Command::new("iptables")
-            .args(["-A", "OUTPUT", "-m", "conntrack", "--ctstate", "NEW",
-                   "-m", "hashlimit", "--hashlimit-above", &format!("{}/min", max_per_min),
-                   "--hashlimit-burst", &format!("{}", max_per_min * 2),
-                   "--hashlimit-mode", "srcip",
-                   "--hashlimit-name", "pledgeshield-ratelimit",
-                   "-j", "DROP"])
+            .args([
+                "-A",
+                "OUTPUT",
+                "-m",
+                "conntrack",
+                "--ctstate",
+                "NEW",
+                "-m",
+                "hashlimit",
+                "--hashlimit-above",
+                &format!("{}/min", max_per_min),
+                "--hashlimit-burst",
+                &format!("{}", max_per_min * 2),
+                "--hashlimit-mode",
+                "srcip",
+                "--hashlimit-name",
+                "pledgeshield-ratelimit",
+                "-j",
+                "DROP",
+            ])
             .output();
 
         let ok = out.as_ref().map(|o| o.status.success()).unwrap_or(false);
@@ -29,7 +46,10 @@ pub fn enable_rate_limit(max_per_min: u32, dry_run: bool) -> HardenResult {
             action: "ratelimit-enable".to_string(),
             success: ok,
             message: if ok {
-                format!("Rate limit set: max {} new connections/min per source IP.", max_per_min)
+                format!(
+                    "Rate limit set: max {} new connections/min per source IP.",
+                    max_per_min
+                )
             } else {
                 "Failed to set rate limit (need root?)".to_string()
             },
@@ -52,16 +72,32 @@ pub fn enable_rate_limit(max_per_min: u32, dry_run: bool) -> HardenResult {
 pub fn disable_rate_limit() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("iptables")
-            .args(["-D", "OUTPUT", "-m", "conntrack", "--ctstate", "NEW",
-                   "-m", "hashlimit", "--hashlimit-above", "1/min",
-                   "--hashlimit-burst", "2",
-                   "--hashlimit-mode", "srcip",
-                   "--hashlimit-name", "pledgeshield-ratelimit",
-                   "-j", "DROP"])
+        let _out = Command::new("iptables")
+            .args([
+                "-D",
+                "OUTPUT",
+                "-m",
+                "conntrack",
+                "--ctstate",
+                "NEW",
+                "-m",
+                "hashlimit",
+                "--hashlimit-above",
+                "1/min",
+                "--hashlimit-burst",
+                "2",
+                "--hashlimit-mode",
+                "srcip",
+                "--hashlimit-name",
+                "pledgeshield-ratelimit",
+                "-j",
+                "DROP",
+            ])
             .output();
         // Also try flushing
-        let _ = Command::new("iptables").args(["-F", "pledgeshield-ratelimit"]).output();
+        let _ = Command::new("iptables")
+            .args(["-F", "pledgeshield-ratelimit"])
+            .output();
         HardenResult {
             action: "ratelimit-disable".to_string(),
             success: true,

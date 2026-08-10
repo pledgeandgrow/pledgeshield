@@ -21,7 +21,11 @@ impl std::fmt::Display for TorStatus {
             "Tor: Running (SOCKS on 127.0.0.1:{}, control on 127.0.0.1:{}){}",
             self.socks_port,
             self.control_port,
-            if self.routed { " [traffic routed through Tor]" } else { "" },
+            if self.routed {
+                " [traffic routed through Tor]"
+            } else {
+                ""
+            },
         )
     }
 }
@@ -57,7 +61,9 @@ pub fn is_tor_running() -> bool {
 
     #[cfg(windows)]
     {
-        let out = Command::new("tasklist").args(["/FI", "IMAGENAME eq tor.exe"]).output();
+        let out = Command::new("tasklist")
+            .args(["/FI", "IMAGENAME eq tor.exe"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             return s.contains("tor.exe");
@@ -102,9 +108,7 @@ pub fn start() -> Result<String, String> {
             }
         }
         // Direct launch
-        let out = Command::new("tor")
-            .args(["--RunAsDaemon", "1"])
-            .output();
+        let out = Command::new("tor").args(["--RunAsDaemon", "1"]).output();
         match out {
             Ok(o) if o.status.success() => Ok("Tor daemon started.".to_string()),
             Ok(o) => Err(format!(
@@ -154,7 +158,9 @@ pub fn stop() -> Result<String, String> {
 
     #[cfg(windows)]
     {
-        let out = Command::new("taskkill").args(["/IM", "tor.exe", "/F"]).output();
+        let out = Command::new("taskkill")
+            .args(["/IM", "tor.exe", "/F"])
+            .output();
         match out {
             Ok(o) if o.status.success() => Ok("Tor process killed.".to_string()),
             _ => Ok("No Tor process found.".to_string()),
@@ -174,16 +180,27 @@ pub fn route_traffic() -> Result<String, String> {
     {
         // Check if tor is running first
         if !is_tor_running() {
-            return Err("Tor is not running. Start it first with: pledgeshield vpn tor start".to_string());
+            return Err(
+                "Tor is not running. Start it first with: pledgeshield vpn tor start".to_string(),
+            );
         }
 
         // Set up iptables NAT rules to redirect traffic through Tor
         // This is a simplified version of the Tor transparent proxy setup.
         let rules = [
             ("iptables -t nat -A OUTPUT -o lo -j RETURN", "skip loopback"),
-            ("iptables -t nat -A OUTPUT -d 127.0.0.0/8 -j RETURN", "skip localhost"),
-            ("iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040", "redirect TCP to Tor"),
-            ("iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5353", "redirect DNS to Tor"),
+            (
+                "iptables -t nat -A OUTPUT -d 127.0.0.0/8 -j RETURN",
+                "skip localhost",
+            ),
+            (
+                "iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040",
+                "redirect TCP to Tor",
+            ),
+            (
+                "iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5353",
+                "redirect DNS to Tor",
+            ),
         ];
 
         for (cmd, label) in &rules {
@@ -191,7 +208,13 @@ pub fn route_traffic() -> Result<String, String> {
             let out = Command::new(parts[0]).args(&parts[1..]).output();
             match out {
                 Ok(o) if o.status.success() => {}
-                Ok(o) => return Err(format!("route step '{}' failed: {}", label, String::from_utf8_lossy(&o.stderr))),
+                Ok(o) => {
+                    return Err(format!(
+                        "route step '{}' failed: {}",
+                        label,
+                        String::from_utf8_lossy(&o.stderr)
+                    ))
+                }
                 Err(e) => return Err(format!("route step '{}' failed (need root?): {}", label, e)),
             }
         }
@@ -230,7 +253,14 @@ pub fn unroute_traffic() -> Result<String, String> {
 /// Get the current exit IP (as seen through Tor) to verify the circuit.
 pub fn check_exit_ip() -> Option<String> {
     let out = Command::new("curl")
-        .args(["-s", "--max-time", "10", "--socks5-hostname", "127.0.0.1:9050", "https://check.torproject.org/api/ip"])
+        .args([
+            "-s",
+            "--max-time",
+            "10",
+            "--socks5-hostname",
+            "127.0.0.1:9050",
+            "https://check.torproject.org/api/ip",
+        ])
         .output()
         .ok()?;
     let body = String::from_utf8_lossy(&out.stdout);
@@ -246,13 +276,19 @@ pub fn check_exit_ip() -> Option<String> {
 pub fn is_installed() -> bool {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        Command::new("which").arg("tor").output()
-            .map(|o| o.status.success()).unwrap_or(false)
+        Command::new("which")
+            .arg("tor")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
     }
     #[cfg(windows)]
     {
-        Command::new("where").arg("tor").output()
-            .map(|o| o.status.success()).unwrap_or(false)
+        Command::new("where")
+            .arg("tor")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
     }
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     {

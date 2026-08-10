@@ -1,8 +1,8 @@
+pub mod linux_fix;
+pub mod macos_fix;
 pub mod registry_fix;
 pub mod service_fix;
 pub mod share_fix;
-pub mod macos_fix;
-pub mod linux_fix;
 
 use crate::models::ScanResult;
 use std::io::{self, BufRead, Write};
@@ -67,12 +67,23 @@ fn apply_fix(finding: &crate::models::Finding) {
         // Enable firewall for the profile
         let default_profile = String::from("allprofiles");
         let profile = finding.metadata.get("profile").unwrap_or(&default_profile);
-        let profile_arg = if profile == "domainprofile" { "DomainProfile" }
-            else if profile == "standardprofile" { "StandardProfile" }
-            else if profile == "publicprofile" { "PublicProfile" }
-            else { "AllProfiles" };
+        let profile_arg = if profile == "domainprofile" {
+            "DomainProfile"
+        } else if profile == "standardprofile" {
+            "StandardProfile"
+        } else if profile == "publicprofile" {
+            "PublicProfile"
+        } else {
+            "AllProfiles"
+        };
         std::process::Command::new("netsh")
-            .args(["advfirewall", "set", &profile_arg.to_lowercase(), "state", "on"])
+            .args([
+                "advfirewall",
+                "set",
+                &profile_arg.to_lowercase(),
+                "state",
+                "on",
+            ])
             .output()
             .map(|_| ())
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })

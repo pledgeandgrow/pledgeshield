@@ -30,13 +30,15 @@ pub fn audit_dns_enforcement() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.contains("DNS-over-TLS") && !s.contains("DoT") {
-                findings.push(Finding::new(
-                    "dohforce-no-dot",
-                    "DNS-over-TLS is not configured in systemd-resolved",
-                    Severity::Low,
-                    Category::Network,
-                )
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "dohforce-no-dot",
+                        "DNS-over-TLS is not configured in systemd-resolved",
+                        Severity::Low,
+                        Category::Network,
+                    )
+                    .fixable(true),
+                );
             }
         }
     }
@@ -59,14 +61,44 @@ pub fn enforce_doh(dry_run: bool) -> HardenResult {
         // Configure systemd-resolved for DoT
         let conf = "[Resolve]\nDNSOverTLS=yes\nDNS=1.1.1.1#cloudflare-dns.com 8.8.8.8#dns.google\nFallbackDNS=9.9.9.9#dns.quad9.net\n";
         let _ = std::fs::write("/etc/systemd/resolved.conf.d/pledgeshield.conf", conf);
-        let _ = Command::new("systemctl").args(["restart", "systemd-resolved"]).output();
+        let _ = Command::new("systemctl")
+            .args(["restart", "systemd-resolved"])
+            .output();
 
         // Block outbound port 53 (plaintext DNS) except for systemd-resolved
         let _ = Command::new("iptables")
-            .args(["-A", "OUTPUT", "-p", "udp", "--dport", "53", "-m", "owner", "!", "--uid-owner", "systemd-resolve", "-j", "DROP"])
+            .args([
+                "-A",
+                "OUTPUT",
+                "-p",
+                "udp",
+                "--dport",
+                "53",
+                "-m",
+                "owner",
+                "!",
+                "--uid-owner",
+                "systemd-resolve",
+                "-j",
+                "DROP",
+            ])
             .output();
         let _ = Command::new("iptables")
-            .args(["-A", "OUTPUT", "-p", "tcp", "--dport", "53", "-m", "owner", "!", "--uid-owner", "systemd-resolve", "-j", "DROP"])
+            .args([
+                "-A",
+                "OUTPUT",
+                "-p",
+                "tcp",
+                "--dport",
+                "53",
+                "-m",
+                "owner",
+                "!",
+                "--uid-owner",
+                "systemd-resolve",
+                "-j",
+                "DROP",
+            ])
             .output();
 
         HardenResult {
@@ -94,10 +126,38 @@ pub fn disable_enforcement() -> HardenResult {
         let _ = std::fs::remove_file("/etc/systemd/resolved.conf.d/pledgeshield.conf");
         let _ = Command::new("systemd-resolved").args(["restart"]).output();
         let _ = Command::new("iptables")
-            .args(["-D", "OUTPUT", "-p", "udp", "--dport", "53", "-m", "owner", "!", "--uid-owner", "systemd-resolve", "-j", "DROP"])
+            .args([
+                "-D",
+                "OUTPUT",
+                "-p",
+                "udp",
+                "--dport",
+                "53",
+                "-m",
+                "owner",
+                "!",
+                "--uid-owner",
+                "systemd-resolve",
+                "-j",
+                "DROP",
+            ])
             .output();
         let _ = Command::new("iptables")
-            .args(["-D", "OUTPUT", "-p", "tcp", "--dport", "53", "-m", "owner", "!", "--uid-owner", "systemd-resolve", "-j", "DROP"])
+            .args([
+                "-D",
+                "OUTPUT",
+                "-p",
+                "tcp",
+                "--dport",
+                "53",
+                "-m",
+                "owner",
+                "!",
+                "--uid-owner",
+                "systemd-resolve",
+                "-j",
+                "DROP",
+            ])
             .output();
         HardenResult {
             action: "dohforce-disable".to_string(),

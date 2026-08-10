@@ -24,8 +24,11 @@ pub fn install_knockd(ports: &[u16], dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // Check if knockd is installed
-        let installed = Command::new("which").arg("knockd").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let installed = Command::new("which")
+            .arg("knockd")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
         if !installed {
             return HardenResult {
@@ -63,11 +66,17 @@ pub fn install_knockd(ports: &[u16], dry_run: bool) -> HardenResult {
         let config_path = "/etc/knockd.conf";
         match std::fs::write(config_path, &config) {
             Ok(()) => {
-                let _ = Command::new("systemctl").args(["enable", "--now", "knockd"]).output();
+                let _ = Command::new("systemctl")
+                    .args(["enable", "--now", "knockd"])
+                    .output();
                 HardenResult {
                     action: "knock-install".to_string(),
                     success: true,
-                    message: format!("knockd configured. Knock sequence: {:?} to open SSH, {:?} to close.", ports, ports.iter().rev().collect::<Vec<_>>()),
+                    message: format!(
+                        "knockd configured. Knock sequence: {:?} to open SSH, {:?} to close.",
+                        ports,
+                        ports.iter().rev().collect::<Vec<_>>()
+                    ),
                     findings: vec![],
                 }
             }
@@ -95,7 +104,9 @@ pub fn install_knockd(ports: &[u16], dry_run: bool) -> HardenResult {
 pub fn remove_knockd() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let _ = Command::new("systemctl").args(["disable", "--now", "knockd"]).output();
+        let _ = Command::new("systemctl")
+            .args(["disable", "--now", "knockd"])
+            .output();
         let _ = std::fs::remove_file("/etc/knockd.conf");
         HardenResult {
             action: "knock-remove".to_string(),

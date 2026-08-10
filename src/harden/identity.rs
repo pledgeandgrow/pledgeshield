@@ -22,11 +22,17 @@ fn audit_dns(findings: &mut Vec<Finding>) {
                 if l.starts_with("nameserver ") {
                     let ns = l.strip_prefix("nameserver ").unwrap_or("").trim();
                     // Flag well-known ISP/default DNS that may log queries
-                    let risky = matches!(ns,
-                        "192.168.0.1" | "192.168.1.1" | "10.0.0.1" |
-                        "208.67.222.222" | "208.67.220.220" // OpenDNS (logs)
+                    let risky = matches!(
+                        ns,
+                        "192.168.0.1"
+                            | "192.168.1.1"
+                            | "10.0.0.1"
+                            | "208.67.222.222"
+                            | "208.67.220.220" // OpenDNS (logs)
                     );
-                    let is_isp = ns.starts_with("192.168.") || ns.starts_with("10.") || ns.starts_with("172.");
+                    let is_isp = ns.starts_with("192.168.")
+                        || ns.starts_with("10.")
+                        || ns.starts_with("172.");
                     if risky || is_isp {
                         findings.push(
                             Finding::new(
@@ -81,7 +87,9 @@ fn audit_dns(findings: &mut Vec<Finding>) {
 
     #[cfg(windows)]
     {
-        let out = Command::new("netsh").args(["interface", "show", "interface"]).output();
+        let out = Command::new("netsh")
+            .args(["interface", "show", "interface"])
+            .output();
         if let Ok(o) = out {
             let stdout = String::from_utf8_lossy(&o.stdout);
             // Just flag that DNS should be checked; full enumeration is complex
@@ -106,7 +114,9 @@ fn audit_telemetry(findings: &mut Vec<Finding>) {
     {
         // Check for Ubuntu popularity-contest (phones home with installed packages)
         if std::path::Path::new("/etc/cron.d/popularity-contest").exists()
-            || Command::new("systemctl").args(["is-enabled", "popularity-contest"]).output()
+            || Command::new("systemctl")
+                .args(["is-enabled", "popularity-contest"])
+                .output()
                 .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "enabled")
                 .unwrap_or(false)
         {
@@ -152,7 +162,11 @@ fn audit_telemetry(findings: &mut Vec<Finding>) {
     {
         // Check Siri analytics / iCloud analytics
         let out = Command::new("defaults")
-            .args(["read", "/Library/Preferences/com.apple.assistant.support", "Siri Data Sharing"])
+            .args([
+                "read",
+                "/Library/Preferences/com.apple.assistant.support",
+                "Siri Data Sharing",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
@@ -179,8 +193,11 @@ fn audit_hostname(findings: &mut Vec<Finding>) {
         .ok()
         .and_then(|h| h.into_string().ok())
         .unwrap_or_default();
-    let user = std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_default();
-    if !user.is_empty() && !host.is_empty()
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default();
+    if !user.is_empty()
+        && !host.is_empty()
         && host.to_lowercase().contains(&user.to_lowercase())
         && host.to_lowercase() != user.to_lowercase()
     {
@@ -220,7 +237,8 @@ fn set_privacy_dns(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "set-dns".to_string(),
             success: true,
-            message: "[dry-run] Would set DNS to 1.1.1.1 / 9.9.9.9 (privacy resolvers).".to_string(),
+            message: "[dry-run] Would set DNS to 1.1.1.1 / 9.9.9.9 (privacy resolvers)."
+                .to_string(),
             findings: vec![],
         };
     }
@@ -236,7 +254,9 @@ fn set_privacy_dns(dry_run: bool) -> HardenResult {
             Ok(()) => HardenResult {
                 action: "set-dns".to_string(),
                 success: true,
-                message: "DNS set to 1.1.1.1 + 9.9.9.9 (backup at /etc/resolv.conf.pledgeshield.bak).".to_string(),
+                message:
+                    "DNS set to 1.1.1.1 + 9.9.9.9 (backup at /etc/resolv.conf.pledgeshield.bak)."
+                        .to_string(),
                 findings: vec![],
             },
             Err(e) => HardenResult {
@@ -263,7 +283,10 @@ fn set_privacy_dns(dry_run: bool) -> HardenResult {
             Ok(o) => HardenResult {
                 action: "set-dns".to_string(),
                 success: false,
-                message: format!("networksetup failed: {}", String::from_utf8_lossy(&o.stderr)),
+                message: format!(
+                    "networksetup failed: {}",
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 findings: vec![],
             },
             Err(e) => HardenResult {
@@ -278,7 +301,15 @@ fn set_privacy_dns(dry_run: bool) -> HardenResult {
     #[cfg(windows)]
     {
         let out = Command::new("netsh")
-            .args(["interface", "ip", "set", "dns", "name=Wi-Fi", "static", "1.1.1.1"])
+            .args([
+                "interface",
+                "ip",
+                "set",
+                "dns",
+                "name=Wi-Fi",
+                "static",
+                "1.1.1.1",
+            ])
             .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
@@ -347,11 +378,10 @@ fn disable_telemetry(dry_run: bool) -> HardenResult {
     #[cfg(windows)]
     {
         use winreg::RegKey;
-        let r = RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
-            .open_subkey_with_flags(
-                r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
-                winreg::enums::KEY_WRITE,
-            );
+        let r = RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE).open_subkey_with_flags(
+            r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+            winreg::enums::KEY_WRITE,
+        );
         match r {
             Ok(key) => {
                 let res = key.set_value("AllowTelemetry", &1u32); // Required (minimal)
@@ -382,7 +412,13 @@ fn disable_telemetry(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "macos")]
     {
         let out = Command::new("defaults")
-            .args(["write", "/Library/Preferences/com.apple.assistant.support", "Siri Data Sharing", "-bool", "false"])
+            .args([
+                "write",
+                "/Library/Preferences/com.apple.assistant.support",
+                "Siri Data Sharing",
+                "-bool",
+                "false",
+            ])
             .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {

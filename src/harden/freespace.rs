@@ -19,7 +19,12 @@ pub fn wipe_freespace(path: &str, dry_run: bool) -> HardenResult {
 
         // Pass 1: zeros
         let out = Command::new("dd")
-            .args(["if=/dev/zero", &format!("of={}", tempfile), "bs=1M", "status=progress"])
+            .args([
+                "if=/dev/zero",
+                &format!("of={}", tempfile),
+                "bs=1M",
+                "status=progress",
+            ])
             .output();
 
         if !out.map(|o| o.status.success()).unwrap_or(false) {
@@ -30,7 +35,10 @@ pub fn wipe_freespace(path: &str, dry_run: bool) -> HardenResult {
         HardenResult {
             action: "freespace-wipe".to_string(),
             success: true,
-            message: format!("Free space on {} wiped with zeros. Deleted files can no longer be recovered.", path),
+            message: format!(
+                "Free space on {} wiped with zeros. Deleted files can no longer be recovered.",
+                path
+            ),
             findings: vec![],
         }
     }
@@ -98,7 +106,9 @@ WantedBy=timers.target
         let _ = std::fs::write("/etc/systemd/system/pledgeshield-wipe.service", service);
         let _ = std::fs::write("/etc/systemd/system/pledgeshield-wipe.timer", timer);
         let _ = Command::new("systemctl").args(["daemon-reload"]).output();
-        let _ = Command::new("systemctl").args(["enable", "--now", "pledgeshield-wipe.timer"]).output();
+        let _ = Command::new("systemctl")
+            .args(["enable", "--now", "pledgeshield-wipe.timer"])
+            .output();
 
         HardenResult {
             action: "freespace-schedule".to_string(),
@@ -122,7 +132,9 @@ WantedBy=timers.target
 pub fn remove_wipe_schedule() -> HardenResult {
     #[cfg(target_os = "linux")]
     {
-        let _ = Command::new("systemctl").args(["disable", "--now", "pledgeshield-wipe.timer"]).output();
+        let _ = Command::new("systemctl")
+            .args(["disable", "--now", "pledgeshield-wipe.timer"])
+            .output();
         let _ = std::fs::remove_file("/etc/systemd/system/pledgeshield-wipe.timer");
         let _ = std::fs::remove_file("/etc/systemd/system/pledgeshield-wipe.service");
         let _ = Command::new("systemctl").args(["daemon-reload"]).output();

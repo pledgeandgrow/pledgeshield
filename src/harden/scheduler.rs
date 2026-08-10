@@ -8,7 +8,13 @@ pub fn audit_schedulers() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check user crontabs
-        let cron_dirs = ["/etc/cron.d", "/etc/cron.daily", "/etc/cron.hourly", "/etc/cron.weekly", "/etc/cron.monthly"];
+        let cron_dirs = [
+            "/etc/cron.d",
+            "/etc/cron.daily",
+            "/etc/cron.hourly",
+            "/etc/cron.weekly",
+            "/etc/cron.monthly",
+        ];
         for dir in &cron_dirs {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
@@ -30,21 +36,33 @@ pub fn audit_schedulers() -> Vec<Finding> {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if let Ok(content) = std::fs::read_to_string(&path) {
-                    let user = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-                    audit_cron_content(&content, &format!("/var/spool/cron/crontabs/{}", user), &mut findings);
+                    let user = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    audit_cron_content(
+                        &content,
+                        &format!("/var/spool/cron/crontabs/{}", user),
+                        &mut findings,
+                    );
                 }
             }
         }
 
         // Check systemd timers
-        let out = Command::new("systemctl").args(["list-timers", "--all", "--no-pager"]).output();
+        let out = Command::new("systemctl")
+            .args(["list-timers", "--all", "--no-pager"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines().skip(1) {
                 // Look for suspicious timer names
                 if line.contains("update") || line.contains("backup") || line.contains("sync") {
                     // Common — skip
-                } else if line.contains("http") || line.contains("download") || line.contains("fetch") {
+                } else if line.contains("http")
+                    || line.contains("download")
+                    || line.contains("fetch")
+                {
                     findings.push(Finding::new(
                         "systemd-timer-suspicious",
                         &format!("Suspicious systemd timer: {}", line.trim()),
@@ -62,10 +80,17 @@ pub fn audit_schedulers() -> Vec<Finding> {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
                     if name.ends_with(".timer") || name.ends_with(".service") {
                         if let Ok(content) = std::fs::read_to_string(&path) {
-                            if content.contains("curl") || content.contains("wget") || content.contains("nc ") || content.contains("bash -i") {
+                            if content.contains("curl")
+                                || content.contains("wget")
+                                || content.contains("nc ")
+                                || content.contains("bash -i")
+                            {
                                 findings.push(Finding::new(
                                     "systemd-suspicious-unit",
                                     &format!("Suspicious systemd unit: {}", name),
@@ -92,7 +117,10 @@ pub fn audit_schedulers() -> Vec<Finding> {
         ];
         for dir in &dirs {
             let expanded = if dir.starts_with("~") {
-                dirs::home_dir().map(|h| h.join(&dir[2..])).map(|p| p.to_string_lossy().to_string()).unwrap_or_default()
+                dirs::home_dir()
+                    .map(|h| h.join(&dir[2..]))
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_default()
             } else {
                 dir.to_string()
             };
@@ -100,7 +128,10 @@ pub fn audit_schedulers() -> Vec<Finding> {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if let Ok(content) = std::fs::read_to_string(&path) {
-                        if content.contains("curl") || content.contains("wget") || content.contains("nc ") {
+                        if content.contains("curl")
+                            || content.contains("wget")
+                            || content.contains("nc ")
+                        {
                             findings.push(Finding::new(
                                 "launchd-suspicious",
                                 &format!("Suspicious launchd agent: {}", path.display()),
@@ -118,7 +149,9 @@ pub fn audit_schedulers() -> Vec<Finding> {
     #[cfg(windows)]
     {
         // Check scheduled tasks
-        let out = Command::new("schtasks").args(["/query", "/fo", "CSV", "/v"]).output();
+        let out = Command::new("schtasks")
+            .args(["/query", "/fo", "CSV", "/v"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines().skip(1) {
@@ -142,12 +175,16 @@ pub fn audit_schedulers() -> Vec<Finding> {
 fn audit_cron_content(content: &str, source: &str, findings: &mut Vec<Finding>) {
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with('#') { continue; }
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
 
         // Suspicious patterns
         let lower = line.to_lowercase();
         if lower.contains("curl") || lower.contains("wget") {
-            if lower.contains("http") && (lower.contains("|") || lower.contains("bash") || lower.contains("sh")) {
+            if lower.contains("http")
+                && (lower.contains("|") || lower.contains("bash") || lower.contains("sh"))
+            {
                 findings.push(Finding::new(
                     "cron-download-exec",
                     &format!("Cron entry downloads and executes: {}", source),
@@ -160,23 +197,27 @@ fn audit_cron_content(content: &str, source: &str, findings: &mut Vec<Finding>) 
         }
         if lower.contains("nc ") || lower.contains("ncat") || lower.contains("netcat") {
             if lower.contains("-l") || lower.contains("listen") {
-                findings.push(Finding::new(
-                    "cron-netcat-listener",
-                    &format!("Cron entry starts a netcat listener: {}", source),
-                    Severity::Critical,
-                    Category::Persistence,
-                )
-                .description("A cron job starts a network listener — likely a backdoor."));
+                findings.push(
+                    Finding::new(
+                        "cron-netcat-listener",
+                        &format!("Cron entry starts a netcat listener: {}", source),
+                        Severity::Critical,
+                        Category::Persistence,
+                    )
+                    .description("A cron job starts a network listener — likely a backdoor."),
+                );
             }
         }
         if lower.contains("bash -i") || lower.contains("/dev/tcp") {
-            findings.push(Finding::new(
-                "cron-reverse-shell",
-                &format!("Cron entry contains reverse shell: {}", source),
-                Severity::Critical,
-                Category::Persistence,
-            )
-            .description("A cron job contains a reverse shell command — this is a backdoor."));
+            findings.push(
+                Finding::new(
+                    "cron-reverse-shell",
+                    &format!("Cron entry contains reverse shell: {}", source),
+                    Severity::Critical,
+                    Category::Persistence,
+                )
+                .description("A cron job contains a reverse shell command — this is a backdoor."),
+            );
         }
     }
 }

@@ -15,10 +15,10 @@ const WATCH_DIRS: &[&str] = &[
     "/usr/lib",
 ];
 
+#[allow(dead_code)]
 const EXECUTABLE_EXTS: &[&str] = &[
-    "sh", "py", "pl", "rb", "php", "js",
-    "exe", "bat", "cmd", "ps1", "vbs", "scr",
-    "so", "dll", "dylib",
+    "sh", "py", "pl", "rb", "php", "js", "exe", "bat", "cmd", "ps1", "vbs", "scr", "so", "dll",
+    "dylib",
 ];
 
 pub fn audit_new_files() -> Vec<Finding> {
@@ -37,7 +37,11 @@ pub fn audit_new_files() -> Vec<Finding> {
             let is_in_critical = WATCH_DIRS.iter().any(|d| file.starts_with(d));
 
             if is_exec || is_in_critical {
-                let severity = if is_in_critical { Severity::High } else { Severity::Medium };
+                let severity = if is_in_critical {
+                    Severity::High
+                } else {
+                    Severity::Medium
+                };
                 findings.push(Finding::new(
                     &format!("filewatch-new-{}", file.replace('/', "_")),
                     &format!("New file detected: {}", file),
@@ -72,7 +76,9 @@ fn scan_dirs() -> HashSet<String> {
 }
 
 fn scan_dir_recursive(dir: &Path, files: &mut HashSet<String>, depth: usize, max_depth: usize) {
-    if depth > max_depth { return; }
+    if depth > max_depth {
+        return;
+    }
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();

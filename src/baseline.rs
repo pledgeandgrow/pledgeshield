@@ -62,16 +62,31 @@ pub fn format_diff(diff: &BaselineDiff) -> String {
     let mut buf = String::new();
 
     buf.push_str("\n── Baseline Diff ───────────────────────────────\n");
-    buf.push_str(&format!("  New findings:      {}\n", diff.new_findings.len()));
-    buf.push_str(&format!("  Resolved findings: {}\n", diff.resolved_findings.len()));
-    buf.push_str(&format!("  Unchanged:         {}\n\n", diff.unchanged_count));
+    buf.push_str(&format!(
+        "  New findings:      {}\n",
+        diff.new_findings.len()
+    ));
+    buf.push_str(&format!(
+        "  Resolved findings: {}\n",
+        diff.resolved_findings.len()
+    ));
+    buf.push_str(&format!(
+        "  Unchanged:         {}\n\n",
+        diff.unchanged_count
+    ));
 
     if !diff.new_findings.is_empty() {
         buf.push_str("── New Findings ────────────────────────────────\n");
         for f in &diff.new_findings {
             let color = f.severity.color_code();
-            buf.push_str(&format!("  [{}{}{}] {} — {}\n",
-                color, f.severity.as_str().to_uppercase(), "\x1b[0m", f.id, f.title));
+            buf.push_str(&format!(
+                "  [{}{}{}] {} — {}\n",
+                color,
+                f.severity.as_str().to_uppercase(),
+                "\x1b[0m",
+                f.id,
+                f.title
+            ));
         }
         buf.push('\n');
     }
@@ -86,15 +101,37 @@ pub fn format_diff(diff: &BaselineDiff) -> String {
 
     // Severity breakdown of new findings
     if !diff.new_findings.is_empty() {
-        let critical = diff.new_findings.iter().filter(|f| f.severity == Severity::Critical).count();
-        let high = diff.new_findings.iter().filter(|f| f.severity == Severity::High).count();
-        let medium = diff.new_findings.iter().filter(|f| f.severity == Severity::Medium).count();
-        let low = diff.new_findings.iter().filter(|f| f.severity == Severity::Low).count();
-        let info = diff.new_findings.iter().filter(|f| f.severity == Severity::Info).count();
+        let critical = diff
+            .new_findings
+            .iter()
+            .filter(|f| f.severity == Severity::Critical)
+            .count();
+        let high = diff
+            .new_findings
+            .iter()
+            .filter(|f| f.severity == Severity::High)
+            .count();
+        let medium = diff
+            .new_findings
+            .iter()
+            .filter(|f| f.severity == Severity::Medium)
+            .count();
+        let low = diff
+            .new_findings
+            .iter()
+            .filter(|f| f.severity == Severity::Low)
+            .count();
+        let info = diff
+            .new_findings
+            .iter()
+            .filter(|f| f.severity == Severity::Info)
+            .count();
 
         buf.push_str("── New Findings Summary ────────────────────────\n");
-        buf.push_str(&format!("  Critical: {}  High: {}  Medium: {}  Low: {}  Info: {}\n",
-            critical, high, medium, low, info));
+        buf.push_str(&format!(
+            "  Critical: {}  High: {}  Medium: {}  Low: {}  Info: {}\n",
+            critical, high, medium, low, info
+        ));
     }
 
     buf
@@ -128,7 +165,8 @@ mod tests {
     #[test]
     fn test_diff_new_finding() {
         let baseline = make_scan_result(&[("a", "A", Severity::High)]);
-        let current = make_scan_result(&[("a", "A", Severity::High), ("b", "B", Severity::Critical)]);
+        let current =
+            make_scan_result(&[("a", "A", Severity::High), ("b", "B", Severity::Critical)]);
 
         let diff = diff_against_baseline(&current, &baseline);
         assert_eq!(diff.new_findings.len(), 1);
@@ -152,7 +190,8 @@ mod tests {
     #[test]
     fn test_diff_both_new_and_resolved() {
         let baseline = make_scan_result(&[("a", "A", Severity::High), ("b", "B", Severity::Low)]);
-        let current = make_scan_result(&[("a", "A", Severity::High), ("c", "C", Severity::Critical)]);
+        let current =
+            make_scan_result(&[("a", "A", Severity::High), ("c", "C", Severity::Critical)]);
 
         let diff = diff_against_baseline(&current, &baseline);
         assert_eq!(diff.new_findings.len(), 1);
@@ -202,7 +241,8 @@ mod tests {
     #[test]
     fn test_format_diff_output() {
         let baseline = make_scan_result(&[("a", "A", Severity::High)]);
-        let current = make_scan_result(&[("a", "A", Severity::High), ("b", "B", Severity::Critical)]);
+        let current =
+            make_scan_result(&[("a", "A", Severity::High), ("b", "B", Severity::Critical)]);
 
         let diff = diff_against_baseline(&current, &baseline);
         let output = format_diff(&diff);

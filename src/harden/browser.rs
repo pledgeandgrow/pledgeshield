@@ -32,7 +32,10 @@ fn get_chromium_prefs_path(browser: &str) -> Option<PathBuf> {
         let base = match browser {
             "chrome" => config.join("google-chrome").join("Default"),
             "edge" => config.join("microsoft-edge").join("Default"),
-            "brave" => config.join("BraveSoftware").join("Brave-Browser").join("Default"),
+            "brave" => config
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("Default"),
             "chromium" => config.join("chromium").join("Default"),
             _ => return None,
         };
@@ -43,10 +46,28 @@ fn get_chromium_prefs_path(browser: &str) -> Option<PathBuf> {
     {
         let home = dirs::home_dir()?;
         let base = match browser {
-            "chrome" => home.join("Library").join("Application Support").join("Google").join("Chrome").join("Default"),
-            "edge" => home.join("Library").join("Application Support").join("Microsoft Edge").join("Default"),
-            "brave" => home.join("Library").join("Application Support").join("BraveSoftware").join("Brave-Browser").join("Default"),
-            "chromium" => home.join("Library").join("Application Support").join("Chromium").join("Default"),
+            "chrome" => home
+                .join("Library")
+                .join("Application Support")
+                .join("Google")
+                .join("Chrome")
+                .join("Default"),
+            "edge" => home
+                .join("Library")
+                .join("Application Support")
+                .join("Microsoft Edge")
+                .join("Default"),
+            "brave" => home
+                .join("Library")
+                .join("Application Support")
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("Default"),
+            "chromium" => home
+                .join("Library")
+                .join("Application Support")
+                .join("Chromium")
+                .join("Default"),
             _ => return None,
         };
         Some(base.join("Preferences"))
@@ -56,9 +77,21 @@ fn get_chromium_prefs_path(browser: &str) -> Option<PathBuf> {
     {
         let local = dirs::data_dir()?;
         let base = match browser {
-            "chrome" => local.join("Google").join("Chrome").join("User Data").join("Default"),
-            "edge" => local.join("Microsoft").join("Edge").join("User Data").join("Default"),
-            "brave" => local.join("BraveSoftware").join("Brave-Browser").join("User Data").join("Default"),
+            "chrome" => local
+                .join("Google")
+                .join("Chrome")
+                .join("User Data")
+                .join("Default"),
+            "edge" => local
+                .join("Microsoft")
+                .join("Edge")
+                .join("User Data")
+                .join("Default"),
+            "brave" => local
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("User Data")
+                .join("Default"),
             "chromium" => local.join("Chromium").join("User Data").join("Default"),
             _ => return None,
         };
@@ -92,7 +125,11 @@ fn get_firefox_profile_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         let home = dirs::home_dir()?;
-        let profiles = home.join("Library").join("Application Support").join("Firefox").join("Profiles");
+        let profiles = home
+            .join("Library")
+            .join("Application Support")
+            .join("Firefox")
+            .join("Profiles");
         if let Ok(entries) = std::fs::read_dir(&profiles) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -159,16 +196,18 @@ fn audit_chromium_prefs(prefs_path: &std::path::Path, browser: &str, findings: &
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !safe_browsing {
-        findings.push(Finding::new(
-            &format!("browser-{}-no-safebrowsing", browser),
-            &format!("{} Safe Browsing is disabled", browser),
-            Severity::High,
-            Category::Browser,
-        )
-        .description("Safe Browsing is disabled. The browser won't warn about malicious sites.")
-        .recommendation("Re-enable Safe Browsing in browser settings.")
-        .fixable(true)
-        .metadata("browser", browser));
+        findings.push(
+            Finding::new(
+                &format!("browser-{}-no-safebrowsing", browser),
+                &format!("{} Safe Browsing is disabled", browser),
+                Severity::High,
+                Category::Browser,
+            )
+            .description("Safe Browsing is disabled. The browser won't warn about malicious sites.")
+            .recommendation("Re-enable Safe Browsing in browser settings.")
+            .fixable(true)
+            .metadata("browser", browser),
+        );
     }
 
     // Check third-party cookies
@@ -247,7 +286,11 @@ pub fn harden_browser(dry_run: bool) -> Vec<HardenResult> {
     results
 }
 
-fn harden_chromium_prefs(prefs_path: &std::path::Path, browser: &str, dry_run: bool) -> HardenResult {
+fn harden_chromium_prefs(
+    prefs_path: &std::path::Path,
+    browser: &str,
+    dry_run: bool,
+) -> HardenResult {
     if dry_run {
         return HardenResult {
             action: format!("browser-harden-{}", browser),
@@ -259,37 +302,47 @@ fn harden_chromium_prefs(prefs_path: &std::path::Path, browser: &str, dry_run: b
 
     let content = match std::fs::read_to_string(prefs_path) {
         Ok(c) => c,
-        Err(e) => return HardenResult {
-            action: format!("browser-harden-{}", browser),
-            success: false,
-            message: format!("Failed to read prefs: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: format!("browser-harden-{}", browser),
+                success: false,
+                message: format!("Failed to read prefs: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     let mut prefs: serde_json::Value = match serde_json::from_str(&content) {
         Ok(v) => v,
-        Err(e) => return HardenResult {
-            action: format!("browser-harden-{}", browser),
-            success: false,
-            message: format!("Failed to parse prefs JSON: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: format!("browser-harden-{}", browser),
+                success: false,
+                message: format!("Failed to parse prefs JSON: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     // Disable telemetry
     if let Some(obj) = prefs.as_object_mut() {
-        let metrics = obj.entry("metrics_reporting").or_insert_with(|| serde_json::json!({}));
+        let metrics = obj
+            .entry("metrics_reporting")
+            .or_insert_with(|| serde_json::json!({}));
         if let Some(m) = metrics.as_object_mut() {
             m.insert("enabled".to_string(), serde_json::json!(false));
         }
         // Enable Safe Browsing
-        let sb = obj.entry("safebrowsing").or_insert_with(|| serde_json::json!({}));
+        let sb = obj
+            .entry("safebrowsing")
+            .or_insert_with(|| serde_json::json!({}));
         if let Some(s) = sb.as_object_mut() {
             s.insert("enabled".to_string(), serde_json::json!(true));
         }
         // Disable background sync (stops data collection when closed)
-        let sync = obj.entry("background_mode").or_insert_with(|| serde_json::json!({}));
+        let sync = obj
+            .entry("background_mode")
+            .or_insert_with(|| serde_json::json!({}));
         if let Some(s) = sync.as_object_mut() {
             s.insert("enabled".to_string(), serde_json::json!(false));
         }
@@ -297,19 +350,24 @@ fn harden_chromium_prefs(prefs_path: &std::path::Path, browser: &str, dry_run: b
 
     let new_content = match serde_json::to_string_pretty(&prefs) {
         Ok(c) => c,
-        Err(e) => return HardenResult {
-            action: format!("browser-harden-{}", browser),
-            success: false,
-            message: format!("Failed to serialize prefs: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: format!("browser-harden-{}", browser),
+                success: false,
+                message: format!("Failed to serialize prefs: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     match std::fs::write(prefs_path, new_content) {
         Ok(()) => HardenResult {
             action: format!("browser-harden-{}", browser),
             success: true,
-            message: format!("{}: telemetry off, Safe Browsing on, background sync off.", browser),
+            message: format!(
+                "{}: telemetry off, Safe Browsing on, background sync off.",
+                browser
+            ),
             findings: vec![],
         },
         Err(e) => HardenResult {
@@ -328,19 +386,22 @@ fn harden_firefox_prefs(profile_dir: &std::path::Path, dry_run: bool) -> HardenR
         return HardenResult {
             action: "browser-harden-firefox".to_string(),
             success: true,
-            message: "[dry-run] Would disable telemetry, enable tracking protection, enable DoH.".to_string(),
+            message: "[dry-run] Would disable telemetry, enable tracking protection, enable DoH."
+                .to_string(),
             findings: vec![],
         };
     }
 
     let content = match std::fs::read_to_string(&prefs_path) {
         Ok(c) => c,
-        Err(e) => return HardenResult {
-            action: "browser-harden-firefox".to_string(),
-            success: false,
-            message: format!("Failed to read prefs.js: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: "browser-harden-firefox".to_string(),
+                success: false,
+                message: format!("Failed to read prefs.js: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     // Firefox prefs.js is JS, not JSON. We append/replace user_pref lines.
@@ -357,13 +418,29 @@ fn harden_firefox_prefs(profile_dir: &std::path::Path, dry_run: bool) -> HardenR
 
     set_pref(&mut new_lines, "toolkit.telemetry.enabled", "false");
     set_pref(&mut new_lines, "toolkit.telemetry.archive.enabled", "false");
-    set_pref(&mut new_lines, "datareporting.healthreport.uploadEnabled", "false");
+    set_pref(
+        &mut new_lines,
+        "datareporting.healthreport.uploadEnabled",
+        "false",
+    );
     set_pref(&mut new_lines, "privacy.trackingprotection.enabled", "true");
     set_pref(&mut new_lines, "privacy.donottrackheader.enabled", "true");
     set_pref(&mut new_lines, "network.trr.mode", "2"); // DoH with fallback
-    set_pref(&mut new_lines, "network.trr.uri", "\"https://cloudflare-dns.com/dns-query\"");
-    set_pref(&mut new_lines, "browser.safebrowsing.malware.enabled", "true");
-    set_pref(&mut new_lines, "browser.safebrowsing.phishing.enabled", "true");
+    set_pref(
+        &mut new_lines,
+        "network.trr.uri",
+        "\"https://cloudflare-dns.com/dns-query\"",
+    );
+    set_pref(
+        &mut new_lines,
+        "browser.safebrowsing.malware.enabled",
+        "true",
+    );
+    set_pref(
+        &mut new_lines,
+        "browser.safebrowsing.phishing.enabled",
+        "true",
+    );
     set_pref(&mut new_lines, "media.peerconnection.enabled", "false"); // Prevent WebRTC IP leak
 
     let new_content = new_lines.join("\n") + "\n";
@@ -372,7 +449,9 @@ fn harden_firefox_prefs(profile_dir: &std::path::Path, dry_run: bool) -> HardenR
         Ok(()) => HardenResult {
             action: "browser-harden-firefox".to_string(),
             success: true,
-            message: "Firefox: telemetry off, tracking protection on, DoH enabled, WebRTC leak blocked.".to_string(),
+            message:
+                "Firefox: telemetry off, tracking protection on, DoH enabled, WebRTC leak blocked."
+                    .to_string(),
             findings: vec![],
         },
         Err(e) => HardenResult {
@@ -391,7 +470,14 @@ pub fn clear_browser_data(dry_run: bool) -> Vec<HardenResult> {
     for browser in &["chrome", "chromium", "brave", "edge"] {
         if let Some(prefs_path) = get_chromium_prefs_path(browser) {
             let base = prefs_path.parent().unwrap_or(std::path::Path::new("."));
-            let targets = ["Cookies", "Cache", "Code Cache", "GPUCache", "History", "Visited Links"];
+            let targets = [
+                "Cookies",
+                "Cache",
+                "Code Cache",
+                "GPUCache",
+                "History",
+                "Visited Links",
+            ];
             let mut cleared = 0;
             for t in &targets {
                 let p = base.join(t);
@@ -407,7 +493,10 @@ pub fn clear_browser_data(dry_run: bool) -> Vec<HardenResult> {
                     action: format!("clear-{}-data", browser),
                     success: true,
                     message: if dry_run {
-                        format!("[dry-run] Would clear {} data items from {}.", cleared, browser)
+                        format!(
+                            "[dry-run] Would clear {} data items from {}.",
+                            cleared, browser
+                        )
                     } else {
                         format!("Cleared {} data items from {}.", cleared, browser)
                     },

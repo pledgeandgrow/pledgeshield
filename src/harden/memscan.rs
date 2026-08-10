@@ -1,7 +1,7 @@
 /// Memory scanner — scan process memory for known malware signatures.
 use crate::models::{Category, Finding, Severity};
-use std::process::Command;
 
+#[allow(dead_code)]
 const MALWARE_SIGNATURES: &[(&str, &str)] = &[
     // (signature bytes as hex pattern, description)
     ("Metasploit Meterpreter", "meterpreter"),
@@ -37,7 +37,9 @@ pub fn scan_memory() -> Vec<Finding> {
         if let Ok(entries) = std::fs::read_dir("/proc") {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if !name.chars().all(|c| c.is_ascii_digit()) { continue; }
+                if !name.chars().all(|c| c.is_ascii_digit()) {
+                    continue;
+                }
                 let pid = &name;
 
                 let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
@@ -45,32 +47,43 @@ pub fn scan_memory() -> Vec<Finding> {
                     .unwrap_or_default();
 
                 // Read /proc/[pid]/cmdline for string matching
-                let cmdline = std::fs::read(format!("/proc/{}/cmdline", pid))
-                    .unwrap_or_default();
+                let cmdline = std::fs::read(format!("/proc/{}/cmdline", pid)).unwrap_or_default();
 
                 // Convert null-separated cmdline to string
                 let cmdline_str = String::from_utf8_lossy(&cmdline).replace('\0', " ");
 
                 for sig in STRING_SIGNATURES {
                     if cmdline_str.to_lowercase().contains(&sig.to_lowercase()) {
-                        findings.push(Finding::new(
-                            &format!("memscan-{}-{}", pid, sig.replace(' ', "_").to_lowercase()),
-                            &format!("Malware signature '{}' in process {} (pid {})", sig, comm, pid),
-                            Severity::Critical,
-                            Category::HostConfig,
-                        )
-                        .description(&format!("Process command line contains known malware indicator: {}", sig)));
+                        findings.push(
+                            Finding::new(
+                                &format!(
+                                    "memscan-{}-{}",
+                                    pid,
+                                    sig.replace(' ', "_").to_lowercase()
+                                ),
+                                &format!(
+                                    "Malware signature '{}' in process {} (pid {})",
+                                    sig, comm, pid
+                                ),
+                                Severity::Critical,
+                                Category::HostConfig,
+                            )
+                            .description(&format!(
+                                "Process command line contains known malware indicator: {}",
+                                sig
+                            )),
+                        );
                     }
                 }
 
                 // Check environment variables for suspicious entries
-                let environ = std::fs::read(format!("/proc/{}/environ", pid))
-                    .unwrap_or_default();
+                let environ = std::fs::read(format!("/proc/{}/environ", pid)).unwrap_or_default();
                 let environ_str = String::from_utf8_lossy(&environ);
 
                 // Check for LD_PRELOAD (common injection technique)
                 if environ_str.contains("LD_PRELOAD=") {
-                    let preload_val = environ_str.split("LD_PRELOAD=")
+                    let preload_val = environ_str
+                        .split("LD_PRELOAD=")
                         .nth(1)
                         .and_then(|s| s.split('\0').next())
                         .unwrap_or("");

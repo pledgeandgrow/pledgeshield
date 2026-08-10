@@ -20,7 +20,11 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() { e } else { s }
+            if s.is_empty() {
+                e
+            } else {
+                s
+            }
         })
         .unwrap_or_default()
 }
@@ -65,14 +69,16 @@ fn audit_firewall(findings: &mut Vec<Finding>) {
         // UFW not found, check firewalld
         let firewalld = run_cmd_lossy("systemctl", &["is-active", "firewalld"]);
         if firewalld.contains("inactive") || firewalld.contains("failed") {
-            findings.push(Finding::new(
-                "linux-firewalld-inactive",
-                "firewalld is inactive",
-                Severity::High,
-                Category::Config,
-            )
-            .description("firewalld is not running. No host-level firewall is active.")
-            .recommendation("Enable: sudo systemctl enable --now firewalld"));
+            findings.push(
+                Finding::new(
+                    "linux-firewalld-inactive",
+                    "firewalld is inactive",
+                    Severity::High,
+                    Category::Config,
+                )
+                .description("firewalld is not running. No host-level firewall is active.")
+                .recommendation("Enable: sudo systemctl enable --now firewalld"),
+            );
         } else if firewalld.is_empty() {
             // Check iptables
             let iptables = run_cmd_lossy("iptables", &["-L"]);
@@ -104,14 +110,18 @@ fn audit_selinux_apparmor(findings: &mut Vec<Finding>) {
             .description("SELinux is disabled. Mandatory access control is not enforced, increasing the risk of privilege escalation and lateral movement.")
             .recommendation("Enable SELinux: edit /etc/selinux/config, set SELINUX=enforcing, reboot"));
         } else if sestatus.contains("permissive") {
-            findings.push(Finding::new(
-                "linux-selinux-permissive",
-                "SELinux is in permissive mode",
-                Severity::Medium,
-                Category::Config,
-            )
-            .description("SELinux is in permissive mode. Violations are logged but not enforced.")
-            .recommendation("Set to enforcing: sudo setenforce 1"));
+            findings.push(
+                Finding::new(
+                    "linux-selinux-permissive",
+                    "SELinux is in permissive mode",
+                    Severity::Medium,
+                    Category::Config,
+                )
+                .description(
+                    "SELinux is in permissive mode. Violations are logged but not enforced.",
+                )
+                .recommendation("Set to enforcing: sudo setenforce 1"),
+            );
         }
     } else {
         // Check AppArmor
@@ -120,56 +130,130 @@ fn audit_selinux_apparmor(findings: &mut Vec<Finding>) {
             // Try systemctl
             let aa_service = run_cmd_lossy("systemctl", &["is-active", "apparmor"]);
             if aa_service.contains("inactive") || aa_service.contains("failed") {
-                findings.push(Finding::new(
-                    "linux-apparmor-inactive",
-                    "AppArmor is not active",
+                findings.push(
+                    Finding::new(
+                        "linux-apparmor-inactive",
+                        "AppArmor is not active",
+                        Severity::Medium,
+                        Category::Config,
+                    )
+                    .description(
+                        "AppArmor is not active. No mandatory access control is enforced.",
+                    ),
+                );
+            }
+        } else if apparmor.contains("0 profiles loaded") {
+            findings.push(
+                Finding::new(
+                    "linux-apparmor-no-profiles",
+                    "AppArmor has no loaded profiles",
                     Severity::Medium,
                     Category::Config,
                 )
-                .description("AppArmor is not active. No mandatory access control is enforced."));
-            }
-        } else if apparmor.contains("0 profiles loaded") {
-            findings.push(Finding::new(
-                "linux-apparmor-no-profiles",
-                "AppArmor has no loaded profiles",
-                Severity::Medium,
-                Category::Config,
-            )
-            .description("AppArmor is running but has no profiles loaded, providing no MAC protection."));
+                .description(
+                    "AppArmor is running but has no profiles loaded, providing no MAC protection.",
+                ),
+            );
         }
     }
 }
 
 fn audit_kernel_hardening(findings: &mut Vec<Finding>) {
     let sysctl_checks = [
-        ("kernel.randomize_va_space", "2", "ASLR is disabled", "linux-aslr-disabled", Severity::High),
-        ("kernel.dmesg_restrict", "1", "dmesg is not restricted", "linux-dmesg-unrestricted", Severity::Medium),
-        ("kernel.kptr_restrict", "2", "Kernel pointer addresses are not restricted", "linux-kptr-unrestricted", Severity::Medium),
-        ("net.ipv4.tcp_syncookies", "1", "TCP SYN cookies are disabled", "linux-syncookies-off", Severity::Medium),
-        ("net.ipv4.conf.all.accept_redirects", "0", "ICMP redirects are accepted", "linux-icmp-redirects", Severity::Medium),
-        ("net.ipv4.conf.all.send_redirects", "0", "ICMP redirects are sent", "linux-icmp-send-redirects", Severity::Low),
-        ("net.ipv4.conf.all.accept_source_route", "0", "Source routing is accepted", "linux-source-routing", Severity::Medium),
-        ("net.ipv4.conf.all.log_martians", "1", "Martian packets are not logged", "linux-no-martian-log", Severity::Low),
-        ("kernel.yama.ptrace_scope", "2", "ptrace scope is not restricted", "linux-ptrace-unrestricted", Severity::Medium),
-        ("fs.suid_dumpable", "0", "SUID dumps are enabled", "linux-suid-dumpable", Severity::Medium),
-        ("net.ipv4.conf.all.rp_filter", "1", "Reverse path filtering is disabled", "linux-rp-filter-off", Severity::Low),
+        (
+            "kernel.randomize_va_space",
+            "2",
+            "ASLR is disabled",
+            "linux-aslr-disabled",
+            Severity::High,
+        ),
+        (
+            "kernel.dmesg_restrict",
+            "1",
+            "dmesg is not restricted",
+            "linux-dmesg-unrestricted",
+            Severity::Medium,
+        ),
+        (
+            "kernel.kptr_restrict",
+            "2",
+            "Kernel pointer addresses are not restricted",
+            "linux-kptr-unrestricted",
+            Severity::Medium,
+        ),
+        (
+            "net.ipv4.tcp_syncookies",
+            "1",
+            "TCP SYN cookies are disabled",
+            "linux-syncookies-off",
+            Severity::Medium,
+        ),
+        (
+            "net.ipv4.conf.all.accept_redirects",
+            "0",
+            "ICMP redirects are accepted",
+            "linux-icmp-redirects",
+            Severity::Medium,
+        ),
+        (
+            "net.ipv4.conf.all.send_redirects",
+            "0",
+            "ICMP redirects are sent",
+            "linux-icmp-send-redirects",
+            Severity::Low,
+        ),
+        (
+            "net.ipv4.conf.all.accept_source_route",
+            "0",
+            "Source routing is accepted",
+            "linux-source-routing",
+            Severity::Medium,
+        ),
+        (
+            "net.ipv4.conf.all.log_martians",
+            "1",
+            "Martian packets are not logged",
+            "linux-no-martian-log",
+            Severity::Low,
+        ),
+        (
+            "kernel.yama.ptrace_scope",
+            "2",
+            "ptrace scope is not restricted",
+            "linux-ptrace-unrestricted",
+            Severity::Medium,
+        ),
+        (
+            "fs.suid_dumpable",
+            "0",
+            "SUID dumps are enabled",
+            "linux-suid-dumpable",
+            Severity::Medium,
+        ),
+        (
+            "net.ipv4.conf.all.rp_filter",
+            "1",
+            "Reverse path filtering is disabled",
+            "linux-rp-filter-off",
+            Severity::Low,
+        ),
     ];
 
     for (key, expected, desc, finding_id, severity) in sysctl_checks {
         let output = run_cmd_lossy("sysctl", &["-n", key]);
         let actual = output.trim();
         if actual != expected {
-            findings.push(Finding::new(
-                finding_id,
-                desc,
-                severity,
-                Category::Config,
-            )
-            .description(&format!("sysctl {} = {} (expected: {}). {}", key, actual, expected, desc))
-            .recommendation(&format!("Set: sudo sysctl -w {}={}", key, expected))
-            .metadata("key", key)
-            .metadata("current", actual.to_string())
-            .metadata("expected", expected.to_string()));
+            findings.push(
+                Finding::new(finding_id, desc, severity, Category::Config)
+                    .description(&format!(
+                        "sysctl {} = {} (expected: {}). {}",
+                        key, actual, expected, desc
+                    ))
+                    .recommendation(&format!("Set: sudo sysctl -w {}={}", key, expected))
+                    .metadata("key", key)
+                    .metadata("current", actual.to_string())
+                    .metadata("expected", expected.to_string()),
+            );
         }
     }
 }
@@ -181,7 +265,8 @@ fn audit_ssh_config(findings: &mut Vec<Finding>) {
             if line.starts_with('#') || line.is_empty() {
                 continue;
             }
-            if line.starts_with("PermitRootLogin") && (line.contains("yes") || !line.contains("no")) {
+            if line.starts_with("PermitRootLogin") && (line.contains("yes") || !line.contains("no"))
+            {
                 findings.push(Finding::new(
                     "linux-ssh-root-login",
                     "SSH root login is permitted",
@@ -202,13 +287,15 @@ fn audit_ssh_config(findings: &mut Vec<Finding>) {
                 .recommendation("Set PasswordAuthentication no in /etc/ssh/sshd_config"));
             }
             if line.starts_with("PermitEmptyPasswords") && line.contains("yes") {
-                findings.push(Finding::new(
-                    "linux-ssh-empty-passwords",
-                    "SSH permits empty passwords",
-                    Severity::Critical,
-                    Category::Config,
-                )
-                .description("SSH PermitEmptyPasswords is enabled."));
+                findings.push(
+                    Finding::new(
+                        "linux-ssh-empty-passwords",
+                        "SSH permits empty passwords",
+                        Severity::Critical,
+                        Category::Config,
+                    )
+                    .description("SSH PermitEmptyPasswords is enabled."),
+                );
             }
             if line.starts_with("X11Forwarding") && line.contains("yes") {
                 findings.push(Finding::new(
@@ -220,24 +307,33 @@ fn audit_ssh_config(findings: &mut Vec<Finding>) {
                 .description("X11 forwarding is enabled, which can be used for keylogging and clipboard attacks."));
             }
             if line.starts_with("Protocol") && !line.contains("2") {
-                findings.push(Finding::new(
-                    "linux-ssh-protocol-1",
-                    "SSH protocol 1 is allowed",
-                    Severity::Critical,
-                    Category::Config,
-                )
-                .description("SSH protocol 1 is allowed. Protocol 1 has known vulnerabilities."));
+                findings.push(
+                    Finding::new(
+                        "linux-ssh-protocol-1",
+                        "SSH protocol 1 is allowed",
+                        Severity::Critical,
+                        Category::Config,
+                    )
+                    .description(
+                        "SSH protocol 1 is allowed. Protocol 1 has known vulnerabilities.",
+                    ),
+                );
             }
             if line.starts_with("MaxAuthTries") {
                 if let Some(val) = line.split_whitespace().nth(1) {
                     if val.parse::<u32>().unwrap_or(6) > 3 {
-                        findings.push(Finding::new(
-                            "linux-ssh-high-auth-tries",
-                            "SSH MaxAuthTries is high",
-                            Severity::Low,
-                            Category::Config,
-                        )
-                        .description(&format!("MaxAuthTries is {}, allowing many brute-force attempts.", val)));
+                        findings.push(
+                            Finding::new(
+                                "linux-ssh-high-auth-tries",
+                                "SSH MaxAuthTries is high",
+                                Severity::Low,
+                                Category::Config,
+                            )
+                            .description(&format!(
+                                "MaxAuthTries is {}, allowing many brute-force attempts.",
+                                val
+                            )),
+                        );
                     }
                 }
             }
@@ -271,15 +367,21 @@ fn audit_auto_updates(findings: &mut Vec<Finding>) {
     // Check unattended-upgrades (Debian/Ubuntu)
     if file_exists("/etc/apt/apt.conf.d/20auto-upgrades") {
         if let Some(content) = read_file("/etc/apt/apt.conf.d/20auto-upgrades") {
-            if !content.contains("APT::Periodic::Update-Package-Lists \"1\"") || !content.contains("APT::Periodic::Unattended-Upgrade \"1\"") {
-                findings.push(Finding::new(
-                    "linux-auto-updates-off",
-                    "Automatic security updates are disabled",
-                    Severity::Medium,
-                    Category::Config,
-                )
-                .description("unattended-upgrades is not configured for automatic security updates.")
-                .recommendation("Enable: sudo dpkg-reconfigure -plow unattended-upgrades"));
+            if !content.contains("APT::Periodic::Update-Package-Lists \"1\"")
+                || !content.contains("APT::Periodic::Unattended-Upgrade \"1\"")
+            {
+                findings.push(
+                    Finding::new(
+                        "linux-auto-updates-off",
+                        "Automatic security updates are disabled",
+                        Severity::Medium,
+                        Category::Config,
+                    )
+                    .description(
+                        "unattended-upgrades is not configured for automatic security updates.",
+                    )
+                    .recommendation("Enable: sudo dpkg-reconfigure -plow unattended-upgrades"),
+                );
             }
         }
     } else {
@@ -288,13 +390,17 @@ fn audit_auto_updates(findings: &mut Vec<Finding>) {
         if dnf_auto.contains("disabled") || dnf_auto.contains("inactive") {
             // Check cron-apt as fallback
             if !file_exists("/etc/cron-apt/action.d") {
-                findings.push(Finding::new(
-                    "linux-auto-updates-unknown",
-                    "Automatic updates may not be configured",
-                    Severity::Low,
-                    Category::Config,
-                )
-                .description("No automatic update mechanism detected. Security patches may be missed."));
+                findings.push(
+                    Finding::new(
+                        "linux-auto-updates-unknown",
+                        "Automatic updates may not be configured",
+                        Severity::Low,
+                        Category::Config,
+                    )
+                    .description(
+                        "No automatic update mechanism detected. Security patches may be missed.",
+                    ),
+                );
             }
         }
     }
@@ -346,26 +452,40 @@ fn audit_listening_ports(findings: &mut Vec<Finding>) {
 
             if is_public {
                 let service_name = identify_service_by_port(port);
-                let severity = if is_dangerous_port(port) { Severity::Critical } else { Severity::High };
+                let severity = if is_dangerous_port(port) {
+                    Severity::Critical
+                } else {
+                    Severity::High
+                };
 
-                findings.push(Finding::new(
-                    &format!("linux-port-public-{}", port),
-                    &format!("Port {} ({}) listening on all interfaces", port, service_name),
-                    severity,
-                    Category::Services,
-                )
-                .description(&format!("Port {} is listening on {} (all interfaces), accessible from any network.", port, ip))
-                .metadata("port", port.to_string())
-                .metadata("address", ip.to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-port-public-{}", port),
+                        &format!(
+                            "Port {} ({}) listening on all interfaces",
+                            port, service_name
+                        ),
+                        severity,
+                        Category::Services,
+                    )
+                    .description(&format!(
+                        "Port {} is listening on {} (all interfaces), accessible from any network.",
+                        port, ip
+                    ))
+                    .metadata("port", port.to_string())
+                    .metadata("address", ip.to_string()),
+                );
             } else if !is_loopback {
-                findings.push(Finding::new(
-                    &format!("linux-port-bound-{}", port),
-                    &format!("Port {} listening on {}", port, ip),
-                    Severity::Low,
-                    Category::Services,
-                )
-                .metadata("port", port.to_string())
-                .metadata("address", ip.to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-port-bound-{}", port),
+                        &format!("Port {} listening on {}", port, ip),
+                        Severity::Low,
+                        Category::Services,
+                    )
+                    .metadata("port", port.to_string())
+                    .metadata("address", ip.to_string()),
+                );
             }
         }
     }
@@ -398,11 +518,17 @@ fn identify_service_by_port(port: u16) -> &'static str {
 }
 
 fn is_dangerous_port(port: u16) -> bool {
-    matches!(port, 23 | 21 | 139 | 445 | 3389 | 5900 | 27017 | 6379 | 9200 | 11211 | 2049 | 111)
+    matches!(
+        port,
+        23 | 21 | 139 | 445 | 3389 | 5900 | 27017 | 6379 | 9200 | 11211 | 2049 | 111
+    )
 }
 
 fn audit_systemd_services(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy("systemctl", &["list-units", "--type=service", "--state=running"]);
+    let output = run_cmd_lossy(
+        "systemctl",
+        &["list-units", "--type=service", "--state=running"],
+    );
 
     for line in output.lines() {
         let line = line.trim();
@@ -417,13 +543,15 @@ fn audit_systemd_services(findings: &mut Vec<Finding>) {
 
         let unit = parts[0];
         if unit.ends_with(".service") {
-            findings.push(Finding::new(
-                &format!("linux-service-{}", unit),
-                &format!("Running service: {}", unit),
-                Severity::Info,
-                Category::Services,
-            )
-            .metadata("unit", unit.to_string()));
+            findings.push(
+                Finding::new(
+                    &format!("linux-service-{}", unit),
+                    &format!("Running service: {}", unit),
+                    Severity::Info,
+                    Category::Services,
+                )
+                .metadata("unit", unit.to_string()),
+            );
         }
     }
 }
@@ -431,7 +559,15 @@ fn audit_systemd_services(findings: &mut Vec<Finding>) {
 fn audit_root_services(findings: &mut Vec<Finding>) {
     // Check for services running as root that shouldn't
     let output = run_cmd_lossy("ps", &["aux"]);
-    let root_services = ["nginx", "apache2", "httpd", "mysqld", "postgres", "redis-server", "mongod"];
+    let root_services = [
+        "nginx",
+        "apache2",
+        "httpd",
+        "mysqld",
+        "postgres",
+        "redis-server",
+        "mongod",
+    ];
 
     for line in output.lines().skip(1) {
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -488,19 +624,31 @@ fn audit_passwd(findings: &mut Vec<Finding>) {
 
             // Check for UID 0 accounts other than root
             if uid == "0" && username != "root" {
-                findings.push(Finding::new(
-                    &format!("linux-uid0-{}", username),
-                    &format!("User '{}' has UID 0 (root equivalent)", username),
-                    Severity::Critical,
-                    Category::Privileges,
-                )
-                .description(&format!("User '{}' has UID 0, granting full root privileges.", username))
-                .metadata("user", username));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-uid0-{}", username),
+                        &format!("User '{}' has UID 0 (root equivalent)", username),
+                        Severity::Critical,
+                        Category::Privileges,
+                    )
+                    .description(&format!(
+                        "User '{}' has UID 0, granting full root privileges.",
+                        username
+                    ))
+                    .metadata("user", username),
+                );
             }
 
             // Check for accounts with login shells but no password
-            if shell != "/bin/false" && shell != "/usr/sbin/nologin" && shell != "/bin/nologin" && shell != "/dev/null" {
-                if uid.parse::<u32>().unwrap_or(1000) < 1000 && username != "root" && username != "sync" {
+            if shell != "/bin/false"
+                && shell != "/usr/sbin/nologin"
+                && shell != "/bin/nologin"
+                && shell != "/dev/null"
+            {
+                if uid.parse::<u32>().unwrap_or(1000) < 1000
+                    && username != "root"
+                    && username != "sync"
+                {
                     findings.push(Finding::new(
                         &format!("linux-system-account-shell-{}", username),
                         &format!("System account '{}' has a login shell", username),
@@ -533,14 +681,24 @@ fn audit_sudoers(findings: &mut Vec<Finding>) {
                 .description(&format!("Sudoers contains NOPASSWD: '{}'. This allows running commands as root without password.", line))
                 .recommendation("Remove NOPASSWD entries or restrict to specific commands."));
             }
-            if line.contains("ALL=(ALL:ALL) ALL") && !line.starts_with("root") && !line.starts_with("%admin") && !line.starts_with("%sudo") && !line.starts_with("%wheel") {
-                findings.push(Finding::new(
-                    "linux-sudo-all-user",
-                    "Non-standard user has full sudo access",
-                    Severity::Medium,
-                    Category::Privileges,
-                )
-                .description(&format!("Sudoers entry: '{}'. Unrestricted sudo access.", line)));
+            if line.contains("ALL=(ALL:ALL) ALL")
+                && !line.starts_with("root")
+                && !line.starts_with("%admin")
+                && !line.starts_with("%sudo")
+                && !line.starts_with("%wheel")
+            {
+                findings.push(
+                    Finding::new(
+                        "linux-sudo-all-user",
+                        "Non-standard user has full sudo access",
+                        Severity::Medium,
+                        Category::Privileges,
+                    )
+                    .description(&format!(
+                        "Sudoers entry: '{}'. Unrestricted sudo access.",
+                        line
+                    )),
+                );
             }
         }
     }
@@ -553,13 +711,19 @@ fn audit_sudoers(findings: &mut Vec<Finding>) {
                 for line in content.lines() {
                     let line = line.trim();
                     if line.contains("NOPASSWD") {
-                        findings.push(Finding::new(
-                            &format!("linux-sudo-nopasswd-{}", path.display()),
-                            &format!("NOPASSWD in {}", path.display()),
-                            Severity::High,
-                            Category::Privileges,
-                        )
-                        .description(&format!("NOPASSWD in {}: '{}'", path.display(), line)));
+                        findings.push(
+                            Finding::new(
+                                &format!("linux-sudo-nopasswd-{}", path.display()),
+                                &format!("NOPASSWD in {}", path.display()),
+                                Severity::High,
+                                Category::Privileges,
+                            )
+                            .description(&format!(
+                                "NOPASSWD in {}: '{}'",
+                                path.display(),
+                                line
+                            )),
+                        );
                     }
                 }
             }
@@ -606,23 +770,33 @@ fn audit_password_policy(findings: &mut Vec<Finding>) {
             }
         }
         if min_len < 12 {
-            findings.push(Finding::new(
-                "linux-password-length-weak",
-                &format!("Minimum password length is {} (recommended: 12)", min_len),
-                Severity::Medium,
-                Category::Privileges,
-            )
-            .description(&format!("PASS_MIN_LEN is {}. Short passwords are vulnerable to brute-force.", min_len))
-            .recommendation("Set PASS_MIN_LEN 12 in /etc/login.defs"));
+            findings.push(
+                Finding::new(
+                    "linux-password-length-weak",
+                    &format!("Minimum password length is {} (recommended: 12)", min_len),
+                    Severity::Medium,
+                    Category::Privileges,
+                )
+                .description(&format!(
+                    "PASS_MIN_LEN is {}. Short passwords are vulnerable to brute-force.",
+                    min_len
+                ))
+                .recommendation("Set PASS_MIN_LEN 12 in /etc/login.defs"),
+            );
         }
         if max_days > 90 {
-            findings.push(Finding::new(
-                "linux-password-max-age",
-                &format!("Password max age is {} days (recommended: 90)", max_days),
-                Severity::Low,
-                Category::Privileges,
-            )
-            .description(&format!("PASS_MAX_DAYS is {}. Passwords rarely expire.", max_days)));
+            findings.push(
+                Finding::new(
+                    "linux-password-max-age",
+                    &format!("Password max age is {} days (recommended: 90)", max_days),
+                    Severity::Low,
+                    Category::Privileges,
+                )
+                .description(&format!(
+                    "PASS_MAX_DAYS is {}. Passwords rarely expire.",
+                    max_days
+                )),
+            );
         }
     }
 }
@@ -643,14 +817,19 @@ fn audit_shadow_file(findings: &mut Vec<Finding>) {
             }
 
             if hash.is_empty() {
-                findings.push(Finding::new(
-                    &format!("linux-empty-password-{}", username),
-                    &format!("User '{}' has an empty password", username),
-                    Severity::Critical,
-                    Category::Privileges,
-                )
-                .description(&format!("User '{}' has an empty password in /etc/shadow.", username))
-                .recommendation(&format!("Lock account: sudo passwd -l {}", username)));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-empty-password-{}", username),
+                        &format!("User '{}' has an empty password", username),
+                        Severity::Critical,
+                        Category::Privileges,
+                    )
+                    .description(&format!(
+                        "User '{}' has an empty password in /etc/shadow.",
+                        username
+                    ))
+                    .recommendation(&format!("Lock account: sudo passwd -l {}", username)),
+                );
             }
 
             // Check for weak hash algorithms
@@ -665,13 +844,15 @@ fn audit_shadow_file(findings: &mut Vec<Finding>) {
                 .recommendation("Use SHA-512 ($6$) or yescrypt ($y$) hashing."));
             }
             if hash.starts_with("$5$") {
-                findings.push(Finding::new(
-                    &format!("linux-sha256-hash-{}", username),
-                    &format!("User '{}' uses SHA-256 hashing", username),
-                    Severity::Low,
-                    Category::Privileges,
-                )
-                .description("SHA-256 hashing is used. SHA-512 or yescrypt is recommended."));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-sha256-hash-{}", username),
+                        &format!("User '{}' uses SHA-256 hashing", username),
+                        Severity::Low,
+                        Category::Privileges,
+                    )
+                    .description("SHA-256 hashing is used. SHA-512 or yescrypt is recommended."),
+                );
             }
         }
     }
@@ -710,14 +891,16 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
                     if line.starts_with('#') || line.is_empty() {
                         continue;
                     }
-                    findings.push(Finding::new(
-                        &format!("linux-cron-{}", path),
-                        &format!("Cron job in {}", path),
-                        Severity::Info,
-                        Category::Persistence,
-                    )
-                    .metadata("path", path.to_string())
-                    .metadata("entry", line.to_string()));
+                    findings.push(
+                        Finding::new(
+                            &format!("linux-cron-{}", path),
+                            &format!("Cron job in {}", path),
+                            Severity::Info,
+                            Category::Persistence,
+                        )
+                        .metadata("path", path.to_string())
+                        .metadata("entry", line.to_string()),
+                    );
                 }
             }
         } else if p.is_dir() {
@@ -728,13 +911,15 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
                         for line in content.lines() {
                             let line = line.trim();
                             if !line.is_empty() && !line.starts_with('#') {
-                                findings.push(Finding::new(
-                                    &format!("linux-cron-{}", file_path.display()),
-                                    &format!("Cron job: {}", file_path.display()),
-                                    Severity::Info,
-                                    Category::Persistence,
-                                )
-                                .metadata("path", file_path.display().to_string()));
+                                findings.push(
+                                    Finding::new(
+                                        &format!("linux-cron-{}", file_path.display()),
+                                        &format!("Cron job: {}", file_path.display()),
+                                        Severity::Info,
+                                        Category::Persistence,
+                                    )
+                                    .metadata("path", file_path.display().to_string()),
+                                );
                             }
                         }
                     }
@@ -748,13 +933,15 @@ fn audit_cron_jobs(findings: &mut Vec<Finding>) {
     for line in user_cron.lines() {
         let line = line.trim();
         if !line.is_empty() && !line.starts_with('#') {
-            findings.push(Finding::new(
-                "linux-cron-user",
-                "User crontab entry",
-                Severity::Info,
-                Category::Persistence,
-            )
-            .metadata("entry", line.to_string()));
+            findings.push(
+                Finding::new(
+                    "linux-cron-user",
+                    "User crontab entry",
+                    Severity::Info,
+                    Category::Persistence,
+                )
+                .metadata("entry", line.to_string()),
+            );
         }
     }
 }
@@ -776,13 +963,15 @@ fn audit_systemd_timers(findings: &mut Vec<Finding>) {
         // Find the .timer unit
         for part in &parts {
             if part.ends_with(".timer") {
-                findings.push(Finding::new(
-                    &format!("linux-timer-{}", part),
-                    &format!("Systemd timer: {}", part),
-                    Severity::Info,
-                    Category::Persistence,
-                )
-                .metadata("timer", part.to_string()));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-timer-{}", part),
+                        &format!("Systemd timer: {}", part),
+                        Severity::Info,
+                        Category::Persistence,
+                    )
+                    .metadata("timer", part.to_string()),
+                );
             }
         }
     }
@@ -796,14 +985,19 @@ fn audit_init_scripts(findings: &mut Vec<Finding>) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let file_path = entry.path();
                 if file_path.is_file() {
-                    let name = file_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-                    findings.push(Finding::new(
-                        &format!("linux-initd-{}", name),
-                        &format!("Init script: {}", name),
-                        Severity::Info,
-                        Category::Persistence,
-                    )
-                    .metadata("path", file_path.display().to_string()));
+                    let name = file_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    findings.push(
+                        Finding::new(
+                            &format!("linux-initd-{}", name),
+                            &format!("Init script: {}", name),
+                            Severity::Info,
+                            Category::Persistence,
+                        )
+                        .metadata("path", file_path.display().to_string()),
+                    );
                 }
             }
         }
@@ -811,11 +1005,7 @@ fn audit_init_scripts(findings: &mut Vec<Finding>) {
 }
 
 fn audit_shell_profiles(findings: &mut Vec<Finding>) {
-    let profile_paths = [
-        "/etc/profile",
-        "/etc/bash.bashrc",
-        "/etc/profile.d",
-    ];
+    let profile_paths = ["/etc/profile", "/etc/bash.bashrc", "/etc/profile.d"];
 
     for path in &profile_paths {
         let p = std::path::Path::new(path);
@@ -828,16 +1018,22 @@ fn audit_shell_profiles(findings: &mut Vec<Finding>) {
                     }
                     // Check for suspicious commands in system profiles
                     let lower = line.to_lowercase();
-                    if lower.contains("curl") || lower.contains("wget") || lower.contains("nc ") || lower.contains("base64 -d") {
-                        findings.push(Finding::new(
-                            &format!("linux-profile-suspicious-{}", path),
-                            &format!("Suspicious entry in {}", path),
-                            Severity::High,
-                            Category::Persistence,
-                        )
-                        .description(&format!("Suspicious command in {}: '{}'", path, line))
-                        .metadata("path", path.to_string())
-                        .metadata("entry", line.to_string()));
+                    if lower.contains("curl")
+                        || lower.contains("wget")
+                        || lower.contains("nc ")
+                        || lower.contains("base64 -d")
+                    {
+                        findings.push(
+                            Finding::new(
+                                &format!("linux-profile-suspicious-{}", path),
+                                &format!("Suspicious entry in {}", path),
+                                Severity::High,
+                                Category::Persistence,
+                            )
+                            .description(&format!("Suspicious command in {}: '{}'", path, line))
+                            .metadata("path", path.to_string())
+                            .metadata("entry", line.to_string()),
+                        );
                     }
                 }
             }
@@ -849,15 +1045,28 @@ fn audit_shell_profiles(findings: &mut Vec<Finding>) {
                         for line in content.lines() {
                             let line = line.trim();
                             let lower = line.to_lowercase();
-                            if lower.contains("curl") || lower.contains("wget") || lower.contains("nc ") || lower.contains("base64 -d") {
-                                findings.push(Finding::new(
-                                    &format!("linux-profile-suspicious-{}", file_path.display()),
-                                    &format!("Suspicious entry in {}", file_path.display()),
-                                    Severity::High,
-                                    Category::Persistence,
-                                )
-                                .description(&format!("Suspicious command in {}: '{}'", file_path.display(), line))
-                                .metadata("path", file_path.display().to_string()));
+                            if lower.contains("curl")
+                                || lower.contains("wget")
+                                || lower.contains("nc ")
+                                || lower.contains("base64 -d")
+                            {
+                                findings.push(
+                                    Finding::new(
+                                        &format!(
+                                            "linux-profile-suspicious-{}",
+                                            file_path.display()
+                                        ),
+                                        &format!("Suspicious entry in {}", file_path.display()),
+                                        Severity::High,
+                                        Category::Persistence,
+                                    )
+                                    .description(&format!(
+                                        "Suspicious command in {}: '{}'",
+                                        file_path.display(),
+                                        line
+                                    ))
+                                    .metadata("path", file_path.display().to_string()),
+                                );
                             }
                         }
                     }
@@ -874,13 +1083,15 @@ fn audit_rc_local(findings: &mut Vec<Finding>) {
             if line.starts_with('#') || line.is_empty() || line == "exit 0" {
                 continue;
             }
-            findings.push(Finding::new(
-                "linux-rc-local",
-                "Entry in /etc/rc.local",
-                Severity::Info,
-                Category::Persistence,
-            )
-            .metadata("entry", line.to_string()));
+            findings.push(
+                Finding::new(
+                    "linux-rc-local",
+                    "Entry in /etc/rc.local",
+                    Severity::Info,
+                    Category::Persistence,
+                )
+                .metadata("entry", line.to_string()),
+            );
         }
     }
 }
@@ -904,25 +1115,29 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
     // Chrome
     let chrome_login = format!("{}/.config/google-chrome/Default/Login Data", home);
     if file_exists(&chrome_login) {
-        findings.push(Finding::new(
-            "linux-browser-chrome-passwords",
-            "Google Chrome has saved passwords",
-            Severity::Medium,
-            Category::Credentials,
-        )
-        .description("Chrome's Login Data database exists, indicating saved passwords."));
+        findings.push(
+            Finding::new(
+                "linux-browser-chrome-passwords",
+                "Google Chrome has saved passwords",
+                Severity::Medium,
+                Category::Credentials,
+            )
+            .description("Chrome's Login Data database exists, indicating saved passwords."),
+        );
     }
 
     // Chromium
     let chromium_login = format!("{}/.config/chromium/Default/Login Data", home);
     if file_exists(&chromium_login) {
-        findings.push(Finding::new(
-            "linux-browser-chromium-passwords",
-            "Chromium has saved passwords",
-            Severity::Medium,
-            Category::Credentials,
-        )
-        .description("Chromium's Login Data database exists, indicating saved passwords."));
+        findings.push(
+            Finding::new(
+                "linux-browser-chromium-passwords",
+                "Chromium has saved passwords",
+                Severity::Medium,
+                Category::Credentials,
+            )
+            .description("Chromium's Login Data database exists, indicating saved passwords."),
+        );
     }
 
     // Firefox
@@ -932,29 +1147,36 @@ fn audit_browser_passwords(findings: &mut Vec<Finding>) {
             let profile = entry.path();
             let logins = profile.join("logins.json");
             if logins.exists() {
-                findings.push(Finding::new(
-                    "linux-browser-firefox-passwords",
-                    "Firefox has saved passwords",
-                    Severity::Medium,
-                    Category::Credentials,
-                )
-                .description("Firefox logins.json exists, indicating saved passwords.")
-                .metadata("path", logins.display().to_string()));
+                findings.push(
+                    Finding::new(
+                        "linux-browser-firefox-passwords",
+                        "Firefox has saved passwords",
+                        Severity::Medium,
+                        Category::Credentials,
+                    )
+                    .description("Firefox logins.json exists, indicating saved passwords.")
+                    .metadata("path", logins.display().to_string()),
+                );
                 break;
             }
         }
     }
 
     // Brave
-    let brave_login = format!("{}/.config/BraveSoftware/Brave-Browser/Default/Login Data", home);
+    let brave_login = format!(
+        "{}/.config/BraveSoftware/Brave-Browser/Default/Login Data",
+        home
+    );
     if file_exists(&brave_login) {
-        findings.push(Finding::new(
-            "linux-browser-brave-passwords",
-            "Brave browser has saved passwords",
-            Severity::Medium,
-            Category::Credentials,
-        )
-        .description("Brave's Login Data database exists, indicating saved passwords."));
+        findings.push(
+            Finding::new(
+                "linux-browser-brave-passwords",
+                "Brave browser has saved passwords",
+                Severity::Medium,
+                Category::Credentials,
+            )
+            .description("Brave's Login Data database exists, indicating saved passwords."),
+        );
     }
 }
 
@@ -965,9 +1187,15 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
     if let Ok(entries) = std::fs::read_dir(&ssh_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let file_name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
 
-            if file_name.ends_with(".pub") || file_name.starts_with("known_hosts") || file_name.starts_with("config") {
+            if file_name.ends_with(".pub")
+                || file_name.starts_with("known_hosts")
+                || file_name.starts_with("config")
+            {
                 continue;
             }
 
@@ -975,14 +1203,16 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
                 if content.contains("PRIVATE KEY") {
                     let is_encrypted = content.contains("ENCRYPTED");
                     if !is_encrypted {
-                        findings.push(Finding::new(
-                            &format!("linux-ssh-key-nopass-{}", file_name),
-                            &format!("SSH private key '{}' has no passphrase", file_name),
-                            Severity::High,
-                            Category::Credentials,
-                        )
-                        .description("Unencrypted SSH private key found.")
-                        .metadata("key_file", file_name.clone()));
+                        findings.push(
+                            Finding::new(
+                                &format!("linux-ssh-key-nopass-{}", file_name),
+                                &format!("SSH private key '{}' has no passphrase", file_name),
+                                Severity::High,
+                                Category::Credentials,
+                            )
+                            .description("Unencrypted SSH private key found.")
+                            .metadata("key_file", file_name.clone()),
+                        );
                     }
 
                     // Check file permissions
@@ -1028,25 +1258,33 @@ fn audit_wifi_passwords(findings: &mut Vec<Finding>) {
     if let Some(content) = read_file(wpa_conf) {
         if content.contains("psk=") {
             let count = content.lines().filter(|l| l.contains("psk=")).count();
-            findings.push(Finding::new(
-                "linux-wifi-wpa-supplicant",
-                &format!("{} Wi-Fi passwords in wpa_supplicant.conf", count),
-                Severity::Low,
-                Category::Credentials,
-            )
-            .description(&format!("{} Wi-Fi PSKs found in {}.", count, wpa_conf))
-            .metadata("count", count.to_string()));
+            findings.push(
+                Finding::new(
+                    "linux-wifi-wpa-supplicant",
+                    &format!("{} Wi-Fi passwords in wpa_supplicant.conf", count),
+                    Severity::Low,
+                    Category::Credentials,
+                )
+                .description(&format!("{} Wi-Fi PSKs found in {}.", count, wpa_conf))
+                .metadata("count", count.to_string()),
+            );
         }
     }
 }
 
 fn audit_keyring(findings: &mut Vec<Finding>) {
     // Check for GNOME Keyring
-    let keyring_dir = format!("{}/.local/share/keyrings", std::env::var("HOME").unwrap_or_default());
+    let keyring_dir = format!(
+        "{}/.local/share/keyrings",
+        std::env::var("HOME").unwrap_or_default()
+    );
     if let Ok(entries) = std::fs::read_dir(&keyring_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
             if name.ends_with(".keyring") {
                 findings.push(Finding::new(
                     &format!("linux-keyring-{}", name),
@@ -1060,19 +1298,27 @@ fn audit_keyring(findings: &mut Vec<Finding>) {
     }
 
     // Check for KDE Wallet
-    let kwallet_dir = format!("{}/.local/share/kwalletd", std::env::var("HOME").unwrap_or_default());
+    let kwallet_dir = format!(
+        "{}/.local/share/kwalletd",
+        std::env::var("HOME").unwrap_or_default()
+    );
     if let Ok(entries) = std::fs::read_dir(&kwallet_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
             if name.ends_with(".kwl") {
-                findings.push(Finding::new(
-                    &format!("linux-kwallet-{}", name),
-                    &format!("KDE Wallet file: {}", name),
-                    Severity::Info,
-                    Category::Credentials,
-                )
-                .description("KDE Wallet file found."));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-kwallet-{}", name),
+                        &format!("KDE Wallet file: {}", name),
+                        Severity::Info,
+                        Category::Credentials,
+                    )
+                    .description("KDE Wallet file found."),
+                );
             }
         }
     }
@@ -1121,26 +1367,33 @@ fn audit_nfs_exports(findings: &mut Vec<Finding>) {
 
             // Check for * export
             if line.contains("*") {
-                findings.push(Finding::new(
-                    &format!("linux-nfs-wildcard-{}", export_path),
-                    &format!("NFS export '{}' allows wildcard access", export_path),
-                    Severity::High,
-                    Category::Shares,
-                )
-                .description(&format!("NFS export '{}' is accessible from any host (*).", export_path))
-                .metadata("export", export_path.to_string())
-                .metadata("options", options.clone()));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-nfs-wildcard-{}", export_path),
+                        &format!("NFS export '{}' allows wildcard access", export_path),
+                        Severity::High,
+                        Category::Shares,
+                    )
+                    .description(&format!(
+                        "NFS export '{}' is accessible from any host (*).",
+                        export_path
+                    ))
+                    .metadata("export", export_path.to_string())
+                    .metadata("options", options.clone()),
+                );
             }
 
             // General info
-            findings.push(Finding::new(
-                &format!("linux-nfs-export-{}", export_path),
-                &format!("NFS export: {}", export_path),
-                Severity::Info,
-                Category::Shares,
-            )
-            .metadata("export", export_path.to_string())
-            .metadata("options", options));
+            findings.push(
+                Finding::new(
+                    &format!("linux-nfs-export-{}", export_path),
+                    &format!("NFS export: {}", export_path),
+                    Severity::Info,
+                    Category::Shares,
+                )
+                .metadata("export", export_path.to_string())
+                .metadata("options", options),
+            );
         }
     }
 }
@@ -1173,14 +1426,22 @@ fn audit_samba_shares(findings: &mut Vec<Finding>) {
                             .metadata("share", current_share.clone()));
                         }
                         if is_writable && has_guest {
-                            findings.push(Finding::new(
-                                &format!("linux-smb-guest-writable-{}", current_share),
-                                &format!("SMB share '{}' is writable and allows guest", current_share),
-                                Severity::Critical,
-                                Category::Shares,
-                            )
-                            .description(&format!("SMB share '{}' is both writable and guest-accessible.", current_share))
-                            .metadata("share", current_share.clone()));
+                            findings.push(
+                                Finding::new(
+                                    &format!("linux-smb-guest-writable-{}", current_share),
+                                    &format!(
+                                        "SMB share '{}' is writable and allows guest",
+                                        current_share
+                                    ),
+                                    Severity::Critical,
+                                    Category::Shares,
+                                )
+                                .description(&format!(
+                                    "SMB share '{}' is both writable and guest-accessible.",
+                                    current_share
+                                ))
+                                .metadata("share", current_share.clone()),
+                            );
                         }
                     }
 
@@ -1209,30 +1470,38 @@ fn audit_samba_shares(findings: &mut Vec<Finding>) {
 
             // Report last share
             if in_share && !current_share.is_empty() && has_guest {
-                findings.push(Finding::new(
-                    &format!("linux-smb-guest-{}", current_share),
-                    &format!("SMB share '{}' allows guest access", current_share),
-                    Severity::High,
-                    Category::Shares,
-                )
-                .metadata("share", current_share.clone()));
+                findings.push(
+                    Finding::new(
+                        &format!("linux-smb-guest-{}", current_share),
+                        &format!("SMB share '{}' allows guest access", current_share),
+                        Severity::High,
+                        Category::Shares,
+                    )
+                    .metadata("share", current_share.clone()),
+                );
             }
 
             // Check global settings
             if content.contains("server signing") && !content.contains("mandatory") {
-                findings.push(Finding::new(
-                    "linux-smb-signing-optional",
-                    "SMB signing is not mandatory",
-                    Severity::Medium,
-                    Category::Shares,
-                )
-                .description("SMB server signing is not set to mandatory. Relay attacks are possible.")
-                .recommendation("Set 'server signing = mandatory' in [global] section"));
+                findings.push(
+                    Finding::new(
+                        "linux-smb-signing-optional",
+                        "SMB signing is not mandatory",
+                        Severity::Medium,
+                        Category::Shares,
+                    )
+                    .description(
+                        "SMB server signing is not set to mandatory. Relay attacks are possible.",
+                    )
+                    .recommendation("Set 'server signing = mandatory' in [global] section"),
+                );
             }
 
             if content.contains("min protocol") {
                 // Check for SMBv1
-                if content.contains("min protocol = NT1") || content.contains("client min protocol = NT1") {
+                if content.contains("min protocol = NT1")
+                    || content.contains("client min protocol = NT1")
+                {
                     findings.push(Finding::new(
                         "linux-smbv1-enabled",
                         "SMBv1 protocol is enabled",
@@ -1283,16 +1552,28 @@ fn audit_apt_updates(findings: &mut Vec<Finding>) {
     }
 
     if count > 0 {
-        findings.push(Finding::new(
-            "linux-apt-updates",
-            &format!("{} packages can be upgraded ({} security)", count, security_count),
-            if security_count > 0 { Severity::High } else { Severity::Medium },
-            Category::Patches,
-        )
-        .description(&format!("{} packages have updates available, {} of which are security updates.", count, security_count))
-        .recommendation("Update: sudo apt update && sudo apt upgrade")
-        .metadata("total", count.to_string())
-        .metadata("security", security_count.to_string()));
+        findings.push(
+            Finding::new(
+                "linux-apt-updates",
+                &format!(
+                    "{} packages can be upgraded ({} security)",
+                    count, security_count
+                ),
+                if security_count > 0 {
+                    Severity::High
+                } else {
+                    Severity::Medium
+                },
+                Category::Patches,
+            )
+            .description(&format!(
+                "{} packages have updates available, {} of which are security updates.",
+                count, security_count
+            ))
+            .recommendation("Update: sudo apt update && sudo apt upgrade")
+            .metadata("total", count.to_string())
+            .metadata("security", security_count.to_string()),
+        );
     }
 }
 
@@ -1301,30 +1582,45 @@ fn audit_dnf_updates(findings: &mut Vec<Finding>) {
         return;
     }
 
-    let cmd = if file_exists("/usr/bin/dnf") { "dnf" } else { "yum" };
+    let cmd = if file_exists("/usr/bin/dnf") {
+        "dnf"
+    } else {
+        "yum"
+    };
     let output = run_cmd_lossy(cmd, &["check-update"]);
 
-    let count = output.lines().filter(|l| {
-        !l.is_empty() && !l.starts_with("Last metadata") && !l.contains(".repo")
-    }).count();
+    let count = output
+        .lines()
+        .filter(|l| !l.is_empty() && !l.starts_with("Last metadata") && !l.contains(".repo"))
+        .count();
 
     if count > 0 {
         // Check security updates
         let sec_output = run_cmd_lossy(cmd, &["check-update", "--security"]);
-        let sec_count = sec_output.lines().filter(|l| {
-            !l.is_empty() && !l.starts_with("Last metadata") && !l.contains(".repo")
-        }).count();
+        let sec_count = sec_output
+            .lines()
+            .filter(|l| !l.is_empty() && !l.starts_with("Last metadata") && !l.contains(".repo"))
+            .count();
 
-        findings.push(Finding::new(
-            "linux-dnf-updates",
-            &format!("{} packages can be updated ({} security)", count, sec_count),
-            if sec_count > 0 { Severity::High } else { Severity::Medium },
-            Category::Patches,
-        )
-        .description(&format!("{} packages have updates available, {} security.", count, sec_count))
-        .recommendation(&format!("Update: sudo {} upgrade", cmd))
-        .metadata("total", count.to_string())
-        .metadata("security", sec_count.to_string()));
+        findings.push(
+            Finding::new(
+                "linux-dnf-updates",
+                &format!("{} packages can be updated ({} security)", count, sec_count),
+                if sec_count > 0 {
+                    Severity::High
+                } else {
+                    Severity::Medium
+                },
+                Category::Patches,
+            )
+            .description(&format!(
+                "{} packages have updates available, {} security.",
+                count, sec_count
+            ))
+            .recommendation(&format!("Update: sudo {} upgrade", cmd))
+            .metadata("total", count.to_string())
+            .metadata("security", sec_count.to_string()),
+        );
     }
 }
 
@@ -1337,40 +1633,53 @@ fn audit_pacman_updates(findings: &mut Vec<Finding>) {
 
     let count = output.lines().filter(|l| !l.is_empty()).count();
     if count > 0 {
-        findings.push(Finding::new(
-            "linux-pacman-updates",
-            &format!("{} packages can be updated", count),
-            Severity::Medium,
-            Category::Patches,
-        )
-        .description(&format!("{} Arch Linux packages have updates available.", count))
-        .recommendation("Update: sudo pacman -Syu")
-        .metadata("count", count.to_string()));
+        findings.push(
+            Finding::new(
+                "linux-pacman-updates",
+                &format!("{} packages can be updated", count),
+                Severity::Medium,
+                Category::Patches,
+            )
+            .description(&format!(
+                "{} Arch Linux packages have updates available.",
+                count
+            ))
+            .recommendation("Update: sudo pacman -Syu")
+            .metadata("count", count.to_string()),
+        );
     }
 }
 
 fn audit_pending_reboot(findings: &mut Vec<Finding>) {
     // Check if a reboot is needed (Debian/Ubuntu)
     if file_exists("/var/run/reboot-required") {
-        findings.push(Finding::new(
-            "linux-reboot-required",
-            "System reboot is required",
-            Severity::Medium,
-            Category::Patches,
-        )
-        .description("A reboot is required to complete pending updates (kernel or security patches).")
-        .recommendation("Reboot the system to apply pending updates"));
+        findings.push(
+            Finding::new(
+                "linux-reboot-required",
+                "System reboot is required",
+                Severity::Medium,
+                Category::Patches,
+            )
+            .description(
+                "A reboot is required to complete pending updates (kernel or security patches).",
+            )
+            .recommendation("Reboot the system to apply pending updates"),
+        );
     }
 
     // Check for updated kernel not yet booted (RHEL/Fedora)
     let running_kernel = run_cmd_lossy("uname", &["-r"]);
-    let installed_kernels = run_cmd_lossy("rpm", &["-q", "kernel", "--qf", "%{VERSION}-%{RELEASE}.%{ARCH}\n"]);
+    let installed_kernels = run_cmd_lossy(
+        "rpm",
+        &["-q", "kernel", "--qf", "%{VERSION}-%{RELEASE}.%{ARCH}\n"],
+    );
 
     if !running_kernel.is_empty() && !installed_kernels.is_empty() {
         let running = running_kernel.trim();
         for line in installed_kernels.lines() {
             let installed = line.trim();
-            if !installed.is_empty() && installed != running && !installed.contains("not installed") {
+            if !installed.is_empty() && installed != running && !installed.contains("not installed")
+            {
                 findings.push(Finding::new(
                     "linux-kernel-reboot",
                     "Updated kernel is installed but not running",

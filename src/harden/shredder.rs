@@ -30,7 +30,11 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "shred".to_string(),
             success: true,
-            message: format!("[dry-run] Would shred {} with {} passes", path.display(), passes),
+            message: format!(
+                "[dry-run] Would shred {} with {} passes",
+                path.display(),
+                passes
+            ),
             findings: vec![],
         };
     }
@@ -38,23 +42,27 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
     // Get file size
     let size = match fs::metadata(path) {
         Ok(m) => m.len(),
-        Err(e) => return HardenResult {
-            action: "shred".to_string(),
-            success: false,
-            message: format!("Cannot get file size: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: "shred".to_string(),
+                success: false,
+                message: format!("Cannot get file size: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     // Open file for read/write
     let mut file = match fs::OpenOptions::new().read(true).write(true).open(path) {
         Ok(f) => f,
-        Err(e) => return HardenResult {
-            action: "shred".to_string(),
-            success: false,
-            message: format!("Cannot open file: {}", e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: "shred".to_string(),
+                success: false,
+                message: format!("Cannot open file: {}", e),
+                findings: vec![],
+            }
+        }
     };
 
     // Overwrite passes
@@ -69,9 +77,9 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
         }
 
         let pattern: u8 = match pass % 3 {
-            0 => 0x00,  // Zeros
-            1 => 0xFF,  // Ones
-            _ => 0xAA,  // Alternating
+            0 => 0x00, // Zeros
+            1 => 0xFF, // Ones
+            _ => 0xAA, // Alternating
         };
 
         let buffer = vec![pattern; 4096.min(size as usize)];
@@ -102,7 +110,9 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
         let to_write = (size - written).min(4096) as usize;
         let mut buf = vec![0u8; to_write];
         for b in &mut buf {
-            rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            rng_state = rng_state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             *b = (rng_state >> 33) as u8;
         }
         let _ = file.write_all(&buf);
@@ -122,7 +132,11 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
         Ok(()) => HardenResult {
             action: "shred".to_string(),
             success: true,
-            message: format!("Shredded {} ({} passes + random + rename)", path.display(), passes),
+            message: format!(
+                "Shredded {} ({} passes + random + rename)",
+                path.display(),
+                passes
+            ),
             findings: vec![],
         },
         Err(e) => HardenResult {

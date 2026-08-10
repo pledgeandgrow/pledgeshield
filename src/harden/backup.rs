@@ -8,14 +8,20 @@ pub fn audit_backups(backup_dir: &str) -> Vec<Finding> {
     let dir = Path::new(backup_dir);
 
     if !dir.exists() {
-        findings.push(Finding::new(
-            "backup-dir-missing",
-            &format!("Backup directory not found: {}", backup_dir),
-            Severity::High,
-            Category::HostConfig,
-        )
-        .description("The specified backup directory does not exist. Backups may not be running.")
-        .recommendation("Verify your backup configuration and ensure backups are being created."));
+        findings.push(
+            Finding::new(
+                "backup-dir-missing",
+                &format!("Backup directory not found: {}", backup_dir),
+                Severity::High,
+                Category::HostConfig,
+            )
+            .description(
+                "The specified backup directory does not exist. Backups may not be running.",
+            )
+            .recommendation(
+                "Verify your backup configuration and ensure backups are being created.",
+            ),
+        );
         return findings;
     }
 
@@ -32,20 +38,20 @@ pub fn audit_backups(backup_dir: &str) -> Vec<Finding> {
     }
 
     if backup_files.is_empty() {
-        findings.push(Finding::new(
-            "backup-empty",
-            &format!("No backup files in {}", backup_dir),
-            Severity::High,
-            Category::HostConfig,
-        )
-        .description("The backup directory is empty. No backups have been created."));
+        findings.push(
+            Finding::new(
+                "backup-empty",
+                &format!("No backup files in {}", backup_dir),
+                Severity::High,
+                Category::HostConfig,
+            )
+            .description("The backup directory is empty. No backups have been created."),
+        );
         return findings;
     }
 
     // Sort by modification time (newest first)
-    backup_files.sort_by(|a, b| {
-        b.1.modified().ok().cmp(&a.1.modified().ok())
-    });
+    backup_files.sort_by(|a, b| b.1.modified().ok().cmp(&a.1.modified().ok()));
 
     // Check most recent backup
     let (newest_path, newest_meta) = &backup_files[0];
@@ -74,13 +80,17 @@ pub fn audit_backups(backup_dir: &str) -> Vec<Finding> {
     // Check for zero-size backups (corrupt)
     for (path, meta) in &backup_files {
         if meta.len() == 0 {
-            findings.push(Finding::new(
-                "backup-empty-file",
-                &format!("Empty backup file: {}", path.display()),
-                Severity::High,
-                Category::HostConfig,
-            )
-            .description("This backup file is 0 bytes — it's corrupt or was never written properly."));
+            findings.push(
+                Finding::new(
+                    "backup-empty-file",
+                    &format!("Empty backup file: {}", path.display()),
+                    Severity::High,
+                    Category::HostConfig,
+                )
+                .description(
+                    "This backup file is 0 bytes — it's corrupt or was never written properly.",
+                ),
+            );
         }
     }
 
@@ -109,12 +119,14 @@ pub fn audit_backups(backup_dir: &str) -> Vec<Finding> {
 pub fn verify_backup_hash(path: &str, expected_hash: &str) -> HardenResult {
     let data = match std::fs::read(path) {
         Ok(d) => d,
-        Err(e) => return HardenResult {
-            action: "backup-verify".to_string(),
-            success: false,
-            message: format!("Cannot read {}: {}", path, e),
-            findings: vec![],
-        },
+        Err(e) => {
+            return HardenResult {
+                action: "backup-verify".to_string(),
+                success: false,
+                message: format!("Cannot read {}: {}", path, e),
+                findings: vec![],
+            }
+        }
     };
 
     let actual_hash = simple_hash(&data);
@@ -126,7 +138,10 @@ pub fn verify_backup_hash(path: &str, expected_hash: &str) -> HardenResult {
         message: if match_result {
             format!("Hash matches: {}", expected_hash)
         } else {
-            format!("Hash mismatch! Expected: {}, got: {}", expected_hash, actual_hash)
+            format!(
+                "Hash mismatch! Expected: {}, got: {}",
+                expected_hash, actual_hash
+            )
         },
         findings: vec![],
     }

@@ -16,25 +16,39 @@ pub fn audit_login_attempts() -> Vec<Finding> {
     // Flag IPs with many failures (brute force)
     for (ip, count) in &ip_counts {
         if *count >= 10 {
-            findings.push(Finding::new(
-                &format!("brute-force-{}", ip.replace('.', "_")),
-                &format!("{} failed login attempts from {}", count, ip),
-                if *count >= 50 { Severity::Critical } else { Severity::High },
-                Category::HostConfig,
-            )
-            .description("Multiple failed login attempts from this IP — likely a brute force attack.")
-            .recommendation(&format!("Block this IP: sudo iptables -A INPUT -s {} -j DROP", ip))
-            .fixable(true)
-            .metadata("ip", ip)
-            .metadata("attempts", &count.to_string()));
+            findings.push(
+                Finding::new(
+                    &format!("brute-force-{}", ip.replace('.', "_")),
+                    &format!("{} failed login attempts from {}", count, ip),
+                    if *count >= 50 {
+                        Severity::Critical
+                    } else {
+                        Severity::High
+                    },
+                    Category::HostConfig,
+                )
+                .description(
+                    "Multiple failed login attempts from this IP — likely a brute force attack.",
+                )
+                .recommendation(&format!(
+                    "Block this IP: sudo iptables -A INPUT -s {} -j DROP",
+                    ip
+                ))
+                .fixable(true)
+                .metadata("ip", ip)
+                .metadata("attempts", &count.to_string()),
+            );
         }
     }
 
     // Check if fail2ban is installed
     #[cfg(target_os = "linux")]
     {
-        let f2b = Command::new("which").arg("fail2ban-client").output()
-            .map(|o| o.status.success()).unwrap_or(false);
+        let f2b = Command::new("which")
+            .arg("fail2ban-client")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
         if !f2b {
             findings.push(Finding::new(
                 "no-fail2ban",
@@ -51,14 +65,16 @@ pub fn audit_login_attempts() -> Vec<Finding> {
             if let Ok(o) = out {
                 let s = String::from_utf8_lossy(&o.stdout);
                 if !s.contains("ssh") && !s.contains("sshd") {
-                    findings.push(Finding::new(
-                        "fail2ban-no-ssh",
-                        "fail2ban is not protecting SSH",
-                        Severity::Medium,
-                        Category::HostConfig,
-                    )
-                    .description("fail2ban is installed but SSH protection is not enabled.")
-                    .recommendation("Enable: sudo fail2ban-client start sshd"));
+                    findings.push(
+                        Finding::new(
+                            "fail2ban-no-ssh",
+                            "fail2ban is not protecting SSH",
+                            Severity::Medium,
+                            Category::HostConfig,
+                        )
+                        .description("fail2ban is installed but SSH protection is not enabled.")
+                        .recommendation("Enable: sudo fail2ban-client start sshd"),
+                    );
                 }
             }
         }
@@ -92,7 +108,11 @@ fn get_failed_logins() -> Vec<LoginAttempt> {
                             attempts.push(LoginAttempt {
                                 ip,
                                 user: user.unwrap_or_default(),
-                                timestamp: line.split_whitespace().take(3).collect::<Vec<_>>().join(" "),
+                                timestamp: line
+                                    .split_whitespace()
+                                    .take(3)
+                                    .collect::<Vec<_>>()
+                                    .join(" "),
                             });
                         }
                     }
@@ -102,7 +122,15 @@ fn get_failed_logins() -> Vec<LoginAttempt> {
 
         // Also check journalctl
         let out = Command::new("journalctl")
-            .args(["-u", "ssh", "--no-pager", "-n", "1000", "-g", "Failed password"])
+            .args([
+                "-u",
+                "ssh",
+                "--no-pager",
+                "-n",
+                "1000",
+                "-g",
+                "Failed password",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
@@ -114,7 +142,11 @@ fn get_failed_logins() -> Vec<LoginAttempt> {
                         attempts.push(LoginAttempt {
                             ip,
                             user: user.unwrap_or_default(),
-                            timestamp: line.split_whitespace().take(3).collect::<Vec<_>>().join(" "),
+                            timestamp: line
+                                .split_whitespace()
+                                .take(3)
+                                .collect::<Vec<_>>()
+                                .join(" "),
                         });
                     }
                 }
@@ -126,7 +158,13 @@ fn get_failed_logins() -> Vec<LoginAttempt> {
     {
         // Check Windows Event Log for failed logins (Event ID 4625)
         let out = Command::new("wevtutil")
-            .args(["qe", "Security", "/q:*[System[(EventID=4625)]]", "/c:100", "/f:text"])
+            .args([
+                "qe",
+                "Security",
+                "/q:*[System[(EventID=4625)]]",
+                "/c:100",
+                "/f:text",
+            ])
             .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
@@ -182,7 +220,9 @@ pub fn block_ip(ip: &str, dry_run: bool) -> Result<String, String> {
 
     #[cfg(target_os = "linux")]
     {
-        let out = Command::new("iptables").args(["-A", "INPUT", "-s", ip, "-j", "DROP"]).output();
+        let out = Command::new("iptables")
+            .args(["-A", "INPUT", "-s", ip, "-j", "DROP"])
+            .output();
         match out {
             Ok(o) if o.status.success() => Ok(format!("Blocked IP: {} (iptables DROP)", ip)),
             Ok(o) => Err(format!("Failed: {}", String::from_utf8_lossy(&o.stderr))),

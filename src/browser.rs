@@ -27,16 +27,43 @@ pub fn audit_browser_extensions() -> Vec<Finding> {
 /// Get the extension directory for Chromium-based browsers.
 fn get_extension_dir(browser: &str) -> Option<PathBuf> {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let home = dirs::home_dir()?;
+    let _home = dirs::home_dir()?;
 
     #[cfg(windows)]
     {
         let local_app = dirs::data_dir()?;
         match browser {
-            "chrome" => Some(local_app.join("Google").join("Chrome").join("User Data").join("Default").join("Extensions")),
-            "edge" => Some(local_app.join("Microsoft").join("Edge").join("User Data").join("Default").join("Extensions")),
-            "brave" => Some(local_app.join("BraveSoftware").join("Brave-Browser").join("User Data").join("Default").join("Extensions")),
-            "chromium" => Some(local_app.join("Chromium").join("User Data").join("Default").join("Extensions")),
+            "chrome" => Some(
+                local_app
+                    .join("Google")
+                    .join("Chrome")
+                    .join("User Data")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "edge" => Some(
+                local_app
+                    .join("Microsoft")
+                    .join("Edge")
+                    .join("User Data")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "brave" => Some(
+                local_app
+                    .join("BraveSoftware")
+                    .join("Brave-Browser")
+                    .join("User Data")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "chromium" => Some(
+                local_app
+                    .join("Chromium")
+                    .join("User Data")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
             _ => None,
         }
     }
@@ -44,10 +71,36 @@ fn get_extension_dir(browser: &str) -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         match browser {
-            "chrome" => Some(home.join("Library").join("Application Support").join("Google").join("Chrome").join("Default").join("Extensions")),
-            "edge" => Some(home.join("Library").join("Application Support").join("Microsoft Edge").join("Default").join("Extensions")),
-            "brave" => Some(home.join("Library").join("Application Support").join("BraveSoftware").join("Brave-Browser").join("Default").join("Extensions")),
-            "chromium" => Some(home.join("Library").join("Application Support").join("Chromium").join("Default").join("Extensions")),
+            "chrome" => Some(
+                home.join("Library")
+                    .join("Application Support")
+                    .join("Google")
+                    .join("Chrome")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "edge" => Some(
+                home.join("Library")
+                    .join("Application Support")
+                    .join("Microsoft Edge")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "brave" => Some(
+                home.join("Library")
+                    .join("Application Support")
+                    .join("BraveSoftware")
+                    .join("Brave-Browser")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "chromium" => Some(
+                home.join("Library")
+                    .join("Application Support")
+                    .join("Chromium")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
             _ => None,
         }
     }
@@ -56,9 +109,25 @@ fn get_extension_dir(browser: &str) -> Option<PathBuf> {
     {
         let config = dirs::config_dir()?;
         match browser {
-            "chrome" => Some(config.join("google-chrome").join("Default").join("Extensions")),
-            "edge" => Some(config.join("microsoft-edge").join("Default").join("Extensions")),
-            "brave" => Some(config.join("BraveSoftware").join("Brave-Browser").join("Default").join("Extensions")),
+            "chrome" => Some(
+                config
+                    .join("google-chrome")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "edge" => Some(
+                config
+                    .join("microsoft-edge")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
+            "brave" => Some(
+                config
+                    .join("BraveSoftware")
+                    .join("Brave-Browser")
+                    .join("Default")
+                    .join("Extensions"),
+            ),
             "chromium" => Some(config.join("chromium").join("Default").join("Extensions")),
             _ => None,
         }
@@ -76,7 +145,12 @@ fn get_firefox_profile_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         let home = dirs::home_dir()?;
-        Some(home.join("Library").join("Application Support").join("Firefox").join("Profiles"))
+        Some(
+            home.join("Library")
+                .join("Application Support")
+                .join("Firefox")
+                .join("Profiles"),
+        )
     }
 
     #[cfg(target_os = "linux")]
@@ -123,10 +197,13 @@ fn audit_chromium_extensions(ext_dir: &std::path::Path, browser: &str) -> Vec<Fi
                             Severity::High,
                             Category::Browser,
                         )
-                        .description(&format!("Extension '{}' in {} browser is flagged as risky/adware.", ext_id, browser))
+                        .description(&format!(
+                            "Extension '{}' in {} browser is flagged as risky/adware.",
+                            ext_id, browser
+                        ))
                         .recommendation("Remove this extension from your browser.")
                         .metadata("browser", browser)
-                        .metadata("extension_id", &ext_id)
+                        .metadata("extension_id", &ext_id),
                     );
                 }
             }
@@ -135,15 +212,19 @@ fn audit_chromium_extensions(ext_dir: &std::path::Path, browser: &str) -> Vec<Fi
             let manifest_path = entry.path().join("manifest.json");
             if let Ok(manifest_content) = std::fs::read_to_string(&manifest_path) {
                 if let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&manifest_content) {
-                    let ext_name = manifest.get("name")
+                    let ext_name = manifest
+                        .get("name")
                         .and_then(|n| n.as_str())
                         .unwrap_or(&ext_id);
 
                     if let Some(perms) = manifest.get("permissions").and_then(|p| p.as_array()) {
                         let perm_count = perms.len();
-                        let dangerous_count = perms.iter()
+                        let dangerous_count = perms
+                            .iter()
                             .filter(|p| {
-                                p.as_str().map(|s| dangerous_permissions.contains(&s)).unwrap_or(false)
+                                p.as_str()
+                                    .map(|s| dangerous_permissions.contains(&s))
+                                    .unwrap_or(false)
                             })
                             .count();
 
@@ -205,26 +286,42 @@ fn audit_firefox_extensions(profile_dir: &std::path::Path) -> Vec<Finding> {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
                     if let Some(addons) = json.get("addons").and_then(|a| a.as_array()) {
                         for addon in addons {
-                            let name = addon.get("defaultLocale")
+                            let name = addon
+                                .get("defaultLocale")
                                 .and_then(|l| l.get("name"))
                                 .and_then(|n| n.as_str())
                                 .unwrap_or("Unknown");
-                            let addon_id = addon.get("id").and_then(|i| i.as_str()).unwrap_or("unknown");
+                            let addon_id = addon
+                                .get("id")
+                                .and_then(|i| i.as_str())
+                                .unwrap_or("unknown");
 
                             // Check for broad permissions
-                            if let Some(perms) = addon.get("userPermissions").and_then(|p| p.get("permissions")).and_then(|p| p.as_array()) {
+                            if let Some(perms) = addon
+                                .get("userPermissions")
+                                .and_then(|p| p.get("permissions"))
+                                .and_then(|p| p.as_array())
+                            {
                                 if perms.iter().any(|p| p.as_str() == Some("<all_urls>")) {
                                     findings.push(
                                         Finding::new(
                                             &format!("browser-firefox-allurls-{}", addon_id),
-                                            &format!("Firefox Extension Can Access All Sites: {}", name),
+                                            &format!(
+                                                "Firefox Extension Can Access All Sites: {}",
+                                                name
+                                            ),
                                             Severity::Medium,
                                             Category::Browser,
                                         )
-                                        .description(&format!("Firefox extension '{}' has <all_urls> permission.", name))
-                                        .recommendation("Review if this extension needs access to all sites.")
+                                        .description(&format!(
+                                            "Firefox extension '{}' has <all_urls> permission.",
+                                            name
+                                        ))
+                                        .recommendation(
+                                            "Review if this extension needs access to all sites.",
+                                        )
                                         .metadata("browser", "firefox")
-                                        .metadata("extension_id", addon_id)
+                                        .metadata("extension_id", addon_id),
                                     );
                                 }
                             }

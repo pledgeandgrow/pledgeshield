@@ -32,7 +32,9 @@ pub fn audit_mac() -> Vec<Finding> {
                 let s = String::from_utf8_lossy(&o.stdout);
                 if s.contains("apparmor module is loaded") {
                     // AppArmor is loaded — check profiles
-                    if s.contains("0 profiles are loaded") || s.contains("0 profiles in enforce mode") {
+                    if s.contains("0 profiles are loaded")
+                        || s.contains("0 profiles in enforce mode")
+                    {
                         findings.push(Finding::new(
                             "mac-apparmor-no-profiles",
                             "AppArmor is loaded but has no enforcing profiles",
@@ -46,7 +48,8 @@ pub fn audit_mac() -> Vec<Finding> {
 
                     // Check for complain mode profiles
                     if s.contains("profiles in complain mode") {
-                        let count = s.lines()
+                        let count = s
+                            .lines()
                             .find(|l| l.contains("profiles in complain mode"))
                             .and_then(|l| l.split_whitespace().next())
                             .and_then(|n| n.parse::<usize>().ok())

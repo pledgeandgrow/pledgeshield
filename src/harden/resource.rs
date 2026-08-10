@@ -8,13 +8,17 @@ pub fn audit_resources() -> Vec<Finding> {
     #[cfg(target_os = "linux")]
     {
         // Check top CPU consumers
-        let out = Command::new("ps").args(["-eo", "pid,pcpu,pmem,comm", "--sort=-pcpu"]).output();
+        let out = Command::new("ps")
+            .args(["-eo", "pid,pcpu,pmem,comm", "--sort=-pcpu"])
+            .output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             let mut count = 0;
             for line in s.lines().skip(1) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() < 4 { continue; }
+                if parts.len() < 4 {
+                    continue;
+                }
                 if let Ok(cpu) = parts[1].parse::<f64>() {
                     if cpu > 80.0 {
                         let pid = parts[0];
@@ -28,7 +32,9 @@ pub fn audit_resources() -> Vec<Finding> {
                         .description("A process is consuming very high CPU. This could be a crypto miner or runaway process."));
                     }
                     count += 1;
-                    if count >= 10 { break; }
+                    if count >= 10 {
+                        break;
+                    }
                 }
             }
         }
@@ -41,7 +47,9 @@ pub fn audit_resources() -> Vec<Finding> {
                 if line.starts_with("Mem:") {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 3 {
-                        if let (Ok(total), Ok(used)) = (parts[1].parse::<u64>(), parts[2].parse::<u64>()) {
+                        if let (Ok(total), Ok(used)) =
+                            (parts[1].parse::<u64>(), parts[2].parse::<u64>())
+                        {
                             if total > 0 {
                                 let pct = used * 100 / total;
                                 if pct > 90 {
@@ -64,9 +72,20 @@ pub fn audit_resources() -> Vec<Finding> {
         let out = Command::new("ps").args(["-eo", "comm"]).output();
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
-            let miners = ["xmrig", "cpuminer", "minerd", "ethminer", "phoenixminer",
-                         "t-rex", "lolminer", "nbminer", "teamredminer", "cryptonight",
-                         "stratum", "nicehash"];
+            let miners = [
+                "xmrig",
+                "cpuminer",
+                "minerd",
+                "ethminer",
+                "phoenixminer",
+                "t-rex",
+                "lolminer",
+                "nbminer",
+                "teamredminer",
+                "cryptonight",
+                "stratum",
+                "nicehash",
+            ];
             for miner in &miners {
                 if s.contains(miner) {
                     findings.push(Finding::new(
@@ -88,13 +107,15 @@ pub fn audit_resources() -> Vec<Finding> {
                     // Get CPU count
                     let cpus = num_cpus();
                     if load1 > cpus as f64 * 2.0 {
-                        findings.push(Finding::new(
-                            "resource-load-high",
-                            &format!("Load average {:.1} with {} CPUs", load1, cpus),
-                            Severity::Medium,
-                            Category::HostConfig,
-                        )
-                        .description("System load is very high relative to CPU count."));
+                        findings.push(
+                            Finding::new(
+                                "resource-load-high",
+                                &format!("Load average {:.1} with {} CPUs", load1, cpus),
+                                Severity::Medium,
+                                Category::HostConfig,
+                            )
+                            .description("System load is very high relative to CPU count."),
+                        );
                     }
                 }
             }

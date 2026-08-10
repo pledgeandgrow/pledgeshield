@@ -11,7 +11,11 @@ pub struct PostureScore {
 
 impl std::fmt::Display for PostureScore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "  Security Posture Score: {}/100 ({})", self.score, self.grade)?;
+        writeln!(
+            f,
+            "  Security Posture Score: {}/100 ({})",
+            self.score, self.grade
+        )?;
         writeln!(f, "  ───────────────────────────────────────")?;
         for (sev, count) in &self.by_severity {
             writeln!(f, "  {:<12} {} findings", format!("{:?}", sev), count)?;
@@ -90,12 +94,20 @@ pub fn calculate_score(findings: &[Finding]) -> PostureScore {
 /// Compare two scores and show trend.
 pub fn compare_scores(old: &PostureScore, new: &PostureScore) -> String {
     let delta = new.score as i32 - old.score as i32;
-    let arrow = if delta > 0 { "↑" } else if delta < 0 { "↓" } else { "→" };
+    let arrow = if delta > 0 {
+        "↑"
+    } else if delta < 0 {
+        "↓"
+    } else {
+        "→"
+    };
 
     format!(
         "  Score trend: {} {} → {} {} ({}{} points)",
-        old.score, old.grade,
-        new.score, new.grade,
+        old.score,
+        old.grade,
+        new.score,
+        new.grade,
         arrow,
         delta.abs()
     )

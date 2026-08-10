@@ -91,7 +91,11 @@ pub fn enable_service(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "macos")]
     {
         let output = std::process::Command::new("launchctl")
-            .args(["bootstrap", "system", &format!("/System/Library/LaunchDaemons/{}.plist", name)])
+            .args([
+                "bootstrap",
+                "system",
+                &format!("/System/Library/LaunchDaemons/{}.plist", name),
+            ])
             .output()?;
 
         if !output.status.success() {

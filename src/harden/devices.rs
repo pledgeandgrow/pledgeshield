@@ -20,9 +20,10 @@ pub fn audit_devices() -> Vec<Finding> {
                             if let Ok(target) = std::fs::read_link(fd.path()) {
                                 let t = target.to_string_lossy();
                                 if t.starts_with("/dev/video") {
-                                    let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
-                                        .map(|s| s.trim().to_string())
-                                        .unwrap_or_else(|_| "?".to_string());
+                                    let comm =
+                                        std::fs::read_to_string(format!("/proc/{}/comm", pid))
+                                            .map(|s| s.trim().to_string())
+                                            .unwrap_or_else(|_| "?".to_string());
                                     findings.push(Finding::new(
                                         "camera-in-use",
                                         &format!("Camera accessed by: {} (pid {})", comm, pid),
@@ -32,10 +33,13 @@ pub fn audit_devices() -> Vec<Finding> {
                                     .description("A process is currently accessing the camera. Verify this is expected."));
                                 }
                                 // Check for mic (sound devices)
-                                if t.contains("/dev/snd/") && (t.contains("pcm") || t.contains("capture")) {
-                                    let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
-                                        .map(|s| s.trim().to_string())
-                                        .unwrap_or_else(|_| "?".to_string());
+                                if t.contains("/dev/snd/")
+                                    && (t.contains("pcm") || t.contains("capture"))
+                                {
+                                    let comm =
+                                        std::fs::read_to_string(format!("/proc/{}/comm", pid))
+                                            .map(|s| s.trim().to_string())
+                                            .unwrap_or_else(|_| "?".to_string());
                                     findings.push(Finding::new(
                                         "mic-in-use",
                                         &format!("Microphone accessed by: {} (pid {})", comm, pid),
@@ -68,15 +72,23 @@ pub fn audit_devices() -> Vec<Finding> {
                 if parts.len() >= 2 {
                     let client = parts[0];
                     let service = parts[1];
-                    let dev = if service.contains("Camera") { "camera" } else { "microphone" };
-                    findings.push(Finding::new(
-                        &format!("{}-permission-{}", dev, client),
-                        &format!("{} has {} access", client, dev),
-                        Severity::Low,
-                        Category::HostConfig,
-                    )
-                    .description(format!("App '{}' has been granted {} access.", client, dev))
-                    .recommendation("Review in System Preferences > Security & Privacy > Privacy"));
+                    let dev = if service.contains("Camera") {
+                        "camera"
+                    } else {
+                        "microphone"
+                    };
+                    findings.push(
+                        Finding::new(
+                            &format!("{}-permission-{}", dev, client),
+                            &format!("{} has {} access", client, dev),
+                            Severity::Low,
+                            Category::HostConfig,
+                        )
+                        .description(format!("App '{}' has been granted {} access.", client, dev))
+                        .recommendation(
+                            "Review in System Preferences > Security & Privacy > Privacy",
+                        ),
+                    );
                 }
             }
         }
@@ -91,14 +103,16 @@ pub fn audit_devices() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             if !s.trim().is_empty() && s.lines().count() > 1 {
-                findings.push(Finding::new(
-                    "devices-active",
-                    "Camera and/or microphone devices are active",
-                    Severity::Low,
-                    Category::HostConfig,
-                )
-                .description("Camera/microphone devices are present and enabled.")
-                .recommendation("Review app permissions in Windows Settings > Privacy."));
+                findings.push(
+                    Finding::new(
+                        "devices-active",
+                        "Camera and/or microphone devices are active",
+                        Severity::Low,
+                        Category::HostConfig,
+                    )
+                    .description("Camera/microphone devices are present and enabled.")
+                    .recommendation("Review app permissions in Windows Settings > Privacy."),
+                );
             }
         }
     }
@@ -138,7 +152,9 @@ pub fn block_camera(dry_run: bool) -> Vec<String> {
         if dry_run {
             results.push("[dry-run] Would block camera access.".to_string());
         } else {
-            results.push("Camera blocking requires manual configuration on this platform.".to_string());
+            results.push(
+                "Camera blocking requires manual configuration on this platform.".to_string(),
+            );
         }
     }
 

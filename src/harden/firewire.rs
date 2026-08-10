@@ -40,14 +40,18 @@ pub fn audit_firewire() -> Vec<Finding> {
                 if let Ok(o2) = out2 {
                     let s2 = String::from_utf8_lossy(&o2.stdout);
                     if s2.contains("pcmcia") {
-                        findings.push(Finding::new(
-                            "firewire-pcmcia",
-                            "PCMCIA/CardBus modules loaded",
-                            Severity::Low,
-                            Category::HostConfig,
-                        )
-                        .description("PCMCIA/CardBus can allow DMA access. Disable if not needed.")
-                        .fixable(true));
+                        findings.push(
+                            Finding::new(
+                                "firewire-pcmcia",
+                                "PCMCIA/CardBus modules loaded",
+                                Severity::Low,
+                                Category::HostConfig,
+                            )
+                            .description(
+                                "PCMCIA/CardBus can allow DMA access. Disable if not needed.",
+                            )
+                            .fixable(true),
+                        );
                     }
                 }
             }
@@ -56,13 +60,15 @@ pub fn audit_firewire() -> Vec<Finding> {
         // Check IOMMU status (protects against DMA attacks)
         if let Ok(content) = std::fs::read_to_string("/proc/cmdline") {
             if !content.contains("iommu=on") && !content.contains("intel_iommu=on") {
-                findings.push(Finding::new(
-                    "firewire-no-iommu",
-                    "IOMMU not enabled — no DMA protection for FireWire",
-                    Severity::Medium,
-                    Category::HostConfig,
-                )
-                .fixable(true));
+                findings.push(
+                    Finding::new(
+                        "firewire-no-iommu",
+                        "IOMMU not enabled — no DMA protection for FireWire",
+                        Severity::Medium,
+                        Category::HostConfig,
+                    )
+                    .fixable(true),
+                );
             }
         }
     }
@@ -92,13 +98,23 @@ pub fn block_firewire(dry_run: bool) -> HardenResult {
         }
 
         // Blacklist to prevent loading on boot
-        let blacklist: String = modules.iter().map(|m| format!("blacklist {}", m)).collect::<Vec<_>>().join("\n");
-        let _ = std::fs::write("/etc/modprobe.d/pledgeshield-firewire.conf", blacklist + "\n");
+        let blacklist: String = modules
+            .iter()
+            .map(|m| format!("blacklist {}", m))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let _ = std::fs::write(
+            "/etc/modprobe.d/pledgeshield-firewire.conf",
+            blacklist + "\n",
+        );
 
         HardenResult {
             action: "firewire-block".to_string(),
             success: true,
-            message: format!("Unloaded {} FireWire modules and blacklisted them.", unloaded),
+            message: format!(
+                "Unloaded {} FireWire modules and blacklisted them.",
+                unloaded
+            ),
             findings: vec![],
         }
     }

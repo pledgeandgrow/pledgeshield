@@ -1,6 +1,5 @@
 /// Browser password vault auditor — check if saved passwords are encrypted at rest.
 use crate::models::{Category, Finding, Severity};
-use std::path::Path;
 
 pub fn audit_vault() -> Vec<Finding> {
     let mut findings = Vec::new();

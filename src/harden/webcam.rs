@@ -10,10 +10,17 @@ pub fn audit_webcam() -> Vec<Finding> {
     {
         // Check if webcam device exists
         let video_devices = std::fs::read_dir("/dev")
-            .map(|d| d.filter_map(|e| {
-                let name = e.ok()?.file_name().to_string_lossy().to_string();
-                if name.starts_with("video") { Some(name) } else { None }
-            }).collect::<Vec<_>>())
+            .map(|d| {
+                d.filter_map(|e| {
+                    let name = e.ok()?.file_name().to_string_lossy().to_string();
+                    if name.starts_with("video") {
+                        Some(name)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
 
         if !video_devices.is_empty() {
@@ -29,13 +36,17 @@ pub fn audit_webcam() -> Vec<Finding> {
                             let comm = std::fs::read_to_string(format!("/proc/{}/comm", pid))
                                 .map(|s| s.trim().to_string())
                                 .unwrap_or("unknown".to_string());
-                            findings.push(Finding::new(
-                                &format!("webcam-in-use-{}-{}", dev, comm),
-                                &format!("Webcam {} is in use by {} (pid {})", dev, comm, pid),
-                                Severity::Medium,
-                                Category::HostConfig,
-                            )
-                            .description("A process is accessing your webcam. Verify this is expected."));
+                            findings.push(
+                                Finding::new(
+                                    &format!("webcam-in-use-{}-{}", dev, comm),
+                                    &format!("Webcam {} is in use by {} (pid {})", dev, comm, pid),
+                                    Severity::Medium,
+                                    Category::HostConfig,
+                                )
+                                .description(
+                                    "A process is accessing your webcam. Verify this is expected.",
+                                ),
+                            );
                         }
                     }
                 }

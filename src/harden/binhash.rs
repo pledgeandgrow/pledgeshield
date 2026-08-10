@@ -12,17 +12,25 @@ pub fn audit_binary_hashes() -> Vec<Finding> {
         if let Ok(o) = out {
             let s = String::from_utf8_lossy(&o.stdout);
             for line in s.lines() {
-                if line.trim().is_empty() { continue; }
+                if line.trim().is_empty() {
+                    continue;
+                }
                 // dpkg -V output format: "??5?????? /path/to/file"
                 // ? = not checked, 5 = md5 checksum changed
                 let parts: Vec<&str> = line.splitn(2, ' ').collect();
-                if parts.len() < 2 { continue; }
+                if parts.len() < 2 {
+                    continue;
+                }
                 let status = parts[0];
                 let path = parts[1].trim();
 
                 if status.contains('5') {
                     // MD5 checksum mismatch
-                    let severity = if path.starts_with("/bin/") || path.starts_with("/sbin/") || path.starts_with("/usr/bin/") || path.starts_with("/usr/sbin/") {
+                    let severity = if path.starts_with("/bin/")
+                        || path.starts_with("/sbin/")
+                        || path.starts_with("/usr/bin/")
+                        || path.starts_with("/usr/sbin/")
+                    {
                         Severity::Critical
                     } else {
                         Severity::High
@@ -57,13 +65,15 @@ pub fn audit_binary_hashes() -> Vec<Finding> {
                 if line.starts_with("S.5") || line.starts_with("5") {
                     let path = line.split_whitespace().last().unwrap_or("");
                     if !path.is_empty() {
-                        findings.push(Finding::new(
-                            &format!("binhash-rpm-{}", path.replace('/', "_")),
-                            &format!("Binary modified (rpm): {}", path),
-                            Severity::Critical,
-                            Category::HostConfig,
-                        )
-                        .description("RPM verification detected a modified binary."));
+                        findings.push(
+                            Finding::new(
+                                &format!("binhash-rpm-{}", path.replace('/', "_")),
+                                &format!("Binary modified (rpm): {}", path),
+                                Severity::Critical,
+                                Category::HostConfig,
+                            )
+                            .description("RPM verification detected a modified binary."),
+                        );
                     }
                 }
             }

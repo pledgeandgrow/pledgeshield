@@ -5,13 +5,15 @@ use std::process::Command;
 pub fn get_hostname() -> String {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
-        Command::new("hostname").output()
+        Command::new("hostname")
+            .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_else(|_| "?".to_string())
     }
     #[cfg(windows)]
     {
-        Command::new("hostname").output()
+        Command::new("hostname")
+            .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_else(|_| "?".to_string())
     }
@@ -28,7 +30,11 @@ pub fn randomize_hostname(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "hostname-randomize".to_string(),
             success: true,
-            message: format!("[dry-run] Would change hostname from '{}' to '{}'", get_hostname(), new_name),
+            message: format!(
+                "[dry-run] Would change hostname from '{}' to '{}'",
+                get_hostname(),
+                new_name
+            ),
             findings: vec![],
         };
     }
@@ -36,7 +42,9 @@ pub fn randomize_hostname(dry_run: bool) -> HardenResult {
     #[cfg(target_os = "linux")]
     {
         // hostnamectl
-        let out = Command::new("hostnamectl").args(["set-hostname", &new_name]).output();
+        let out = Command::new("hostnamectl")
+            .args(["set-hostname", &new_name])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "hostname-randomize".to_string(),
@@ -61,9 +69,15 @@ pub fn randomize_hostname(dry_run: bool) -> HardenResult {
 
     #[cfg(target_os = "macos")]
     {
-        let out = Command::new("scutil").args(["--set", "HostName", &new_name]).output();
-        let _ = Command::new("scutil").args(["--set", "LocalHostName", &new_name]).output();
-        let _ = Command::new("scutil").args(["--set", "ComputerName", &new_name]).output();
+        let out = Command::new("scutil")
+            .args(["--set", "HostName", &new_name])
+            .output();
+        let _ = Command::new("scutil")
+            .args(["--set", "LocalHostName", &new_name])
+            .output();
+        let _ = Command::new("scutil")
+            .args(["--set", "ComputerName", &new_name])
+            .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
                 action: "hostname-randomize".to_string(),
@@ -83,7 +97,13 @@ pub fn randomize_hostname(dry_run: bool) -> HardenResult {
     #[cfg(windows)]
     {
         let out = Command::new("wmic")
-            .args(["computersystem", "where", "name='%COMPUTERNAME%'", "rename", &new_name])
+            .args([
+                "computersystem",
+                "where",
+                "name='%COMPUTERNAME%'",
+                "rename",
+                &new_name,
+            ])
             .output();
         match out {
             Ok(o) if o.status.success() => HardenResult {
@@ -123,7 +143,9 @@ fn generate_random_hostname() -> String {
     let mut state = seed;
     let mut name = String::from("ps-");
     for _ in 0..8 {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let c = ((state >> 33) % 36) as u8;
         let ch = if c < 10 { b'0' + c } else { b'a' + c - 10 };
         name.push(ch as char);
@@ -137,7 +159,8 @@ pub fn install_boot_randomizer(dry_run: bool) -> HardenResult {
         return HardenResult {
             action: "hostname-boot-install".to_string(),
             success: true,
-            message: "[dry-run] Would install systemd service to randomize hostname on boot.".to_string(),
+            message: "[dry-run] Would install systemd service to randomize hostname on boot."
+                .to_string(),
             findings: vec![],
         };
     }
@@ -157,11 +180,14 @@ WantedBy=multi-user.target
 "#;
         let path = "/etc/systemd/system/pledgeshield-hostname.service";
         if std::fs::write(path, service).is_ok() {
-            let _ = Command::new("systemctl").args(["enable", "pledgeshield-hostname.service"]).output();
+            let _ = Command::new("systemctl")
+                .args(["enable", "pledgeshield-hostname.service"])
+                .output();
             HardenResult {
                 action: "hostname-boot-install".to_string(),
                 success: true,
-                message: "Installed systemd service to randomize hostname on every boot.".to_string(),
+                message: "Installed systemd service to randomize hostname on every boot."
+                    .to_string(),
                 findings: vec![],
             }
         } else {

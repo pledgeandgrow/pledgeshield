@@ -6,7 +6,11 @@ const RESET: &str = "\x1b[0m";
 
 /// Write the scan result in the requested format to the given output path,
 /// or stdout if no path is provided.
-pub fn write_report(result: &ScanResult, format: &OutputFormat, output: Option<&std::path::Path>) -> io::Result<()> {
+pub fn write_report(
+    result: &ScanResult,
+    format: &OutputFormat,
+    output: Option<&std::path::Path>,
+) -> io::Result<()> {
     match format {
         OutputFormat::Text => write_text(result, output),
         OutputFormat::Json => write_json(result, output),
@@ -20,19 +24,36 @@ pub fn write_report(result: &ScanResult, format: &OutputFormat, output: Option<&
 fn write_text(result: &ScanResult, output: Option<&std::path::Path>) -> io::Result<()> {
     let mut buf = String::new();
 
-    buf.push_str(&format!("\n╔══════════════════════════════════════════════╗\n"));
-    buf.push_str(&format!("║          PledgeShield Security Report         ║\n"));
-    buf.push_str(&format!("╚══════════════════════════════════════════════╝\n\n"));
+    buf.push_str(&format!(
+        "\n╔══════════════════════════════════════════════╗\n"
+    ));
+    buf.push_str(&format!(
+        "║          PledgeShield Security Report         ║\n"
+    ));
+    buf.push_str(&format!(
+        "╚══════════════════════════════════════════════╝\n\n"
+    ));
     buf.push_str(&format!("Host:      {}\n", result.hostname));
     buf.push_str(&format!("OS:        {} {}\n", result.os, result.os_version));
-    buf.push_str(&format!("Started:   {}\n", result.scan_started.format("%Y-%m-%d %H:%M:%S UTC")));
-    buf.push_str(&format!("Completed: {}\n\n", result.scan_completed.format("%Y-%m-%d %H:%M:%S UTC")));
+    buf.push_str(&format!(
+        "Started:   {}\n",
+        result.scan_started.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+    buf.push_str(&format!(
+        "Completed: {}\n\n",
+        result.scan_completed.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
 
     // Summary
     buf.push_str("── Summary ──────────────────────────────────────\n");
-    buf.push_str(&format!("  Critical: {}  High: {}  Medium: {}  Low: {}  Info: {}\n",
-        result.summary.critical, result.summary.high, result.summary.medium,
-        result.summary.low, result.summary.info));
+    buf.push_str(&format!(
+        "  Critical: {}  High: {}  Medium: {}  Low: {}  Info: {}\n",
+        result.summary.critical,
+        result.summary.high,
+        result.summary.medium,
+        result.summary.low,
+        result.summary.info
+    ));
     buf.push_str(&format!("  Total findings: {}\n\n", result.summary.total));
 
     if result.findings.is_empty() {
@@ -49,8 +70,13 @@ fn write_text(result: &ScanResult, output: Option<&std::path::Path>) -> io::Resu
 fn format_finding(f: &Finding) -> String {
     let color = f.severity.color_code();
     let mut s = String::new();
-    s.push_str(&format!("── {} [{}{}{}] ─────────────────────────────\n",
-        f.title, color, f.severity.as_str().to_uppercase(), RESET));
+    s.push_str(&format!(
+        "── {} [{}{}{}] ─────────────────────────────\n",
+        f.title,
+        color,
+        f.severity.as_str().to_uppercase(),
+        RESET
+    ));
     s.push_str(&format!("  ID:          {}\n", f.id));
     s.push_str(&format!("  Category:    {}\n", f.category));
     if !f.description.is_empty() {
@@ -104,45 +130,53 @@ fn write_output(content: &str, output: Option<&std::path::Path>) -> io::Result<(
 fn write_sarif(result: &ScanResult, output: Option<&std::path::Path>) -> io::Result<()> {
     use serde_json::json;
 
-    let rules: Vec<serde_json::Value> = result.findings.iter().map(|f| {
-        json!({
-            "id": f.id,
-            "name": f.title,
-            "shortDescription": { "text": f.title },
-            "fullDescription": { "text": f.description },
-            "helpUri": format!("https://pledgeandgrow.com/findings/{}", f.id),
-            "defaultConfiguration": {
-                "level": severity_to_sarif_level(&f.severity)
-            },
-            "properties": {
-                "category": f.category.to_string(),
-                "fixable": f.fixable,
-                "recommendation": f.recommendation,
-            }
-        })
-    }).collect();
-
-    let results: Vec<serde_json::Value> = result.findings.iter().map(|f| {
-        json!({
-            "ruleId": f.id,
-            "level": severity_to_sarif_level(&f.severity),
-            "message": { "text": f.description },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": result.hostname
-                    }
+    let rules: Vec<serde_json::Value> = result
+        .findings
+        .iter()
+        .map(|f| {
+            json!({
+                "id": f.id,
+                "name": f.title,
+                "shortDescription": { "text": f.title },
+                "fullDescription": { "text": f.description },
+                "helpUri": format!("https://pledgeandgrow.com/findings/{}", f.id),
+                "defaultConfiguration": {
+                    "level": severity_to_sarif_level(&f.severity)
+                },
+                "properties": {
+                    "category": f.category.to_string(),
+                    "fixable": f.fixable,
+                    "recommendation": f.recommendation,
                 }
-            }],
-            "properties": {
-                "severity": f.severity.as_str(),
-                "category": f.category.to_string(),
-                "recommendation": f.recommendation,
-                "fixable": f.fixable,
-                "metadata": f.metadata,
-            }
+            })
         })
-    }).collect();
+        .collect();
+
+    let results: Vec<serde_json::Value> = result
+        .findings
+        .iter()
+        .map(|f| {
+            json!({
+                "ruleId": f.id,
+                "level": severity_to_sarif_level(&f.severity),
+                "message": { "text": f.description },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": result.hostname
+                        }
+                    }
+                }],
+                "properties": {
+                    "severity": f.severity.as_str(),
+                    "category": f.category.to_string(),
+                    "recommendation": f.recommendation,
+                    "fixable": f.fixable,
+                    "metadata": f.metadata,
+                }
+            })
+        })
+        .collect();
 
     let sarif = json!({
         "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cs01/schemas/sarif-schema-2.1.0.json",
@@ -199,7 +233,10 @@ fn write_markdown(result: &ScanResult, output: Option<&std::path::Path>) -> io::
     buf.push_str("# PledgeShield Security Report\n\n");
     buf.push_str(&format!("**Host:** {}  \n", result.hostname));
     buf.push_str(&format!("**OS:** {} {}  \n", result.os, result.os_version));
-    buf.push_str(&format!("**Scanned:** {}  \n\n", result.scan_completed.format("%Y-%m-%d %H:%M:%S UTC")));
+    buf.push_str(&format!(
+        "**Scanned:** {}  \n\n",
+        result.scan_completed.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
 
     // Summary table
     buf.push_str("## Summary\n\n");
@@ -217,7 +254,11 @@ fn write_markdown(result: &ScanResult, output: Option<&std::path::Path>) -> io::
     } else {
         buf.push_str("## Findings\n\n");
         for f in &result.findings {
-            buf.push_str(&format!("### {} [{}]\n\n", f.title, f.severity.as_str().to_uppercase()));
+            buf.push_str(&format!(
+                "### {} [{}]\n\n",
+                f.title,
+                f.severity.as_str().to_uppercase()
+            ));
             buf.push_str(&format!("- **ID:** {}\n", f.id));
             buf.push_str(&format!("- **Category:** {}\n", f.category));
             if !f.description.is_empty() {
@@ -251,7 +292,9 @@ fn write_pdf(result: &ScanResult, output: Option<&std::path::Path>) -> io::Resul
     html.push_str("<title>PledgeShield Security Report</title>");
     html.push_str("<style>");
     html.push_str("body { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 2cm; line-height: 1.5; }");
-    html.push_str("h1 { font-size: 1.5rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; }");
+    html.push_str(
+        "h1 { font-size: 1.5rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; }",
+    );
     html.push_str("h2 { font-size: 1.2rem; margin-top: 1.5rem; }");
     html.push_str("table { border-collapse: collapse; width: 100%; margin: 1rem 0; }");
     html.push_str("th, td { border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; }");
@@ -271,24 +314,58 @@ fn write_pdf(result: &ScanResult, output: Option<&std::path::Path>) -> io::Resul
         result.scan_completed.format("%Y-%m-%d %H:%M:%S UTC")));
 
     html.push_str("<h2>Summary</h2><table><tr><th>Severity</th><th>Count</th></tr>");
-    html.push_str(&format!("<tr><td class=\"severity-critical\">Critical</td><td>{}</td></tr>", result.summary.critical));
-    html.push_str(&format!("<tr><td class=\"severity-high\">High</td><td>{}</td></tr>", result.summary.high));
-    html.push_str(&format!("<tr><td class=\"severity-medium\">Medium</td><td>{}</td></tr>", result.summary.medium));
-    html.push_str(&format!("<tr><td class=\"severity-low\">Low</td><td>{}</td></tr>", result.summary.low));
-    html.push_str(&format!("<tr><td class=\"severity-info\">Info</td><td>{}</td></tr>", result.summary.info));
-    html.push_str(&format!("<tr><td><strong>Total</strong></td><td><strong>{}</strong></td></tr></table>", result.summary.total));
+    html.push_str(&format!(
+        "<tr><td class=\"severity-critical\">Critical</td><td>{}</td></tr>",
+        result.summary.critical
+    ));
+    html.push_str(&format!(
+        "<tr><td class=\"severity-high\">High</td><td>{}</td></tr>",
+        result.summary.high
+    ));
+    html.push_str(&format!(
+        "<tr><td class=\"severity-medium\">Medium</td><td>{}</td></tr>",
+        result.summary.medium
+    ));
+    html.push_str(&format!(
+        "<tr><td class=\"severity-low\">Low</td><td>{}</td></tr>",
+        result.summary.low
+    ));
+    html.push_str(&format!(
+        "<tr><td class=\"severity-info\">Info</td><td>{}</td></tr>",
+        result.summary.info
+    ));
+    html.push_str(&format!(
+        "<tr><td><strong>Total</strong></td><td><strong>{}</strong></td></tr></table>",
+        result.summary.total
+    ));
 
     if !result.findings.is_empty() {
         html.push_str("<h2>Findings</h2>");
         for f in &result.findings {
-            html.push_str(&format!("<div class=\"finding\"><h3>{} <span class=\"severity-{}\">[{}]</span></h3>", f.title, f.severity, f.severity.as_str().to_uppercase()));
-            html.push_str(&format!("<p><strong>ID:</strong> {} | <strong>Category:</strong> {}{}</p>",
-                f.id, f.category, if f.fixable { " | <strong>Fixable</strong>" } else { "" }));
+            html.push_str(&format!(
+                "<div class=\"finding\"><h3>{} <span class=\"severity-{}\">[{}]</span></h3>",
+                f.title,
+                f.severity,
+                f.severity.as_str().to_uppercase()
+            ));
+            html.push_str(&format!(
+                "<p><strong>ID:</strong> {} | <strong>Category:</strong> {}{}</p>",
+                f.id,
+                f.category,
+                if f.fixable {
+                    " | <strong>Fixable</strong>"
+                } else {
+                    ""
+                }
+            ));
             if !f.description.is_empty() {
                 html.push_str(&format!("<p>{}</p>", f.description));
             }
             if !f.recommendation.is_empty() {
-                html.push_str(&format!("<p><strong>Recommendation:</strong> {}</p>", f.recommendation));
+                html.push_str(&format!(
+                    "<p><strong>Recommendation:</strong> {}</p>",
+                    f.recommendation
+                ));
             }
             if !f.metadata.is_empty() {
                 html.push_str("<ul>");
@@ -319,7 +396,10 @@ fn write_pdf(result: &ScanResult, output: Option<&std::path::Path>) -> io::Resul
     write_output(&html, Some(&path))?;
 
     if output.and_then(|p| p.extension()).and_then(|e| e.to_str()) == Some("pdf") {
-        eprintln!("  → Print-ready HTML written to {}. Open in browser and use 'Save as PDF'.", path.display());
+        eprintln!(
+            "  → Print-ready HTML written to {}. Open in browser and use 'Save as PDF'.",
+            path.display()
+        );
     }
 
     Ok(())
@@ -342,7 +422,12 @@ mod tests {
     #[test]
     fn test_write_report_text() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::High,
+            Category::Config,
+        ));
         result.finalize();
 
         let path = std::env::temp_dir().join("pledgeshield_test_report.txt");
@@ -355,7 +440,12 @@ mod tests {
     #[test]
     fn test_write_report_json() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::High,
+            Category::Config,
+        ));
         result.finalize();
 
         let path = std::env::temp_dir().join("pledgeshield_test_report.json");
@@ -372,7 +462,12 @@ mod tests {
     #[test]
     fn test_write_report_sarif() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::High,
+            Category::Config,
+        ));
         result.finalize();
 
         let path = std::env::temp_dir().join("pledgeshield_test_report.sarif");
@@ -391,24 +486,40 @@ mod tests {
     #[test]
     fn test_write_report_html() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::High,
+            Category::Config,
+        ));
         result.finalize();
 
-        let path = std::env::temp_dir().join(format!("pledgeshield_test_report_{}.html", std::process::id()));
+        let path = std::env::temp_dir().join(format!(
+            "pledgeshield_test_report_{}.html",
+            std::process::id()
+        ));
         let _ = std::fs::remove_file(&path);
         let r = write_report(&result, &OutputFormat::Html, Some(&path));
         assert!(r.is_ok());
         assert!(path.exists());
 
         let content = std::fs::read_to_string(&path).unwrap_or_default();
-        assert!(content.contains("<html") || content.contains("<!DOCTYPE"), "HTML content missing doctype/html tag");
+        assert!(
+            content.contains("<html") || content.contains("<!DOCTYPE"),
+            "HTML content missing doctype/html tag"
+        );
         let _ = std::fs::remove_file(&path);
     }
 
     #[test]
     fn test_write_report_markdown() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::High, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::High,
+            Category::Config,
+        ));
         result.finalize();
 
         let path = std::env::temp_dir().join("pledgeshield_test_report.md");
@@ -427,7 +538,12 @@ mod tests {
     #[test]
     fn test_write_report_pdf() {
         let mut result = ScanResult::new();
-        result.add_finding(Finding::new("test-1", "Test Finding", Severity::Critical, Category::Config));
+        result.add_finding(Finding::new(
+            "test-1",
+            "Test Finding",
+            Severity::Critical,
+            Category::Config,
+        ));
         result.finalize();
 
         let path = std::env::temp_dir().join("pledgeshield_test_report.pdf");
