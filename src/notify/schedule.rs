@@ -171,7 +171,7 @@ fn install_linux_crontab(config: &ScheduleConfig) -> Result<(), Box<dyn std::err
     updated.push_str(&cron_line);
     updated.push('\n');
 
-    let child = Command::new("crontab")
+    let mut child = Command::new("crontab")
         .stdin(std::process::Stdio::piped())
         .spawn()?;
     child.stdin.take().unwrap().write_all(updated.as_bytes())?;

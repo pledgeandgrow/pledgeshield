@@ -1,10 +1,14 @@
 [package]
 name = "pledgeshield"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
-description = "Personal device security auditor for Windows, macOS, and Linux"
+description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces."
 license = "MIT"
-repository = "https://github.com/pledgecyber/pledgeshield"
+repository = "https://github.com/pledgeandgrow/pledgeshield"
+homepage = "https://github.com/pledgeandgrow/pledgeshield"
+keywords = ["security", "audit", "hardening", "firewall", "privacy", "cve", "compliance", "rootkit", "ransomware", "endpoint"]
+categories = ["command-line-utilities", "development-tools"]
+authors = ["mehdi-berel <mehdi.berel@pledgeandgrow.com>"]
 
 [lib]
 name = "pledgeshield"
@@ -68,3 +72,24 @@ sysctl = "0.5"
 opt-level = 3
 lto = true
 strip = true
+
+# cargo-deb metadata for .deb package
+[package.metadata.deb]
+maintainer = "mehdi-berel <mehdi.berel@pledgeandgrow.com>"
+extended-description = """\
+PledgeShield — Personal device security auditor for Windows, macOS, and Linux.
+
+Finds what antivirus misses. Scans for misconfigurations, exposed services,
+unpatched CVEs, privilege escalation vectors, and other attack surfaces.
+Includes 95+ active defense modules for hardening your system.
+
+Quick start:
+  pledgeshield scan              # Run a full security audit
+  pledgeshield harden posture    # Check security posture score
+  pledgeshield monitor           # Real-time monitoring
+"""
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/pledgeshield", "usr/bin/", "755"],
+]

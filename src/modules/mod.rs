@@ -1,6 +1,9 @@
+pub mod browser;
 pub mod config;
+pub mod containers;
 pub mod credentials;
 pub mod cve;
+pub mod network;
 pub mod patches;
 pub mod persistence;
 pub mod privileges;
@@ -36,6 +39,9 @@ impl ModuleRegistry {
             Box::new(credentials::CredentialsModule),
             Box::new(shares::SharesModule),
             Box::new(patches::PatchesModule),
+            Box::new(network::NetworkModule),
+            Box::new(browser::BrowserModule),
+            Box::new(containers::ContainersModule),
         ];
 
         Self { modules }

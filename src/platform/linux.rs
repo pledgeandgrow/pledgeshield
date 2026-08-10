@@ -982,7 +982,7 @@ fn audit_ssh_keys(findings: &mut Vec<Finding>) {
                             Category::Credentials,
                         )
                         .description("Unencrypted SSH private key found.")
-                        .metadata("key_file", file_name));
+                        .metadata("key_file", file_name.clone()));
                     }
 
                     // Check file permissions

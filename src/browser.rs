@@ -121,7 +121,7 @@ fn audit_chromium_extensions(ext_dir: &std::path::Path, browser: &str) -> Vec<Fi
                             &format!("browser-{}-risky-{}", browser, ext_id),
                             &format!("Risky Browser Extension: {}", risk_desc),
                             Severity::High,
-                            Category::Services,
+                            Category::Browser,
                         )
                         .description(&format!("Extension '{}' in {} browser is flagged as risky/adware.", ext_id, browser))
                         .recommendation("Remove this extension from your browser.")
@@ -153,7 +153,7 @@ fn audit_chromium_extensions(ext_dir: &std::path::Path, browser: &str) -> Vec<Fi
                                     &format!("browser-{}-perms-{}", browser, ext_id),
                                     &format!("Browser Extension with Broad Permissions: {}", ext_name),
                                     Severity::Medium,
-                                    Category::Services,
+                                    Category::Browser,
                                 )
                                 .description(&format!(
                                     "Extension '{}' in {} browser has {} permission(s), including {} dangerous one(s). Broad permissions can be abused for data theft.",
@@ -174,7 +174,7 @@ fn audit_chromium_extensions(ext_dir: &std::path::Path, browser: &str) -> Vec<Fi
                                     &format!("browser-{}-allurls-{}", browser, ext_id),
                                     &format!("Extension Can Access All Sites: {}", ext_name),
                                     Severity::Medium,
-                                    Category::Services,
+                                    Category::Browser,
                                 )
                                 .description(&format!(
                                     "Extension '{}' in {} browser has <all_urls> permission, allowing it to read and modify all websites you visit.",
@@ -219,7 +219,7 @@ fn audit_firefox_extensions(profile_dir: &std::path::Path) -> Vec<Finding> {
                                             &format!("browser-firefox-allurls-{}", addon_id),
                                             &format!("Firefox Extension Can Access All Sites: {}", name),
                                             Severity::Medium,
-                                            Category::Services,
+                                            Category::Browser,
                                         )
                                         .description(&format!("Firefox extension '{}' has <all_urls> permission.", name))
                                         .recommendation("Review if this extension needs access to all sites.")

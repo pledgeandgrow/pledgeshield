@@ -1,0 +1,1215 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0)"
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Build release binaries for all platforms
+  # ──────────────────────────────────────────────
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact: pledgeshield-linux-x86_64
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact: pledgeshield-linux-aarch64
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: pledgeshield-darwin-aarch64
+            archive: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: pledgeshield-darwin-x86_64
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: pledgeshield-windows-x86_64
+            archive: zip
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../${{ matrix.artifact }}.tar.gz pledgeshield
+          cd ../../..
+          shasum -a 256 ${{ matrix.artifact }}.tar.gz > ${{ matrix.artifact }}.tar.gz.sha256
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path target/${{ matrix.target }}/release/pledgeshield.exe -DestinationPath ${{ matrix.artifact }}.zip
+          $hash = (Get-FileHash ${{ matrix.artifact }}.zip -Algorithm SHA256).Hash
+          "$hash  ${{ matrix.artifact }}.zip" | Out-File -Encoding ascii ${{ matrix.artifact }}.zip.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}.tar.gz
+            ${{ matrix.artifact }}.tar.gz.sha256
+            ${{ matrix.artifact }}.zip
+            ${{ matrix.artifact }}.zip.sha256
+
+  # ──────────────────────────────────────────────
+  # Job 2: Build .deb packages for apt
+  # ──────────────────────────────────────────────
+  build-deb:
+    name: Build .deb packages
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux x86_64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: pledgeshield-linux-x86_64
+
+      - name: Extract binary
+        run: |
+          tar xzf pledgeshield-linux-x86_64.tar.gz
+          chmod +x pledgeshield
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb || true
+
+      - name: Build .deb package
+        run: |
+          # Place binary where cargo-deb expects it
+          mkdir -p target/release
+          cp pledgeshield target/release/pledgeshield
+          cargo deb --no-build --output .
+
+      - name: Generate sha256
+        run: |
+          DEB_FILE=$(ls *.deb | head -1)
+          shasum -a 256 "$DEB_FILE" > "$DEB_FILE.sha256"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pledgeshield-deb
+          path: |
+            *.deb
+            *.deb.sha256
+
+  # ──────────────────────────────────────────────
+  # Job 3: Create GitHub Release with all binaries
+  # ──────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [build-binaries, build-deb]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.tar.gz.sha256" -o -name "*.zip" -o -name "*.zip.sha256" -o -name "*.deb" -o -name "*.deb.sha256" \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: PledgeShield v${{ steps.version.outputs.version }}
+          body: |
+            ## PledgeShield v${{ steps.version.outputs.version }}
+
+            > Personal device security auditor — finds what antivirus misses.
+
+            PledgeShield is a Rust-based host security auditor for Windows, macOS, and Linux. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at. Includes 95+ active defense modules for hardening your system.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Linux x86_64 | `pledgeshield-linux-x86_64.tar.gz` |
+            | Linux aarch64 | `pledgeshield-linux-aarch64.tar.gz` |
+            | macOS aarch64 (Apple Silicon) | `pledgeshield-darwin-aarch64.tar.gz` |
+            | macOS x86_64 (Intel) | `pledgeshield-darwin-x86_64.tar.gz` |
+            | Windows x86_64 | `pledgeshield-windows-x86_64.zip` |
+            | Debian/Ubuntu (.deb) | `pledgeshield_*.deb` |
+
+            ### Quick Start
+
+            ```bash
+            pledgeshield scan                           # Run a full security audit
+            pledgeshield scan --cve --compliance        # Scan with CVE + compliance mapping
+            pledgeshield harden firewall --harden       # Harden firewall
+            pledgeshield harden posture                 # Check security posture score
+            pledgeshield monitor                        # Real-time monitoring
+            ```
+
+            ### Install via Package Manager
+
+            **Cargo:**
+            ```
+            cargo install pledgeshield
+            ```
+
+            **Homebrew:**
+            ```
+            brew install pledgeandgrow/tap/pledgeshield
+            ```
+
+            **npm:**
+            ```
+            npm install -g pledgeshield
+            ```
+
+            **PyPI:**
+            ```
+            pip install pledgeshield
+            ```
+
+            **winget:**
+            ```
+            winget install PledgeAndGrow.PledgeShield
+            ```
+
+            **apt (signed repository):**
+            ```
+            wget -qO - https://pledgeandgrow.github.io/pledgeshield/apt/pledgeshield-apt-public.key | sudo gpg --dearmor -o /usr/share/keyrings/pledgeshield.gpg
+            echo "deb [signed-by=/usr/share/keyrings/pledgeshield.gpg] https://pledgeandgrow.github.io/pledgeshield/apt stable main" | sudo tee /etc/apt/sources.list.d/pledgeshield.list
+            sudo apt update && sudo apt install pledgeshield
+            ```
+
+            **RubyGems:**
+            ```
+            gem install pledgeshield
+            ```
+
+            **NuGet:**
+            ```
+            dotnet tool install -g PledgeShield
+            ```
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────
+  # Job 4: Publish to crates.io
+  # ──────────────────────────────────────────────
+  publish-crates:
+    name: Publish to crates.io
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Cargo publish
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 5: Publish npm wrapper package
+  # ──────────────────────────────────────────────
+  publish-npm:
+    name: Publish to npm
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create npm wrapper package
+        run: |
+          mkdir -p npm-pkg/bin
+          cat > npm-pkg/package.json << 'PKGJSON'
+          {
+            "name": "pledgeshield",
+            "version": "${{ steps.version.outputs.version }}",
+            "description": "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces.",
+            "license": "MIT",
+            "author": "mehdi-berel",
+            "homepage": "https://github.com/pledgeandgrow/pledgeshield",
+            "repository": {
+              "type": "git",
+              "url": "https://github.com/pledgeandgrow/pledgeshield"
+            },
+            "bugs": {
+              "url": "https://github.com/pledgeandgrow/pledgeshield/issues"
+            },
+            "keywords": [
+              "security", "audit", "hardening", "firewall", "privacy",
+              "vulnerability", "cve", "compliance", "cis", "stig",
+              "pentest", "forensics", "malware", "rootkit", "ransomware",
+              "ssh", "tls", "encryption", "network", "endpoint",
+              "cross-platform", "cli", "defensive"
+            ],
+            "bin": {
+              "pledgeshield": "bin/pledgeshield.js"
+            },
+            "engines": {
+              "node": ">=14"
+            },
+            "os": ["linux", "darwin", "win32"],
+            "cpu": ["x64", "arm64"]
+          }
+          PKGJSON
+
+          cat > npm-pkg/README.md << 'NPMREADME'
+          # PledgeShield
+
+          > Personal device security auditor for Windows, macOS, and Linux — finds what antivirus misses.
+
+          ## What It Is
+
+          PledgeShield is a Rust-based host security auditor. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at.
+
+          Think `lynis` — but cross-platform, in Rust, one binary, no agent, no server.
+
+          ## Install
+
+          ```bash
+          npm install -g pledgeshield
+          ```
+
+          ## Quick Start
+
+          ```bash
+          # Run a full security audit
+          pledgeshield scan
+
+          # Scan with CVE checking and compliance mapping
+          pledgeshield scan --cve --compliance --output html --output-file report.html
+
+          # Harden your system (95+ hardening modules)
+          pledgeshield harden firewall --harden --allow-ssh
+          pledgeshield harden ports --all
+          pledgeshield harden doh --enable cloudflare
+          pledgeshield harden sysctl --harden
+          pledgeshield harden ssh --harden
+
+          # Real-time monitoring
+          pledgeshield monitor
+
+          # Check your security posture score
+          pledgeshield harden posture
+          ```
+
+          ## What It Detects
+
+          - Exposed services and open ports (RDP, SSH, Telnet, FTP)
+          - Unpatched CVEs in installed software
+          - Weak SSH configs, password auth, root login
+          - Suspicious scheduled tasks, cron jobs, systemd timers
+          - World-readable sensitive files (SSH keys, credentials, configs)
+          - Missing disk encryption
+          - Disabled firewall, UAC, Gatekeeper, AppArmor
+          - Rootkit indicators, process injection, hollow processes
+          - Ransomware canary files
+          - Data exfiltration patterns
+          - And 80+ more checks
+
+          ## Active Defense (95+ Modules)
+
+          | Category | Examples |
+          |----------|---------|
+          | Network | Firewall, DNS-over-HTTPS, ARP detector, rate limiter, geo-IP filter |
+          | Privacy | MAC spoofer, telemetry blocker, clipboard guard, metadata stripper |
+          | Detection | Rootkit scanner, ransomware canary, intrusion detector, log tampering |
+          | Hardening | Sysctl, SSH, SUID scanner, immutable files, mount options |
+          | Boot | UEFI/Secure Boot audit, boot log analyzer, TPM checker |
+          | Hardware | Thunderbolt guard, webcam guard, microphone mute, FireWire DMA block |
+
+          ## Platforms
+
+          | OS | Support |
+          |-----|---------|
+          | Linux | Full (x86_64, aarch64) |
+          | macOS | Full (Intel, Apple Silicon) |
+          | Windows | Full (x86_64) |
+
+          ## License
+
+          MIT
+          NPMREADME
+
+          cat > npm-pkg/bin/pledgeshield.js << 'JS'
+          #!/usr/bin/env node
+          const { platform, arch } = process;
+          const { execFileSync } = require('child_process');
+          const path = require('path');
+          const fs = require('fs');
+          const https = require('https');
+          const os = require('os');
+
+          const VERSION = require('../package.json').version;
+          const REPO = 'pledgeandgrow/pledgeshield';
+
+          const PLATFORM_MAP = {
+            'linux-x64': 'pledgeshield-linux-x86_64.tar.gz',
+            'linux-arm64': 'pledgeshield-linux-aarch64.tar.gz',
+            'darwin-arm64': 'pledgeshield-darwin-aarch64.tar.gz',
+            'darwin-x64': 'pledgeshield-darwin-x86_64.tar.gz',
+            'win32-x64': 'pledgeshield-windows-x86_64.zip',
+          };
+
+          const key = `${platform}-${arch}`;
+          const assetName = PLATFORM_MAP[key];
+
+          if (!assetName) {
+            console.error(`Unsupported platform: ${key}`);
+            process.exit(1);
+          }
+
+          const cacheDir = path.join(os.homedir(), '.pledgeshield-bin', VERSION);
+          const binPath = path.join(cacheDir, platform === 'win32' ? 'pledgeshield.exe' : 'pledgeshield');
+
+          if (fs.existsSync(binPath)) {
+            execFileSync(binPath, process.argv.slice(2), { stdio: 'inherit' });
+          } else {
+            console.error(`PledgeShield binary not found. Please install via:`);
+            console.error(`  curl -sSL https://github.com/${REPO}/releases/latest/download/${assetName} | tar xz`);
+            console.error(`Or download from: https://github.com/${REPO}/releases/tag/v${VERSION}`);
+            process.exit(1);
+          }
+          JS
+          chmod +x npm-pkg/bin/pledgeshield.js
+
+      - name: Publish to npm
+        run: |
+          cd npm-pkg
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 6: Publish to PyPI (wrapper package)
+  # ──────────────────────────────────────────────
+  publish-pypi:
+    name: Publish to PyPI
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Python wrapper package
+        run: |
+          mkdir -p pypi-pkg/pledgeshield
+          cat > pypi-pkg/pyproject.toml << 'TOML'
+          [build-system]
+          requires = ["setuptools>=61.0"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "pledgeshield"
+          version = "${{ steps.version.outputs.version }}"
+          description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, and hardens 95+ attack surfaces."
+          readmes = "README.md"
+          license = { text = "MIT" }
+          requires-python = ">=3.8"
+          authors = [
+              { name = "mehdi-berel" }
+          ]
+          keywords = [
+              "security", "audit", "hardening", "firewall", "privacy",
+              "vulnerability", "cve", "compliance", "cis", "stig",
+              "pentest", "forensics", "malware", "rootkit", "ransomware",
+              "ssh", "tls", "encryption", "network", "endpoint",
+          ]
+          classifiers = [
+              "Development Status :: 4 - Beta",
+              "Environment :: Console",
+              "Intended Audience :: System Administrators",
+              "Intended Audience :: Information Technology",
+              "License :: OSI Approved :: MIT License",
+              "Operating System :: POSIX :: Linux",
+              "Operating System :: MacOS :: MacOS X",
+              "Operating System :: Microsoft :: Windows",
+              "Programming Language :: Python :: 3",
+              "Programming Language :: Python :: 3.8",
+              "Programming Language :: Python :: 3.9",
+              "Programming Language :: Python :: 3.10",
+              "Programming Language :: Python :: 3.11",
+              "Programming Language :: Python :: 3.12",
+              "Topic :: Security",
+              "Topic :: System :: Systems Administration",
+              "Topic :: Utilities",
+          ]
+
+          [project.urls]
+          Homepage = "https://github.com/pledgeandgrow/pledgeshield"
+          Repository = "https://github.com/pledgeandgrow/pledgeshield"
+          Issues = "https://github.com/pledgeandgrow/pledgeshield/issues"
+
+          [project.scripts]
+          pledgeshield = "pledgeshield.cli:main"
+          TOML
+
+          cat > pypi-pkg/README.md << 'PYPIREADME'
+          # PledgeShield
+
+          > Personal device security auditor for Windows, macOS, and Linux — finds what antivirus misses.
+
+          ## What It Is
+
+          PledgeShield is a Rust-based host security auditor. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at.
+
+          Think `lynis` — but cross-platform, in Rust, one binary, no agent, no server.
+
+          ## Install
+
+          ```bash
+          pip install pledgeshield
+          ```
+
+          ## Quick Start
+
+          ```bash
+          # Run a full security audit
+          pledgeshield scan
+
+          # Scan with CVE checking and compliance mapping
+          pledgeshield scan --cve --compliance --output html --output-file report.html
+
+          # Harden your system (95+ hardening modules)
+          pledgeshield harden firewall --harden --allow-ssh
+          pledgeshield harden ports --all
+          pledgeshield harden doh --enable cloudflare
+          pledgeshield harden sysctl --harden
+          pledgeshield harden ssh --harden
+
+          # Real-time monitoring
+          pledgeshield monitor
+
+          # Check your security posture score
+          pledgeshield harden posture
+          ```
+
+          ## What It Detects
+
+          - Exposed services and open ports (RDP, SSH, Telnet, FTP)
+          - Unpatched CVEs in installed software
+          - Weak SSH configs, password auth, root login
+          - Suspicious scheduled tasks, cron jobs, systemd timers
+          - World-readable sensitive files (SSH keys, credentials, configs)
+          - Missing disk encryption
+          - Disabled firewall, UAC, Gatekeeper, AppArmor
+          - Rootkit indicators, process injection, hollow processes
+          - Ransomware canary files
+          - Data exfiltration patterns
+          - And 80+ more checks
+
+          ## Active Defense (95+ Modules)
+
+          | Category | Examples |
+          |----------|---------|
+          | Network | Firewall, DNS-over-HTTPS, ARP detector, rate limiter, geo-IP filter |
+          | Privacy | MAC spoofer, telemetry blocker, clipboard guard, metadata stripper |
+          | Detection | Rootkit scanner, ransomware canary, intrusion detector, log tampering |
+          | Hardening | Sysctl, SSH, SUID scanner, immutable files, mount options |
+          | Boot | UEFI/Secure Boot audit, boot log analyzer, TPM checker |
+          | Hardware | Thunderbolt guard, webcam guard, microphone mute, FireWire DMA block |
+
+          ## Platforms
+
+          | OS | Support |
+          |-----|---------|
+          | Linux | Full (x86_64, aarch64) |
+          | macOS | Full (Intel, Apple Silicon) |
+          | Windows | Full (x86_64) |
+
+          ## License
+
+          MIT
+          PYPIREADME
+
+          cat > pypi-pkg/pledgeshield/__init__.py << 'PY'
+          """PledgeShield — Personal device security auditor."""
+          __version__ = "${{ steps.version.outputs.version }}"
+          PY
+
+          cat > pypi-pkg/pledgeshield/cli.py << 'PY'
+          import sys
+          import os
+          import platform
+          import subprocess
+          import urllib.request
+          import tarfile
+          import zipfile
+          import shutil
+
+          VERSION = "${{ steps.version.outputs.version }}"
+          REPO = "pledgeandgrow/pledgeshield"
+
+          PLATFORM_MAP = {
+              ("Linux", "x86_64"): "pledgeshield-linux-x86_64.tar.gz",
+              ("Linux", "aarch64"): "pledgeshield-linux-aarch64.tar.gz",
+              ("Darwin", "arm64"): "pledgeshield-darwin-aarch64.tar.gz",
+              ("Darwin", "x86_64"): "pledgeshield-darwin-x86_64.tar.gz",
+              ("Windows", "AMD64"): "pledgeshield-windows-x86_64.zip",
+          }
+
+          def get_bin_path():
+              home = os.path.expanduser("~")
+              cache = os.path.join(home, ".pledgeshield-bin", VERSION)
+              name = "pledgeshield.exe" if sys.platform == "win32" else "pledgeshield"
+              return os.path.join(cache, name)
+
+          def main():
+              bin_path = get_bin_path()
+              if os.path.exists(bin_path):
+                  os.execv(bin_path, [bin_path] + sys.argv[1:])
+              else:
+                  print(f"PledgeShield v{VERSION} binary not found.")
+                  print(f"Download from: https://github.com/{REPO}/releases/tag/v{VERSION}")
+                  sys.exit(1)
+          PY
+
+      - name: Build and publish
+        run: |
+          cd pypi-pkg
+          pip install build twine
+          python -m build
+          twine upload dist/* -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 7: Publish to RubyGems (wrapper gem)
+  # ──────────────────────────────────────────────
+  publish-rubygems:
+    name: Publish to RubyGems
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Ruby gem
+        run: |
+          mkdir -p gem-pkg/bin
+          cat > gem-pkg/pledgeshield.gemspec << 'GEMSPEC'
+            Gem::Specification.new do |s|
+              s.name          = "pledgeshield"
+              s.version       = "${{ steps.version.outputs.version }}"
+              s.summary       = "Personal device security auditor — finds what antivirus misses"
+              s.description   = "Personal device security auditor for Windows, macOS, and Linux. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation vectors, and hardens 95+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server."
+              s.license       = "MIT"
+              s.homepage      = "https://github.com/pledgeandgrow/pledgeshield"
+              s.metadata      = {
+                "homepage_uri"      => "https://github.com/pledgeandgrow/pledgeshield",
+                "source_code_uri"   => "https://github.com/pledgeandgrow/pledgeshield",
+                "bug_tracker_uri"   => "https://github.com/pledgeandgrow/pledgeshield/issues",
+                "changelog_uri"     => "https://github.com/pledgeandgrow/pledgeshield/releases",
+              }
+              s.author        = "mehdi-berel"
+              s.email         = "mehdi.berel@pledgeandgrow.com"
+              s.files         = ["bin/pledgeshield", "README.md"]
+              s.executables   = ["pledgeshield"]
+              s.required_ruby_version = ">= 2.7"
+            end
+          GEMSPEC
+
+          cat > gem-pkg/README.md << 'GEMREADME'
+          # PledgeShield
+
+          > Personal device security auditor for Windows, macOS, and Linux — finds what antivirus misses.
+
+          ## What It Is
+
+          PledgeShield is a Rust-based host security auditor. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at.
+
+          Think `lynis` — but cross-platform, in Rust, one binary, no agent, no server.
+
+          ## Install
+
+          ```bash
+          gem install pledgeshield
+          ```
+
+          ## Quick Start
+
+          ```bash
+          # Run a full security audit
+          pledgeshield scan
+
+          # Scan with CVE checking and compliance mapping
+          pledgeshield scan --cve --compliance --output html --output-file report.html
+
+          # Harden your system (95+ hardening modules)
+          pledgeshield harden firewall --harden --allow-ssh
+          pledgeshield harden ports --all
+          pledgeshield harden doh --enable cloudflare
+          pledgeshield harden sysctl --harden
+          pledgeshield harden ssh --harden
+
+          # Real-time monitoring
+          pledgeshield monitor
+
+          # Check your security posture score
+          pledgeshield harden posture
+          ```
+
+          ## What It Detects
+
+          - Exposed services and open ports (RDP, SSH, Telnet, FTP)
+          - Unpatched CVEs in installed software
+          - Weak SSH configs, password auth, root login
+          - Suspicious scheduled tasks, cron jobs, systemd timers
+          - World-readable sensitive files (SSH keys, credentials, configs)
+          - Missing disk encryption
+          - Disabled firewall, UAC, Gatekeeper, AppArmor
+          - Rootkit indicators, process injection, hollow processes
+          - Ransomware canary files
+          - Data exfiltration patterns
+          - And 80+ more checks
+
+          ## Active Defense (95+ Modules)
+
+          | Category | Examples |
+          |----------|---------|
+          | Network | Firewall, DNS-over-HTTPS, ARP detector, rate limiter, geo-IP filter |
+          | Privacy | MAC spoofer, telemetry blocker, clipboard guard, metadata stripper |
+          | Detection | Rootkit scanner, ransomware canary, intrusion detector, log tampering |
+          | Hardening | Sysctl, SSH, SUID scanner, immutable files, mount options |
+          | Boot | UEFI/Secure Boot audit, boot log analyzer, TPM checker |
+          | Hardware | Thunderbolt guard, webcam guard, microphone mute, FireWire DMA block |
+
+          ## Platforms
+
+          | OS | Support |
+          |-----|---------|
+          | Linux | Full (x86_64, aarch64) |
+          | macOS | Full (Intel, Apple Silicon) |
+          | Windows | Full (x86_64) |
+
+          ## License
+
+          MIT
+          GEMREADME
+
+          cat > gem-pkg/bin/pledgeshield << 'RUBY'
+          #!/usr/bin/env ruby
+          require "rbconfig"
+          require "fileutils"
+
+          VERSION = "${{ steps.version.outputs.version }}"
+          REPO = "pledgeandgrow/pledgeshield"
+
+          platform = RbConfig::CONFIG["host_os"]
+          arch = RbConfig::CONFIG["host_cpu"]
+
+          bin_dir = File.join(Dir.home, ".pledgeshield-bin", VERSION)
+          bin_name = platform =~ /mswin|mingw|win32/ ? "pledgeshield.exe" : "pledgeshield"
+          bin_path = File.join(bin_dir, bin_name)
+
+          if File.exist?(bin_path)
+            exec bin_path, *ARGV
+          else
+            STDERR.puts "PledgeShield v#{VERSION} binary not found."
+            STDERR.puts "Download from: https://github.com/#{REPO}/releases/tag/v#{VERSION}"
+            exit 1
+          end
+          RUBY
+          chmod +x gem-pkg/bin/pledgeshield
+
+      - name: Build and push gem
+        run: |
+          cd gem-pkg
+          gem build pledgeshield.gemspec
+          gem push *.gem --key ${{ secrets.RUBYGEMS_API_KEY }}
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 8: Publish to NuGet (wrapper package)
+  # ──────────────────────────────────────────────
+  publish-nuget:
+    name: Publish to NuGet
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create NuGet tool package
+        run: |
+          mkdir -p nuget-pkg/tools
+          cat > nuget-pkg/pledgeshield.nuspec << 'NUSPEC'
+          <?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+            <metadata>
+              <id>pledgeshield</id>
+              <version>${{ steps.version.outputs.version }}</version>
+              <title>PledgeShield</title>
+              <authors>mehdi-berel</authors>
+              <owners>mehdi-berel</owners>
+              <description>Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server.</description>
+              <summary>Personal device security auditor for Windows, macOS, and Linux</summary>
+              <license type="MIT">MIT</license>
+              <projectUrl>https://github.com/pledgeandgrow/pledgeshield</projectUrl>
+              <repository type="git" url="https://github.com/pledgeandgrow/pledgeshield" />
+              <bugTrackerUrl>https://github.com/pledgeandgrow/pledgeshield/issues</bugTrackerUrl>
+              <tags>security audit hardening firewall privacy vulnerability cve compliance rootkit ransomware endpoint cli</tags>
+              <packageTypes>
+                <packageType name="DotnetTool" />
+              </packageTypes>
+            </metadata>
+            <files>
+              <file src="tools/**/*" target="tools/" />
+              <file src="README.md" target="" />
+            </files>
+          </package>
+          NUSPEC
+
+          cat > nuget-pkg/README.md << 'NUGETREADME'
+          # PledgeShield
+
+          > Personal device security auditor for Windows, macOS, and Linux — finds what antivirus misses.
+
+          ## What It Is
+
+          PledgeShield is a Rust-based host security auditor. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at.
+
+          Think `lynis` — but cross-platform, in Rust, one binary, no agent, no server.
+
+          ## Install
+
+          ```bash
+          dotnet tool install -g PledgeShield
+          ```
+
+          ## Quick Start
+
+          ```bash
+          # Run a full security audit
+          pledgeshield scan
+
+          # Scan with CVE checking and compliance mapping
+          pledgeshield scan --cve --compliance --output html --output-file report.html
+
+          # Harden your system (95+ hardening modules)
+          pledgeshield harden firewall --harden --allow-ssh
+          pledgeshield harden ports --all
+          pledgeshield harden doh --enable cloudflare
+          pledgeshield harden sysctl --harden
+          pledgeshield harden ssh --harden
+
+          # Real-time monitoring
+          pledgeshield monitor
+
+          # Check your security posture score
+          pledgeshield harden posture
+          ```
+
+          ## What It Detects
+
+          - Exposed services and open ports (RDP, SSH, Telnet, FTP)
+          - Unpatched CVEs in installed software
+          - Weak SSH configs, password auth, root login
+          - Suspicious scheduled tasks, cron jobs, systemd timers
+          - World-readable sensitive files (SSH keys, credentials, configs)
+          - Missing disk encryption
+          - Disabled firewall, UAC, Gatekeeper, AppArmor
+          - Rootkit indicators, process injection, hollow processes
+          - Ransomware canary files
+          - Data exfiltration patterns
+          - And 80+ more checks
+
+          ## Active Defense (95+ Modules)
+
+          | Category | Examples |
+          |----------|---------|
+          | Network | Firewall, DNS-over-HTTPS, ARP detector, rate limiter, geo-IP filter |
+          | Privacy | MAC spoofer, telemetry blocker, clipboard guard, metadata stripper |
+          | Detection | Rootkit scanner, ransomware canary, intrusion detector, log tampering |
+          | Hardening | Sysctl, SSH, SUID scanner, immutable files, mount options |
+          | Boot | UEFI/Secure Boot audit, boot log analyzer, TPM checker |
+          | Hardware | Thunderbolt guard, webcam guard, microphone mute, FireWire DMA block |
+
+          ## Platforms
+
+          | OS | Support |
+          |-----|---------|
+          | Linux | Full (x86_64, aarch64) |
+          | macOS | Full (Intel, Apple Silicon) |
+          | Windows | Full (x86_64) |
+
+          ## License
+
+          MIT
+          NUGETREADME
+
+          # Create a simple launcher script
+          cat > nuget-pkg/tools/pledgeshield.cmd << 'CMD'
+          @echo off
+          setlocal
+          set VERSION=${{ steps.version.outputs.version }}
+          set BIN_DIR=%USERPROFILE%\.pledgeshield-bin\%VERSION%
+          if exist "%BIN_DIR%\pledgeshield.exe" (
+            "%BIN_DIR%\pledgeshield.exe" %*
+          ) else (
+            echo PledgeShield v%VERSION% binary not found.
+            echo Download from: https://github.com/pledgeandgrow/pledgeshield/releases/tag/v%VERSION%
+            exit /b 1
+          )
+          CMD
+
+          cat > nuget-pkg/tools/pledgeshield.sh << 'SH'
+          #!/bin/bash
+          VERSION="${{ steps.version.outputs.version }}"
+          BIN_DIR="$HOME/.pledgeshield-bin/$VERSION"
+          if [ -f "$BIN_DIR/pledgeshield" ]; then
+            exec "$BIN_DIR/pledgeshield" "$@"
+          else
+            echo "PledgeShield v$VERSION binary not found." >&2
+            echo "Download from: https://github.com/pledgeandgrow/pledgeshield/releases/tag/v$VERSION" >&2
+            exit 1
+          fi
+          SH
+          chmod +x nuget-pkg/tools/pledgeshield.sh
+
+      - name: Pack and push
+        run: |
+          cd nuget-pkg
+          nuget pack pledgeshield.nuspec -NoDefaultExcludes
+          nuget push *.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }}
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 9: Update Homebrew tap
+  # ──────────────────────────────────────────────
+  publish-homebrew:
+    name: Update Homebrew tap
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download macOS binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pledgeshield-darwin-aarch64
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          SHA=$(shasum -a 256 pledgeshield-darwin-aarch64.tar.gz | awk '{print $1}')
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew tap
+        run: |
+          # Clone or create the tap repository
+          git clone https://github.com/pledgeandgrow/homebrew-tap.git tap-repo 2>/dev/null || {
+            mkdir -p tap-repo
+            cd tap-repo
+            git init
+            git remote add origin https://github.com/pledgeandgrow/homebrew-tap.git
+          }
+
+          cd tap-repo
+          mkdir -p Formula
+
+          cat > Formula/pledgeshield.rb << 'FORMULA'
+          class Pledgeshield < Formula
+            desc "Personal device security auditor — finds what antivirus misses"
+            homepage "https://github.com/pledgeandgrow/pledgeshield"
+            url "https://github.com/pledgeandgrow/pledgeshield/releases/download/v${{ steps.version.outputs.version }}/pledgeshield-darwin-aarch64.tar.gz"
+            sha256 "${{ steps.sha.outputs.sha256 }}"
+            license "MIT"
+            version "${{ steps.version.outputs.version }}"
+
+            def install
+              bin.install "pledgeshield"
+            end
+
+            def caveats
+              <<~EOS
+                PledgeShield is ready! Quick start:
+
+                  pledgeshield scan                          # Run a full security audit
+                  pledgeshield scan --cve --compliance       # Scan with CVE + compliance mapping
+                  pledgeshield harden firewall --harden      # Harden firewall
+                  pledgeshield harden posture                # Check security posture score
+                  pledgeshield monitor                       # Real-time monitoring
+
+                95+ hardening modules available. Run:
+                  pledgeshield harden --help
+
+                Documentation: https://github.com/pledgeandgrow/pledgeshield
+              EOS
+            end
+
+            test do
+              assert_match "pledgeshield", shell_output("#{bin}/pledgeshield --help", 0)
+            end
+          end
+          FORMULA
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/pledgeshield.rb
+          git commit -m "Update pledgeshield to v${{ steps.version.outputs.version }}" || true
+          git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/pledgeandgrow/homebrew-tap.git HEAD:main
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 10: Submit winget manifest
+  # ──────────────────────────────────────────────
+  publish-winget:
+    name: Submit to winget
+    needs: github-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: pledgeshield-windows-x86_64
+
+      - name: Compute SHA256
+        id: sha
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash pledgeshield-windows-x86_64.zip -Algorithm SHA256).Hash
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Install wingetcreate
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/winget-create/releases/latest/download/wingetcreate.exe" -OutFile wingetcreate.exe
+
+      - name: Update winget manifest
+        shell: pwsh
+        run: |
+          # Try to update existing manifest, or create new if it doesn't exist
+          try {
+            .\wingetcreate.exe update PledgeAndGrow.PledgeShield `
+              --version ${{ steps.version.outputs.version }} `
+              --urls "https://github.com/pledgeandgrow/pledgeshield/releases/download/v${{ steps.version.outputs.version }}/pledgeshield-windows-x86_64.zip|${{ steps.sha.outputs.sha256 }}" `
+              --token ${{ secrets.WINGET_GITHUB_TOKEN }} `
+              --submit
+          } catch {
+            # First-time submission: create new manifest
+            .\wingetcreate.exe new `
+              --id PledgeAndGrow.PledgeShield `
+              --version ${{ steps.version.outputs.version }} `
+              --package-name "PledgeShield" `
+              --publisher "PledgeAndGrow" `
+              --publisher-url "https://github.com/pledgeandgrow" `
+              --author "mehdi-berel" `
+              --homepage "https://github.com/pledgeandgrow/pledgeshield" `
+              --description "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces." `
+              --short-description "Personal device security auditor" `
+              --tags "security" "audit" "hardening" "firewall" "privacy" "vulnerability" "cve" "compliance" "rootkit" "ransomware" `
+              --license "MIT" `
+              --license-url "https://github.com/pledgeandgrow/pledgeshield/blob/main/LICENSE" `
+              --urls "https://github.com/pledgeandgrow/pledgeshield/releases/download/v${{ steps.version.outputs.version }}/pledgeshield-windows-x86_64.zip|${{ steps.sha.outputs.sha256 }}" `
+              --token ${{ secrets.WINGET_GITHUB_TOKEN }} `
+              --submit
+          }
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────
+  # Job 11: Publish .deb to signed apt repository
+  # ──────────────────────────────────────────────
+  publish-apt:
+    name: Publish signed apt repo
+    needs: [build-deb, github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: pledgeshield-deb
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.APT_GPG_KEY }}" | gpg --import --batch --yes
+          # Verify key was imported
+          gpg --list-secret-keys --keyid-format long
+
+      - name: Set up apt repository
+        run: |
+          # Create apt repository structure
+          mkdir -p apt-repo/pool/main/p/pledgeshield
+          mkdir -p apt-repo/dists/stable/main/binary-amd64
+
+          # Copy .deb to pool
+          cp *.deb apt-repo/pool/main/p/pledgeshield/
+
+          # Copy public key into repo root (for users to download)
+          cp apt/pledgeshield-apt-public.key apt-repo/pledgeshield-apt-public.key
+
+          # Create Packages file
+          cd apt-repo
+          dpkg-scanpackages --arch amd64 pool /dev/null > dists/stable/main/binary-amd64/Packages
+          gzip -k dists/stable/main/binary-amd64/Packages
+
+          # Compute hashes for Release file
+          cd dists/stable
+          {
+            echo "Origin: PledgeAndGrow"
+            echo "Label: PledgeShield"
+            echo "Suite: stable"
+            echo "Codename: stable"
+            echo "Version: ${{ steps.version.outputs.version }}"
+            echo "Architectures: amd64"
+            echo "Components: main"
+            echo "Description: PledgeShield — Personal device security auditor. Finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces."
+            echo "Maintainer: mehdi-berel <mehdi.berel@pledgeandgrow.com>"
+            echo "Date: $(date -Ru)"
+            echo "MD5Sum:"
+            (cd main/binary-amd64 && md5sum Packages Packages.gz)
+            echo "SHA1:"
+            (cd main/binary-amd64 && sha1sum Packages Packages.gz)
+            echo "SHA256:"
+            (cd main/binary-amd64 && sha256sum Packages Packages.gz)
+          } > Release
+
+          # Sign Release file (detached signature → Release.gpg)
+          gpg --batch --yes --armor --detach-sign --output Release.gpg Release
+
+          # Create clear-signed InRelease (inline signed)
+          gpg --batch --yes --armor --clearsign --output InRelease Release
+
+          # Verify signatures
+          gpg --verify Release.gpg Release
+          gpg --verify InRelease
+
+      - name: Deploy apt repo to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./apt-repo
+          destination_dir: apt
+        continue-on-error: true

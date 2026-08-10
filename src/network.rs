@@ -38,7 +38,7 @@ fn check_upnp() -> Option<Finding> {
                 "net-upnp-enabled",
                 "UPnP Service Running",
                 Severity::Medium,
-                Category::Services,
+                Category::Network,
             )
             .description("Universal Plug and Play (UPnP) service is running. UPnP can allow automatic port forwarding without user consent, potentially exposing services to the internet.")
             .recommendation("Disable the UPnP Device Host service if not needed.")
@@ -61,7 +61,7 @@ fn check_upnp() -> Option<Finding> {
                 "net-upnp-enabled",
                 "UPnP Service Running",
                 Severity::Medium,
-                Category::Services,
+                Category::Network,
             )
             .description("UPnP daemon (miniupnpd) is active. UPnP can allow automatic port forwarding without user consent.")
             .recommendation("Disable miniupnpd if not required: sudo systemctl disable miniupnpd")
@@ -92,7 +92,7 @@ fn check_upnp() -> Option<Finding> {
                     "net-upnp-enabled",
                     "UPnP Enabled on macOS",
                     Severity::Medium,
-                    Category::Services,
+                    Category::Network,
                 )
                 .description("UPnP is enabled via macOS NAT settings. This can allow automatic port forwarding.")
                 .recommendation("Disable UPnP in System Settings > Sharing > Internet Sharing.")
@@ -124,7 +124,7 @@ fn check_public_ip_exposure() -> Option<Finding> {
                             "net-public-ip-exposed",
                             "Public IP Address Detected",
                             Severity::Low,
-                            Category::Services,
+                            Category::Network,
                         )
                         .description(&format!("Interface has public IP address: {}. This machine is directly accessible from the internet.", ip))
                         .recommendation("Ensure firewall is enabled and only necessary ports are open.")
@@ -153,7 +153,7 @@ fn check_public_ip_exposure() -> Option<Finding> {
                             "net-public-ip-exposed",
                             "Public IP Address Detected",
                             Severity::Low,
-                            Category::Services,
+                            Category::Network,
                         )
                         .description(&format!("Interface has public IP address: {}. This machine is directly accessible from the internet.", ip))
                         .recommendation("Ensure firewall is enabled and only necessary ports are open.")
@@ -187,7 +187,7 @@ fn check_wildcard_listening() -> Option<Finding> {
                 "net-wildcard-listening",
                 "Services Listening on All Interfaces",
                 Severity::Medium,
-                Category::Services,
+                Category::Network,
             )
             .description(&format!("{} service(s) are listening on 0.0.0.0 (all interfaces). This exposes them to network access.", wildcard_count))
             .recommendation("Bind services to localhost (127.0.0.1) when remote access is not needed.")
@@ -215,7 +215,7 @@ fn check_wildcard_listening() -> Option<Finding> {
                 "net-wildcard-listening",
                 "Services Listening on All Interfaces",
                 Severity::Medium,
-                Category::Services,
+                Category::Network,
             )
             .description(&format!("{} service(s) are listening on 0.0.0.0 or [::] (all interfaces).", wildcard_count))
             .recommendation("Bind services to localhost (127.0.0.1) when remote access is not needed.")

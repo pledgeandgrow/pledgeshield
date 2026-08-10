@@ -13,6 +13,10 @@ pub struct PledgeShieldConfig {
     pub exclusions: ExclusionConfig,
     #[serde(default)]
     pub thresholds: ThresholdConfig,
+    #[serde(default)]
+    pub notify: NotifyConfig,
+    #[serde(default)]
+    pub history: HistoryConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -68,6 +72,44 @@ pub struct ThresholdConfig {
     /// Fail exit code if findings at or above this severity
     #[serde(default)]
     pub fail_on: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NotifyConfig {
+    /// Webhook URL (Slack/Discord/Teams/generic). Empty = disabled.
+    #[serde(default)]
+    pub webhook_url: Option<String>,
+    /// Email notification settings
+    #[serde(default)]
+    pub email: Option<EmailNotifyConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EmailNotifyConfig {
+    #[serde(default)]
+    pub smtp_host: String,
+    #[serde(default)]
+    pub smtp_port: u16,
+    #[serde(default)]
+    pub from: String,
+    #[serde(default)]
+    pub to: Vec<String>,
+    #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
+    pub use_tls: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HistoryConfig {
+    /// Record each scan to the local SQLite history database
+    #[serde(default)]
+    pub enabled: bool,
+    /// Optional explicit path to the history database
+    #[serde(default)]
+    pub path: Option<String>,
 }
 
 impl PledgeShieldConfig {
@@ -184,6 +226,14 @@ impl PledgeShieldConfig {
                 max_info: Some(50),
                 max_low: Some(100),
                 fail_on: Some("high".to_string()),
+            },
+            notify: NotifyConfig {
+                webhook_url: Some("https://hooks.slack.com/services/XXX/YYY/ZZZ".to_string()),
+                email: None,
+            },
+            history: HistoryConfig {
+                enabled: false,
+                path: None,
             },
         };
 

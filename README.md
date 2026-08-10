@@ -2,6 +2,9 @@
 
 > Personal device security auditor for Windows, macOS, and Linux — finds what antivirus misses.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platforms](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-blue)](#platforms)
+
 ---
 
 ## What It Is
@@ -28,63 +31,103 @@ Antivirus (Microsoft Defender, XProtect, ClamAV, etc.) focuses on **malware dete
 
 ---
 
-## Where It Fits
+## Quick Start
 
+```bash
+# Run a full security audit
+pledgeshield scan
+
+# Scan with CVE checking and compliance mapping
+pledgeshield scan --cve --compliance --output html --output-file report.html
+
+# Harden your system (95+ hardening modules)
+pledgeshield harden firewall --harden --allow-ssh
+pledgeshield harden ports --all
+pledgeshield harden doh --enable cloudflare
+pledgeshield harden sysctl --harden
+pledgeshield harden ssh --harden
+
+# Real-time monitoring
+pledgeshield monitor
+
+# Check your security posture score
+pledgeshield harden posture
 ```
-DEFENSE
-├── PledgeGuard    — "Did we leak secrets in code?"
-├── PledgeRecon    — "Is our code vulnerable?"
-└── PledgeShield   — "Is my device hardened?" ← THIS
-
-INTEL
-└── PledgeTarget   — "What's out there?"
-
-OFFENSE
-└── PledgeStrike   — "Can we exploit it?"
-```
-
-No overlap with other PledgeCyber tools:
-- No code/repo scanning → PledgeGuard & PledgeRecon own that
-- No network scanning of external targets → that's recon
-- No exploitation → PledgeStrike owns that
-- Focuses exclusively on **local host hardening**
 
 ---
 
-## Architecture — Cross-Platform Design
+## Install
 
-PledgeShield uses a trait-based module system with shared logic and platform-specific implementations:
-
-```
-SHARED MODULES (same concept, all 3 platforms)     PLATFORM-SPECIFIC (conditional compilation)
-┌────────────────────────────────────┐             ┌─────────────────────────────────────┐
-│ OpenPortsModule                    │             │ #[cfg(windows)]                     │
-│ CveModule                          │             │  WindowsHardeningModule             │
-│ UserAuditModule                    │             │  - UAC, SmartScreen, Defender       │
-│ PasswordPolicyModule               │             │  - BitLocker, Registry hardening    │
-│ FirewallModule                     │             │  - SMB shares, RDP, Credential Mgr  │
-│ PersistenceModule                  │             │  - WMI, DLL hijack, Wi-Fi Sense     │
-│ SshKeyModule                       │             │                                     │
-│ BrowserCredsModule                 │             │ #[cfg(macos)]                       │
-│ PatchStatusModule                  │             │  MacosHardeningModule               │
-└────────────────────────────────────┘             │  - Gatekeeper, SIP, TCC permissions│
-                                                   │  - FileVault, Keychain audit        │
-                                                   │  - XProtect, LaunchAgents/Daemons   │
-                                                   │                                     │
-                                                   │ #[cfg(linux)]                       │
-                                                   │  LinuxHardeningModule               │
-                                                   │  - AppArmor / SELinux status        │
-                                                   │  - systemd service audit            │
-                                                   │  - fail2ban, /etc/ hardening        │
-                                                   │  - PAM configuration                │
-                                                   └─────────────────────────────────────┘
+### Cargo (all platforms)
+```bash
+cargo install pledgeshield
 ```
 
-**~60% shared code, ~40% platform-specific.** The CVE API integration is 100% platform-agnostic.
+### Homebrew (macOS/Linux)
+```bash
+brew install pledgeandgrow/tap/pledgeshield
+```
+
+### winget (Windows)
+```bash
+winget install PledgeAndGrow.PledgeShield
+```
+
+### apt (Debian/Ubuntu)
+```bash
+wget -qO - https://pledgeandgrow.github.io/pledgeshield/apt/pledgeshield-apt-public.key \
+  | sudo gpg --dearmor -o /usr/share/keyrings/pledgeshield.gpg
+echo "deb [signed-by=/usr/share/keyrings/pledgeshield.gpg] https://pledgeandgrow.github.io/pledgeshield/apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/pledgeshield.list
+sudo apt update && sudo apt install pledgeshield
+```
+
+### npm
+```bash
+npm install -g pledgeshield
+```
+
+### PyPI
+```bash
+pip install pledgeshield
+```
+
+### RubyGems
+```bash
+gem install pledgeshield
+```
+
+### NuGet
+```bash
+dotnet tool install -g PledgeShield
+```
+
+### Binary download
+Download from [GitHub Releases](https://github.com/pledgeandgrow/pledgeshield/releases) — prebuilt binaries for Linux (x86_64, aarch64), macOS (Intel, Apple Silicon), and Windows (x86_64).
 
 ---
 
-## Features
+## Top-Level Commands
+
+```
+pledgeshield <COMMAND>
+
+Commands:
+  scan         Run a security scan
+  init-config  Generate a sample config file
+  history      Show scan history from the local SQLite database
+  trend        Show a trend dashboard from scan history
+  schedule     Install or remove a scheduled scan (cron / Task Scheduler / launchd)
+  harden       Active defense: 95+ hardening modules
+  vpn          VPN / proxy management (WireGuard, OpenVPN, Tor)
+  monitor      Real-time security monitor
+```
+
+See [COMMANDS.md](COMMANDS.md) for the full command reference.
+
+---
+
+## Scan Features
 
 ### 1. Host Configuration Audit
 
@@ -133,12 +176,10 @@ SHARED MODULES (same concept, all 3 platforms)     PLATFORM-SPECIFIC (conditiona
 - Suggest update actions
 
 **CVE data sources (API-based, no manual updates needed):**
-- [NVD API 2.0](https://nvd.nist.gov/developers/vulnerabilities) — National Vulnerability Database, free, comprehensive
-- [OSV.dev API](https://osv.dev/docs/) — Open Source Vulnerabilities, Google-backed, broad coverage
-- [GitHub Security Advisories API](https://docs.github.com/en/rest/security-advisories) — GHSA database
+- [NVD API 2.0](https://nvd.nist.gov/developers/vulnerabilities) — National Vulnerability Database
+- [OSV.dev API](https://osv.dev/docs/) — Open Source Vulnerabilities, Google-backed
+- [GitHub Security Advisories API](https://docs.github.com/en/rest/security/advisories) — GHSA database
 - [FIRST EPSS API](https://www.first.org/epss/api) — Exploit prediction scoring for prioritization
-
-PledgeShield queries these APIs at scan time. No local CVE database to maintain — the APIs are always up to date. Offline mode caches the last API response for air-gapped environments.
 
 ### 4. Privilege & Account Audit (all platforms)
 - All local user accounts and their privileges
@@ -179,170 +220,287 @@ PledgeShield queries these APIs at scan time. No local CVE database to maintain 
 - Pending reboot for installed updates
 - Third-party software update status (winget, brew, choco)
 
+### 9. Browser Extension Audit
+- Installed browser extensions (Chrome, Edge, Firefox, Brave)
+- Known-malicious extension detection
+- Excessive permission flags
+
+### 10. Container Security
+- Docker/Podman/Kubernetes misconfiguration
+- Privileged containers, root user, no seccomp
+- Exposed ports, no resource limits
+
+### 11. Compliance Mapping
+- CIS Benchmark control IDs
+- NIST SP 800-53 control IDs
+- Custom checks from TOML/YAML files
+
+---
+
+## Active Defense (`harden`)
+
+95+ modules that take action to secure your system. See [MODULES.md](MODULES.md) for the full list.
+
+### Network & Traffic (10)
+| Command | Description |
+|---------|-------------|
+| `harden ports` | Close insecure open ports (Telnet, FTP, RDP, VNC, SMB, Redis, MongoDB) |
+| `harden firewall` | Enable/harden/disable system firewall (UFW/iptables/firewalld, socketfilterfw, netsh) |
+| `harden doh` | Configure DNS-over-HTTPS/TLS (Cloudflare, Google, Quad9, AdGuard) |
+| `harden wifi` | Audit WiFi for open networks, WEP, auto-connect, saved network leaks |
+| `harden arp` | ARP spoofing detector — real-time MITM monitoring |
+| `harden isolation` | Block all outbound except whitelisted IPs |
+| `harden proxy` | Set/clear SOCKS5/HTTP proxy system-wide |
+| `harden ipv6` | Disable or firewall IPv6 to prevent VPN/DNS leaks |
+| `harden hosts` | Install ad/tracker/malware domain blocklists |
+| `harden traffic` | Per-process bandwidth monitor — detect data exfiltration |
+
+### Identity & Privacy (10)
+| Command | Description |
+|---------|-------------|
+| `harden mac` | Spoof/randomize network interface MAC address |
+| `harden identity` | Set privacy DNS, disable OS telemetry, clear machine IDs |
+| `harden hostname` | Randomize machine hostname to prevent tracking |
+| `harden useragent` | Spoof browser user-agent to prevent fingerprinting |
+| `harden webrtc` | Block WebRTC to prevent IP leaks behind VPN |
+| `harden bluetooth` | Audit, hide, disable Bluetooth, remove paired devices |
+| `harden devices` | Audit and block camera/microphone access |
+| `harden clipboard` | Clear clipboard, install auto-clear watcher |
+| `harden cleaner` | Clear shell history, recent files, temp files, activity traces |
+| `harden browser` | Disable browser telemetry, enable tracking protection, clear data |
+
+### System Hardening (8)
+| Command | Description |
+|---------|-------------|
+| `harden usb` | USB device guard — audit, lockdown via USBGuard |
+| `harden kernel` | Restrict kernel module loading (irreversible until reboot) |
+| `harden suid` | Find and remove suspicious SUID/SGID binaries |
+| `harden scheduler` | Deep scan cron/systemd timers/launchd for suspicious tasks |
+| `harden integrity` | Hash and verify critical system files (FIM) |
+| `harden proctree` | Detect suspicious parent-child process relationships |
+| `harden lockscreen` | Force screen lock timeout, disable auto-login |
+| `harden encryption` | Detect unencrypted disks, guide LUKS/FileVault/BitLocker setup |
+
+### Detection & Response (4)
+| Command | Description |
+|---------|-------------|
+| `harden rootkit` | Check for hidden PIDs, LD_PRELOAD abuse, hidden kernel modules |
+| `harden canary` | Plant decoy files, monitor for ransomware encryption |
+| `harden logins` | Track failed SSH/RDP/login attempts, detect brute force |
+| `harden dnsmon` | Monitor DNS for DGA, C2, fast flux, suspicious TLDs |
+
+### Privacy Tools (3)
+| Command | Description |
+|---------|-------------|
+| `harden shredder` | Securely delete files with multi-pass overwrite |
+| `harden memwipe` | Wipe swap, set up encrypted swap, wipe RAM on shutdown |
+| `harden metadata` | Strip EXIF/IPTC/XMP metadata from JPEG, PNG, PDF |
+
+### Boot & Firmware (5)
+| Command | Description |
+|---------|-------------|
+| `harden uefi` | Audit Secure Boot, boot password, boot order lock |
+| `harden bootlog` | Analyze boot logs for I/O errors, firmware failures, driver crashes |
+| `harden sysctl` | Harden kernel parameters: ASLR, ptrace_scope, dmesg restriction |
+| `harden modsign` | Verify kernel module signatures, check CONFIG_MODULE_SIG_FORCE |
+| `harden tpm` | Check TPM availability, version, measured boot, PCR state |
+
+### File & Data Protection (6)
+| Command | Description |
+|---------|-------------|
+| `harden fileperms` | Find world-readable/writable sensitive files |
+| `harden sensitive` | Locate private keys, certs, password files across the system |
+| `harden exfil` | Monitor for large file copies to USB/network |
+| `harden backup` | Verify backups exist, are recent, match expected hashes |
+| `harden diskmon` | Flag sudden disk space changes (ransomware indicator) |
+| `harden logtamper` | Check for truncated/deleted system logs |
+
+### SSH & Remote Access (4)
+| Command | Description |
+|---------|-------------|
+| `harden ssh` | Disable root login, password auth, enforce key-only auth |
+| `harden sshkeys` | Check SSH key sizes, passphrases, file permissions |
+| `harden knock` | Configure port knocking to hide SSH from scanners |
+| `harden fail2ban` | Install and configure fail2ban for brute force protection |
+
+### Application Hardening (5)
+| Command | Description |
+|---------|-------------|
+| `harden tls` | Check TLS certificates for expiration, weak ciphers |
+| `harden deps` | Scan package manifests (Cargo, npm, pip, go.mod) for CVEs |
+| `harden secrets` | Scan your own files for committed API keys/tokens |
+| `harden vault` | Check if browser saved passwords are encrypted at rest |
+| `harden autorun` | Disable AutoPlay/AutoRun from USB/CD/network drives |
+
+### System Monitoring (5)
+| Command | Description |
+|---------|-------------|
+| `harden resource` | Detect CPU/RAM spikes and crypto miner patterns |
+| `harden filewatch` | Monitor system directories for new executable files |
+| `harden usermon` | Alert on new users, UID changes, sudoers modifications |
+| `harden netcons` | List all outbound connections with associated processes |
+| `harden cronmon` | Alert on new or modified scheduled tasks |
+
+### Privacy & Compliance (5)
+| Command | Description |
+|---------|-------------|
+| `harden pii` | Scan files for SSNs, credit cards, phone numbers (GDPR) |
+| `harden telemetry` | Disable ALL telemetry across OS, browsers, dev tools |
+| `harden freespace` | Overwrite disk free space so deleted files can't be recovered |
+| `harden posture` | Aggregate findings into 0-100 security posture score with grade |
+| `harden profile` | Apply CIS Level 1/2, STIG, or custom hardening profiles |
+
+### Process & Memory Defense (6)
+| Command | Description |
+|---------|-------------|
+| `harden procinj` | Scan for suspicious injected libraries (LD_PRELOAD, maps anomalies) |
+| `harden hollow` | Detect process name/binary mismatches (hollow processes) |
+| `harden memscan` | Scan process memory for malware signatures |
+| `harden ptrace` | Alert if processes are being traced/debugged |
+| `harden thread` | Flag processes with suspicious thread counts |
+| `harden codeinject` | Harden ptrace_scope, disable BPF for unprivileged users |
+
+### Network Defense (6)
+| Command | Description |
+|---------|-------------|
+| `harden ratelimit` | Limit new outbound connections per minute (iptables hashlimit) |
+| `harden geoip` | Block connections to high-risk countries |
+| `harden dohforce` | Force encrypted DNS, block plaintext DNS (port 53) |
+| `harden pcapdetect` | Detect promiscuous mode interfaces and packet sniffers |
+| `harden roguedhcp` | Detect DHCP responses from non-router sources |
+| `harden deauth` | Detect WiFi deauthentication attacks (real-time monitor) |
+
+### Filesystem & Storage (5)
+| Command | Description |
+|---------|-------------|
+| `harden immutable` | Protect critical files with chattr +i (immutable) |
+| `harden mount` | Enforce nosuid, nodev, noexec on mount points |
+| `harden tmpsan` | Clean stale files from /tmp, /var/tmp, /dev/shm |
+| `harden quota` | Set disk quotas to prevent disk filling (ransomware protection) |
+| `harden attrmon` | Watch for permission/immutable flag changes on critical files |
+
+### Access Control (5)
+| Command | Description |
+|---------|-------------|
+| `harden pam` | Check for backdoored/weak PAM modules |
+| `harden polkit` | Check for overly permissive polkit rules |
+| `harden macaudit` | Check AppArmor/SELinux enforcement status |
+| `harden caps` | Scan binaries for dangerous Linux capabilities |
+| `harden nsaudit` | Check process namespace isolation |
+
+### Hardware & Peripherals (4)
+| Command | Description |
+|---------|-------------|
+| `harden thunderbolt` | Disable Thunderbolt DMA, require device approval |
+| `harden webcam` | Disable webcam (unload uvcvideo module), audit access |
+| `harden micmute` | Mute all microphones at the audio system level |
+| `harden firewire` | Disable FireWire/PCMCIA DMA access |
+
+### System Integrity (4)
+| Command | Description |
+|---------|-------------|
+| `harden systemd` | Deep scan systemd units for suspicious services |
+| `harden envleak` | Scan /proc for secrets in environment variables |
+| `harden libaudit` | Check LD_LIBRARY_PATH, RPATH for library hijacking vectors |
+| `harden binhash` | Compare binary hashes against package manager records |
+
+---
+
+## VPN & Proxy
+
+```bash
+# WireGuard / OpenVPN
+pledgeshield vpn status
+pledgeshield vpn connect --config myvpn --vpn-type wireguard
+pledgeshield vpn disconnect
+pledgeshield vpn kill-switch-on      # Block all non-VPN traffic (Linux)
+
+# Tor
+pledgeshield vpn tor start
+pledgeshield vpn tor route           # Route all traffic through Tor (Linux)
+pledgeshield vpn tor check-ip        # Check exit IP
+```
+
+---
+
+## Real-Time Monitor
+
+```bash
+# Watch for new ports, root processes, firewall changes
+pledgeshield monitor
+
+# Fast polling, 60 second run
+pledgeshield monitor --interval 2 --max-runtime 60
+```
+
+---
+
+## Scan Options
+
+| Flag | Description |
+|------|-------------|
+| `--cve` | Enable CVE scanning (NVD, OSV, GHSA, EPSS) |
+| `--compliance` | Map findings to CIS Benchmark and NIST 800-53 controls |
+| `--format <FORMAT>` | Output: `text`, `json`, `html`, `sarif`, `markdown`, `pdf` (default: text) |
+| `--output <PATH>` | Write report to file instead of stdout |
+| `--modules <LIST>` | Comma-separated modules to run (e.g. `services,shares,persistence`) |
+| `--min-severity <LVL>` | Minimum severity: `critical`, `high`, `medium`, `low`, `info` |
+| `--fix` | Interactive fix mode — prompt to apply fixes for each finding |
+| `--verify` | Verify that previously applied fixes are still in effect |
+| `--offline` | Use cached CVE data only (air-gapped environments) |
+| `--refresh-cve` | Force refresh CVE cache before scanning |
+| `--nvd-api-key <KEY>` | NVD API key for higher rate limits (env: `NVD_API_KEY`) |
+| `--github-token <TOKEN>` | GitHub token for GHSA API (env: `GITHUB_TOKEN`) |
+| `--config <FILE>` | Load configuration from TOML/YAML file |
+| `--baseline <FILE>` | Compare results against a baseline file |
+| `--save-baseline <FILE>` | Save current scan as baseline |
+| `--save-history` | Save scan results to SQLite history database |
+| `--custom-checks <FILE>` | Run user-defined checks from TOML/YAML |
+| `--notify-webhook <URL>` | Send results to webhook (Slack/Discord/Teams) |
+
 ---
 
 ## CVE API Integration
 
-```
-┌──────────────────────────────────────────────────┐
-│                PledgeShield Scan                  │
-│                                                   │
-│  1. Enumerate installed software (platform-specific)    │
-│     - Windows: Registry + winget + choco + pip/npm/cargo │
-│     - macOS: system_profiler + brew + pip/npm/cargo      │
-│     - Linux: dpkg/rpm/pacman + pip/npm/cargo             │
-│                                                   │
-│  2. Ecosystem detection for each package          │
-│     - Maps package manager → OSV ecosystem        │
-│     - Debian, AlmaLinux, Arch Linux, Homebrew,    │
-│       PyPI, npm, Go, crates.io, RubyGems, etc.    │
-│                                                   │
-│  3. OSV batch query (all ecosystem-matched pkgs)  │
-│     - Single API call for all packages            │
-│     - Falls back to individual queries on error   │
-│                                                   │
-│  4. For each installed package:                   │
-│     - NVD: Try CPE match first (35+ mappings)     │
-│       - Fall back to keyword search if no match   │
-│     - GHSA: Query by ecosystem + package name     │
-│     - EPSS: Get exploit prediction score          │
-│                                                   │
-│  5. Cross-reference & deduplicate findings        │
-│     - Merge results from NVD, OSV, GHSA           │
-│     - Rank by EPSS score (exploit likelihood)     │
-│     - Filter by severity (CVSS v3.x)              │
-│                                                   │
-│  6. Report                                        │
-│     - Software name + version                     │
-│     - CVE ID + CVSS score + EPSS score            │
-│     - Source (NVD, OSV, or GHSA)                  │
-│     - Recommended action (update to version X)    │
-└──────────────────────────────────────────────────┘
-```
-
-### API Rate Limits & Caching
-
-| API | Rate limit | Auth required | Notes |
-|---|---|---|---|
-| NVD 2.0 | 6s/req (no key), 2s/req (with key) | Optional API key | Built-in rate limiting |
+| API | Rate limit | Auth | Notes |
+|-----|-----------|------|-------|
+| NVD 2.0 | 6s/req (no key), 2s/req (with key) | Optional | Built-in rate limiting, CPE matching (35+ mappings) |
 | OSV.dev | 1000 req/min | None | Free, batch queries supported |
-| GHSA | 5000 req/hour (auth), 60 req/hour (no auth) | Optional token | Use GitHub token for higher limit |
+| GHSA | 5000 req/hour (auth), 60 req/hour (no auth) | Optional | GitHub token |
 | EPSS | No documented limit | None | Free, daily updates |
 
-**Caching strategy:**
-- Cache API responses to disk (TTL: 24h)
-- Batch queries where API supports it (OSV.dev batch endpoint)
-- CPE-based NVD queries for precise matching (35+ vendor/product mappings)
-- Offline mode: use last cached response
-- User can force refresh with `--refresh-cve`
+**Caching:** API responses cached to disk (TTL: 24h). Batch queries where supported. Offline mode uses last cached response.
 
 ---
 
-## Usage
+## Architecture
 
-### Basic scan
-```bash
-pledgeshield scan
+```
+SHARED MODULES (same concept, all 3 platforms)     PLATFORM-SPECIFIC (conditional compilation)
+┌────────────────────────────────────┐             ┌─────────────────────────────────────┐
+│ HostConfigModule                   │             │ #[cfg(windows)]                     │
+│ ServicesModule                     │             │  WindowsHardeningModule             │
+│ CveModule                          │             │  - UAC, SmartScreen, Defender       │
+│ PrivilegesModule                   │             │  - BitLocker, Registry hardening    │
+│ PersistenceModule                  │             │  - SMB shares, RDP, Credential Mgr  │
+│ CredentialsModule                  │             │  - WMI, DLL hijack, Wi-Fi Sense     │
+│ SharesModule                       │             │                                     │
+│ PatchesModule                      │             │ #[cfg(macos)]                       │
+│ BrowserModule                      │             │  MacosHardeningModule               │
+│ ContainersModule                   │             │  - Gatekeeper, SIP, TCC permissions│
+│ ComplianceModule                   │             │  - FileVault, Keychain audit        │
+│ CustomChecks                       │             │  - XProtect, LaunchAgents/Daemons   │
+└────────────────────────────────────┘             │                                     │
+                                                   │ #[cfg(linux)]                       │
+95+ harden modules (platform-conditional)          │  LinuxHardeningModule               │
+VPN: WireGuard, OpenVPN, Tor                       │  - AppArmor / SELinux status        │
+Real-time monitor                                  │  - systemd service audit            │
+                                                   │  - fail2ban, /etc/ hardening        │
+                                                   │  - PAM configuration                │
+                                                   └─────────────────────────────────────┘
 ```
 
-### Full scan with CVE checks
-```bash
-pledgeshield scan --cve
-```
-
-### Specific modules only
-```bash
-pledgeshield scan --modules services,shares,persistence
-pledgeshield scan --modules config
-pledgeshield scan --modules cve
-```
-
-### Output formats
-```bash
-pledgeshield scan --format json --output report.json
-pledgeshield scan --format html --output report.html
-pledgeshield scan --format sarif --output report.sarif
-pledgeshield scan --format text
-```
-
-### Severity filtering
-```bash
-pledgeshield scan --min-severity high
-pledgeshield scan --cve --min-severity critical
-```
-
-### Fix mode (interactive)
-```bash
-pledgeshield scan --fix
-# Shows each finding and asks: [F]ix / [S]kip / [A]uto-fix all
-```
-
-### Offline mode (uses cached CVE data)
-```bash
-pledgeshield scan --cve --offline
-```
-
-### Refresh CVE cache
-```bash
-pledgeshield scan --cve --refresh-cve
-```
-
-### Config file
-```bash
-# Generate a sample config
-pledgeshield init-config --output pledgeshield.toml
-
-# Use config file for scan settings
-pledgeshield scan --config pledgeshield.toml
-```
-
-Config supports TOML and YAML, with:
-- Module selection and severity filtering
-- CVE API keys (NVD, GitHub token)
-- Finding exclusions (by ID, category, or metadata)
-- Thresholds (max info/low findings, fail-on severity for CI exit codes)
-
-### Baseline diff scanning
-```bash
-# Save current scan as baseline
-pledgeshield scan --save-baseline baseline.json
-
-# Compare future scans against baseline
-pledgeshield scan --baseline baseline.json
-# Shows new findings, resolved findings, and unchanged count
-```
-
-### Remediation verification
-```bash
-# After applying fixes, verify they worked
-pledgeshield scan --fix --verify
-# Re-scans and reports which findings were resolved
-```
-
-### CI/CD integration
-```bash
-# SARIF output for GitHub code scanning
-pledgeshield scan --format sarif --output results.sarif
-
-# Exit code based on severity threshold (from config)
-pledgeshield scan --config ci.toml
-# Exits with code 2 if findings at or above fail_on severity
-```
-
----
-
-## Tech Stack
-
-- **Language:** Rust
-- **Windows APIs:** `windows` crate (official Microsoft Rust bindings), `winreg`, `wmi`
-- **macOS APIs:** `core-foundation`, `system-configuration`, `security-framework` crates
-- **Linux APIs:** `procfs`, `nix`, `sysctl` crates
-- **HTTP:** `reqwest` (for CVE API calls)
-- **CLI:** `clap`
-- **Output:** `serde_json`, `serde_yaml`, `toml`, HTML via templates, SARIF 2.1.0
-- **Config:** `toml` crate (TOML), `serde_yaml` (YAML config files)
-- **Progress:** `indicatif` (progress bars during scan)
-- **Distribution:** Cargo, npm (via napi-rs), Scoop, Homebrew, binary download
+**~60% shared code, ~40% platform-specific.** CVE API integration is 100% platform-agnostic.
 
 ---
 
@@ -351,43 +509,37 @@ pledgeshield scan --config ci.toml
 ```
 pledgeshield/
 ├── Cargo.toml
-├── README.md
+├── README.md               # This file
+├── COMMANDS.md             # Full command reference
+├── MODULES.md              # All 121 modules documented
+├── .github/workflows/
+│   ├── ci.yml              # CI: test + build (3 platforms, 2 toolchains)
+│   └── release.yml         # Release: 8 package managers + GitHub Releases
+├── apt/                    # apt repository public key
 ├── src/
-│   ├── main.rs              # Entry point, CLI dispatch, scan orchestration
-│   ├── cli.rs               # CLI argument definitions (clap)
-│   ├── config.rs            # Config file loading (TOML/YAML), exclusions, thresholds
-│   ├── baseline.rs          # Baseline diff scanning (save/load/compare)
-│   ├── models.rs            # Finding, Severity, ScanResult models
-│   ├── output.rs            # Text, JSON, HTML, SARIF report generation
-│   ├── modules/
-│   │   ├── mod.rs           # Module trait definition + registry
-│   │   ├── config.rs        # Host configuration audit (shared interface)
-│   │   ├── services.rs      # Service & port inventory (shared)
-│   │   ├── cve.rs           # Software vulnerability check (shared, API-based)
-│   │   ├── privileges.rs    # Privilege & account audit (shared)
-│   │   ├── persistence.rs   # Persistence detection (shared)
-│   │   ├── credentials.rs   # Credential exposure (shared)
-│   │   ├── shares.rs        # Share & exposure audit (shared)
-│   │   └── patches.rs       # Patch status (shared)
-│   ├── platform/
-│   │   ├── mod.rs           # Platform dispatch
-│   │   ├── windows.rs       # #[cfg(windows)] — UAC, Defender, BitLocker, Registry, SMB, WMI
-│   │   ├── macos.rs         # #[cfg(macos)] — Gatekeeper, SIP, FileVault, Keychain, TCC, XProtect
-│   │   └── linux.rs         # #[cfg(linux)] — AppArmor/SELinux, systemd, fail2ban, PAM, sysctl
-│   ├── cve/
-│   │   ├── mod.rs           # CVE orchestration, ecosystem detection, software enumeration
-│   │   ├── nvd.rs           # NVD API 2.0 client (rate limiting, CPE matching)
-│   │   ├── osv.rs           # OSV.dev API client (single + batch queries)
-│   │   ├── ghsa.rs          # GitHub Security Advisories client
-│   │   ├── epss.rs          # EPSS API client
-│   │   └── cache.rs         # Disk cache for API responses (TTL-based)
-│   └── fix/
-│       ├── mod.rs           # Fix orchestration + remediation verification
-│       ├── registry_fix.rs  # Windows registry-based fixes
-│       ├── service_fix.rs   # Service disable/enable (all platforms)
-│       └── share_fix.rs     # Share permission fixes
+│   ├── main.rs             # Entry point, CLI dispatch
+│   ├── cli.rs              # CLI argument definitions (clap)
+│   ├── config.rs           # Config file loading (TOML/YAML)
+│   ├── baseline.rs         # Baseline diff scanning
+│   ├── models.rs           # Finding, Severity, ScanResult models
+│   ├── output.rs           # Text, JSON, HTML, SARIF, Markdown, PDF output
+│   ├── monitor.rs          # Real-time security monitor
+│   ├── history.rs          # SQLite scan history
+│   ├── trend.rs            # Trend dashboard
+│   ├── compliance.rs       # CIS / NIST compliance mapping
+│   ├── custom.rs           # User-defined checks
+│   ├── containers.rs       # Docker/Podman/K8s checks
+│   ├── browser.rs          # Browser extension audit
+│   ├── network.rs          # Network exposure checks
+│   ├── modules/            # 11 scan modules
+│   ├── harden/             # 95+ active defense modules
+│   ├── cve/                # CVE API clients (NVD, OSV, GHSA, EPSS, cache)
+│   ├── fix/                # Interactive fix actions (Windows, macOS, Linux)
+│   ├── notify/             # Email + webhook notifications + scheduled scans
+│   ├── vpn/                # WireGuard, OpenVPN, Tor management
+│   └── platform/           # Platform-specific implementations
 └── templates/
-    └── report.html          # HTML report template
+    └── report.html         # HTML report template
 ```
 
 ---
@@ -395,8 +547,8 @@ pledgeshield/
 ## Finding Severity Levels
 
 | Severity | Examples |
-|---|---|
-| **Critical** | RDP/SSH exposed to internet, SMBv1 enabled, no firewall, SIP disabled (macOS), SELinux disabled (Linux) |
+|----------|----------|
+| **Critical** | RDP/SSH exposed to internet, SMBv1 enabled, no firewall, SIP disabled, SELinux disabled |
 | **High** | UAC disabled, admin share open to Everyone, Gatekeeper disabled, unpatched critical CVE (EPSS > 0.5) |
 | **Medium** | Unnecessary service running as root/SYSTEM, weak password policy, missing updates |
 | **Low** | Telemetry settings, clipboard history enabled, minor misconfigurations |
@@ -407,10 +559,10 @@ pledgeshield/
 ## Competitive Positioning
 
 | Tool | What it does | Where PledgeShield wins |
-|---|---|---|
-| **Microsoft Defender / XProtect / ClamAV** | Malware detection only | Host hardening, misconfig detection, CVE check for installed software, cross-platform |
+|------|-------------|------------------------|
+| **Defender / XProtect / ClamAV** | Malware detection only | Host hardening, misconfig detection, CVE check, cross-platform |
 | **Lynis** | Linux/Unix host audit | Cross-platform (Windows + macOS), Rust binary, CVE API integration |
-| **Hardening Kitty** | Windows compliance checks | Cross-platform, broader scope (persistence, credentials, shares, CVE), active maintenance |
+| **Hardening Kitty** | Windows compliance checks | Cross-platform, broader scope, active defense modules |
 | **Nessus / Qualys** | Enterprise vulnerability scanning | Free, lightweight, no agent/server, personal use |
 | **Greenbone OpenVAS** | Open-source network vuln scanner | No server infrastructure, host-focused, Rust |
 | **Wazuh** | HIDS/SIEM | No server needed, simpler, personal use |
@@ -418,100 +570,83 @@ pledgeshield/
 
 **Key differentiators:**
 - **Cross-platform** — Windows, macOS, and Linux from a single codebase
+- **95+ active defense modules** — not just scanning, but hardening
 - **Rust** — memory-safe, single binary, no runtime dependency
 - **API-based CVE** — no local database to maintain, always current
 - **Multi-source CVE** — NVD + OSV + GHSA with CPE matching and ecosystem detection
 - **EPSS scoring** — prioritize by actual exploit likelihood, not just CVSS
 - **SARIF output** — GitHub code scanning compatible for CI/CD integration
 - **Baseline diff** — track security posture changes over time
-- **Config-driven** — TOML/YAML config for exclusions, thresholds, API keys
-- **Remediation verification** — re-scan after fixes to confirm resolution
-- **Interactive fix mode** — not just reporting, but guided remediation
-- **Personal use** — no enterprise infrastructure needed
+- **Posture scoring** — 0-100 score with letter grade
+- **Hardening profiles** — CIS Level 1/2, STIG, or custom
+- **VPN management** — WireGuard, OpenVPN, Tor built in
+- **Real-time monitor** — watch for new ports, processes, firewall changes
+- **8 package managers** — cargo, npm, PyPI, RubyGems, NuGet, Homebrew, winget, apt
 
 ---
 
-## Development Phases
+## Platforms
 
-### Phase 1 — MVP (Windows) ✅
-- Host configuration audit (UAC, firewall, Defender, BitLocker)
-- Service & port inventory
-- Basic CLI + text output
-- Windows only
-
-### Phase 2 — CVE Integration (all platforms) ✅
-- Software enumeration (platform-specific package managers)
-- NVD + OSV.dev API integration
-- CVE cache system
-- JSON output
-
-### Phase 3 — Deep Audit (all platforms) ✅
-- Privilege & account audit
-- Persistence detection
-- Credential exposure
-- Share & exposure audit
-- Patch status
-
-### Phase 4 — Cross-Platform Expansion ✅
-- macOS hardening module (Gatekeeper, SIP, FileVault, Keychain, TCC, XProtect)
-- Linux hardening module (AppArmor/SELinux, systemd, fail2ban, PAM, sysctl)
-- Platform-specific persistence and credential checks
-
-### Phase 5 — Reporting & Fixes ✅
-- HTML report generation
-- Interactive fix mode
-- Severity scoring
-- EPSS integration
-
-### Phase 6 — CVE Enhancement & Polish ✅
-- GHSA integration into CVE scan
-- NVD rate limiting (6s/2s throttle with API key awareness)
-- Ecosystem detection for OSV (Debian, npm, PyPI, Go, crates.io, etc.)
-- OSV batch queries (single API call for all packages)
-- CPE matching for NVD (35+ vendor/product mappings)
-- Config file support (TOML/YAML with exclusions, thresholds, API keys)
-- Baseline diff scanning (save/load/compare)
-- SARIF 2.1.0 output format (GitHub code scanning compatible)
-- Progress indicators (indicatif)
-- Remediation verification (re-scan after fixes)
-- `init-config` subcommand for sample config generation
-- CI/CD exit codes based on severity thresholds
-
-### Phase 7 — Hardening & Distribution (planned)
-1. Unit tests for all audit modules (Windows, macOS, Linux)
-2. Integration tests with mock command outputs
-3. GitHub Actions CI matrix (Windows, macOS, Linux)
-4. Cross-compilation for aarch64-apple-darwin, x86_64-unknown-linux-musl
-5. npm package via napi-rs
-6. Scoop manifest for Windows
-7. Homebrew formula for macOS
-8. Docker image for CI/headless scans
-9. Windows fix mode expansion (macOS/Linux fix actions)
-10. macOS fix mode (Gatekeeper enable, firewall enable, FileVault enable)
-11. Linux fix mode (ufw enable, SSH hardening, fail2ban install)
-12. HTML report interactive filtering (by severity, category, search)
-13. HTML report CSV export button
-14. Markdown output format
-15. PDF report generation (via print CSS or external tool)
-16. Scheduled scan support (cron/Task Scheduler integration)
-17. Email notification on critical findings
-18. Webhook notification (Slack, Discord, Teams)
-19. Scan history tracking (local SQLite database)
-20. Trend dashboard (findings over time, resolved vs new)
-21. Compliance mapping (CIS Benchmarks, NIST SP 800-53)
-22. Custom audit module plugins (user-defined checks via config)
-23. Network interface exposure check (public IP detection, UPnP status)
-24. Browser extension audit (installed extensions, risky permissions)
-25. Container/runtime security checks (Docker, Podman, Kubernetes pod)
+| OS | Architecture | Support Level |
+|----|-------------|---------------|
+| Linux | x86_64 | Full |
+| Linux | aarch64 | Full |
+| macOS | Apple Silicon (arm64) | Full |
+| macOS | Intel (x86_64) | Full |
+| Windows | x86_64 | Full |
 
 ---
 
-## Current Status
+## Tech Stack
 
-- **Phase:** 6 complete — all 25 goals implemented
-- **Compiles:** Yes (Rust stable, cross-platform)
-- **Platforms:** Windows, macOS, Linux
-- **CVE APIs:** NVD, OSV, GHSA, EPSS (with rate limiting, caching, CPE matching)
-- **Output formats:** Text, JSON, HTML, SARIF 2.1.0
-- **Config:** TOML/YAML with exclusions, thresholds, API keys
-- **Next phase:** Phase 7 — Hardening & Distribution
+- **Language:** Rust
+- **CLI:** `clap`
+- **HTTP:** `reqwest` (CVE API calls)
+- **Serialization:** `serde`, `serde_json`, `serde_yaml`, `toml`
+- **Database:** `rusqlite` (scan history)
+- **Progress:** `indicatif`
+- **Windows APIs:** `windows` crate, `winreg`, `wmi`
+- **macOS APIs:** `core-foundation`, `system-configuration`, `security-framework`
+- **Linux APIs:** `procfs`, `nix`, `sysctl`
+
+---
+
+## Development
+
+```bash
+# Build
+cargo build --release
+
+# Run tests
+cargo test
+
+# Run clippy
+cargo clippy --all-targets -- -D warnings
+
+# Check formatting
+cargo fmt --all -- --check
+```
+
+CI runs on every push and PR across Ubuntu, macOS, and Windows with stable and beta Rust toolchains.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+---
+
+## Author
+
+**mehdi-berel** — [mehdi.berel@pledgeandgrow.com](mailto:mehdi.berel@pledgeandgrow.com)
+
+---
+
+## Links
+
+- [GitHub Repository](https://github.com/pledgeandgrow/pledgeshield)
+- [Issue Tracker](https://github.com/pledgeandgrow/pledgeshield/issues)
+- [Releases](https://github.com/pledgeandgrow/pledgeshield/releases)
+- [Full Command Reference](COMMANDS.md)
+- [Full Module List](MODULES.md)

@@ -182,6 +182,9 @@ fn parse_category(s: &str) -> Category {
         "credentials" => Category::Credentials,
         "shares" => Category::Shares,
         "patches" => Category::Patches,
+        "network" => Category::Network,
+        "browser" => Category::Browser,
+        "containers" => Category::Containers,
         _ => Category::Config,
     }
 }

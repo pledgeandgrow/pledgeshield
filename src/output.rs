@@ -110,7 +110,7 @@ fn write_sarif(result: &ScanResult, output: Option<&std::path::Path>) -> io::Res
             "name": f.title,
             "shortDescription": { "text": f.title },
             "fullDescription": { "text": f.description },
-            "helpUri": format!("https://pledgecyber.com/findings/{}", f.id),
+            "helpUri": format!("https://pledgeandgrow.com/findings/{}", f.id),
             "defaultConfiguration": {
                 "level": severity_to_sarif_level(&f.severity)
             },
@@ -152,7 +152,7 @@ fn write_sarif(result: &ScanResult, output: Option<&std::path::Path>) -> io::Res
                 "driver": {
                     "name": "PledgeShield",
                     "version": env!("CARGO_PKG_VERSION"),
-                    "informationUri": "https://pledgecyber.com",
+                    "informationUri": "https://pledgeandgrow.com",
                     "rules": rules,
                 }
             },

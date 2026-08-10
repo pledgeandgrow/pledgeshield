@@ -1,22 +1,22 @@
 {
     "version": "0.1.0",
     "description": "Cross-platform host security auditor for Windows, macOS, and Linux",
-    "homepage": "https://github.com/pledgecyber/pledgeshield",
+    "homepage": "https://github.com/pledgeandgrow/pledgeshield",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/pledgecyber/pledgeshield/releases/download/v0.1.0/pledgeshield-windows-x86_64.zip",
+            "url": "https://github.com/pledgeandgrow/pledgeshield/releases/download/v0.1.0/pledgeshield-windows-x86_64.zip",
             "hash": ""
         }
     },
     "bin": "pledgeshield.exe",
     "checkver": {
-        "github": "https://github.com/pledgecyber/pledgeshield"
+        "github": "https://github.com/pledgeandgrow/pledgeshield"
     },
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/pledgecyber/pledgeshield/releases/download/v$version/pledgeshield-windows-x86_64.zip"
+                "url": "https://github.com/pledgeandgrow/pledgeshield/releases/download/v$version/pledgeshield-windows-x86_64.zip"
             }
         }
     }

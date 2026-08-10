@@ -64,6 +64,10 @@ pub enum Category {
     Credentials,
     Shares,
     Patches,
+    Network,
+    Browser,
+    Containers,
+    HostConfig,
 }
 
 impl std::fmt::Display for Category {
@@ -77,6 +81,10 @@ impl std::fmt::Display for Category {
             Category::Credentials => write!(f, "credentials"),
             Category::Shares => write!(f, "shares"),
             Category::Patches => write!(f, "patches"),
+            Category::Network => write!(f, "network"),
+            Category::Browser => write!(f, "browser"),
+            Category::Containers => write!(f, "containers"),
+            Category::HostConfig => write!(f, "host_config"),
         }
     }
 }
