@@ -267,7 +267,7 @@ fn is_public_ipv4(ip: &str) -> bool {
     if parts.len() != 4 {
         return false;
     }
-    let octets: Vec<u8> = parts.iter().filter_map(|p| p.parse().ok()).collect();
+    let octets: Vec<u8> = parts.iter().filter_map(|p| p.parse::<u8>().ok()).collect();
     if octets.len() != 4 {
         return false;
     }

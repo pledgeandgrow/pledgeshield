@@ -1,3 +1,7 @@
+// Cross-platform hardening modules — imports/variables may be used
+// only in platform-specific #[cfg] blocks, so suppress unused warnings.
+#![allow(unused_imports, unused_mut, unused_variables)]
+
 pub mod arp;
 pub mod attrmon;
 pub mod autorun;

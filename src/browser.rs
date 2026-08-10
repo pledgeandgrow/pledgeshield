@@ -27,7 +27,8 @@ pub fn audit_browser_extensions() -> Vec<Finding> {
 /// Get the extension directory for Chromium-based browsers.
 fn get_extension_dir(browser: &str) -> Option<PathBuf> {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let _home = dirs::home_dir()?;
+    #[allow(unused_variables)]
+    let home = dirs::home_dir()?;
 
     #[cfg(windows)]
     {

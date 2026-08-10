@@ -32,7 +32,8 @@ pub fn install_schedule(config: &ScheduleConfig) -> Result<(), Box<dyn std::erro
 }
 
 /// Remove a scheduled scan.
-pub fn remove_schedule(_task_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+#[allow(unused_variables)]
+pub fn remove_schedule(task_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(windows)]
     {
         let output = Command::new("schtasks")

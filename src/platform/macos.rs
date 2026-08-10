@@ -1,3 +1,5 @@
+#![allow(unused_imports, unused_mut, unused_variables)]
+
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
@@ -146,7 +148,7 @@ fn audit_xprotect(findings: &mut Vec<Finding>) {
 }
 
 fn audit_telemetry(findings: &mut Vec<Finding>) {
-    let output = run_cmd_lossy(
+    let _output = run_cmd_lossy(
         "defaults",
         &["read", "/Library/Preferences/com.apple.alf", "globalstate"],
     );
@@ -451,7 +453,7 @@ fn audit_admin_users(findings: &mut Vec<Finding>) {
     let members = output.trim();
     if !members.is_empty() {
         let user_list: Vec<&str> = members.split_whitespace().collect();
-        for user in user_list {
+        for user in &user_list {
             findings.push(
                 Finding::new(
                     &format!("mac-admin-user-{}", user),
@@ -980,7 +982,7 @@ fn audit_wifi_passwords(findings: &mut Vec<Finding>) {
     for line in output.lines() {
         if line.contains("Wi-Fi") || line.contains("AirPort") {
             // Get the device name
-            let next_lines: Vec<&str> = output.lines().collect();
+            let _next_lines: Vec<&str> = output.lines().collect();
             // Try to list known networks
             let networks =
                 run_cmd_lossy("networksetup", &["-listpreferredwirelessnetworks", "en0"]);

@@ -1,5 +1,6 @@
 /// SUID/SGID scanner — find all SUID/SGID binaries, flag suspicious ones, remove unnecessary bits.
 use crate::models::{Category, Finding, Severity};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -85,12 +86,19 @@ fn find_suid_binaries(root: &str) -> Vec<String> {
 
     walk_dir(root_path, &mut |path| {
         if let Ok(meta) = std::fs::metadata(path) {
-            let mode = meta.permissions().mode();
-            // SUID = 0o4000, SGID = 0o2000
-            if mode & 0o4000 != 0 || mode & 0o2000 != 0 {
-                if meta.is_file() {
-                    results.push(path.to_string_lossy().to_string());
+            #[cfg(unix)]
+            {
+                let mode = meta.permissions().mode();
+                // SUID = 0o4000, SGID = 0o2000
+                if mode & 0o4000 != 0 || mode & 0o2000 != 0 {
+                    if meta.is_file() {
+                        results.push(path.to_string_lossy().to_string());
+                    }
                 }
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = meta;
             }
         }
     });

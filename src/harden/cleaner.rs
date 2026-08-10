@@ -1,5 +1,7 @@
 /// Recent files & activity cleaner — clear recent docs, shell history, command history, temp files.
 use super::HardenResult;
+#[allow(unused_imports)]
+use std::process::Command;
 
 pub fn clean_activity(dry_run: bool) -> Vec<HardenResult> {
     let mut results = Vec::new();

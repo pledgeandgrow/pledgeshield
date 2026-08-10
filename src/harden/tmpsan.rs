@@ -1,6 +1,7 @@
 /// Temp directory sanitizer — clean /tmp, /var/tmp, /dev/shm of stale and dangerous files.
 use super::HardenResult;
 use crate::models::{Category, Finding, Severity};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
@@ -22,15 +23,18 @@ pub fn audit_temp() -> Vec<Finding> {
                 if let Ok(meta) = entry.metadata() {
                     // Check for executables in temp
                     if meta.is_file() {
-                        let mode = meta.permissions().mode();
-                        if mode & 0o111 != 0 {
-                            findings.push(Finding::new(
-                                &format!("temp-exec-{}-{}", dir.replace('/', "_"), name),
-                                &format!("Executable in {}: {}", dir, name),
-                                Severity::Medium,
-                                Category::HostConfig,
-                            )
-                            .description("Executables in temp directories are suspicious — they may be dropped by malware."));
+                        #[cfg(unix)]
+                        {
+                            let mode = meta.permissions().mode();
+                            if mode & 0o111 != 0 {
+                                findings.push(Finding::new(
+                                    &format!("temp-exec-{}-{}", dir.replace('/', "_"), name),
+                                    &format!("Executable in {}: {}", dir, name),
+                                    Severity::Medium,
+                                    Category::HostConfig,
+                                )
+                                .description("Executables in temp directories are suspicious — they may be dropped by malware."));
+                            }
                         }
 
                         // Check for stale files (older than 7 days)
@@ -70,15 +74,18 @@ pub fn audit_temp() -> Vec<Finding> {
 
                     // Check for world-writable non-sticky directories
                     if meta.is_dir() {
-                        let mode = meta.permissions().mode();
-                        if mode & 0o002 != 0 && mode & 0o1000 == 0 {
-                            findings.push(Finding::new(
-                                &format!("temp-worldwrite-{}-{}", dir.replace('/', "_"), name),
-                                &format!("World-writable directory without sticky bit in {}: {}", dir, name),
-                                Severity::Medium,
-                                Category::HostConfig,
-                            )
-                            .description("World-writable directories without the sticky bit allow any user to delete/modify files placed by others."));
+                        #[cfg(unix)]
+                        {
+                            let mode = meta.permissions().mode();
+                            if mode & 0o002 != 0 && mode & 0o1000 == 0 {
+                                findings.push(Finding::new(
+                                    &format!("temp-worldwrite-{}-{}", dir.replace('/', "_"), name),
+                                    &format!("World-writable directory without sticky bit in {}: {}", dir, name),
+                                    Severity::Medium,
+                                    Category::HostConfig,
+                                )
+                                .description("World-writable directories without the sticky bit allow any user to delete/modify files placed by others."));
+                            }
                         }
                     }
                 }

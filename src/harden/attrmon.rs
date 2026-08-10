@@ -1,6 +1,7 @@
 /// File attribute monitor — watch for changes to file attributes (immutable, permissions).
 use crate::models::{Category, Finding, Severity};
 use std::collections::HashMap;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
@@ -63,7 +64,15 @@ fn get_current_attrs() -> Vec<(String, (u32, bool))> {
         }
 
         let mode = if let Ok(meta) = std::fs::metadata(file) {
-            meta.permissions().mode() & 0o7777
+            #[cfg(unix)]
+            {
+                meta.permissions().mode() & 0o7777
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = meta;
+                0
+            }
         } else {
             0
         };

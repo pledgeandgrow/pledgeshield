@@ -1,5 +1,7 @@
 /// Proxy chain manager — configure SOCKS5/HTTP proxy chains for traffic obfuscation.
 use super::HardenResult;
+#[allow(unused_imports)]
+use std::process::Command;
 
 pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> HardenResult {
     let proxy_url = format!("{}://{}:{}", proxy_type, host, port);

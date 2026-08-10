@@ -1,5 +1,6 @@
 /// File permission auditor — find world-readable/writable files in home, config, SSH keys.
 use crate::models::{Category, Finding, Severity};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 pub fn audit_file_permissions() -> Vec<Finding> {

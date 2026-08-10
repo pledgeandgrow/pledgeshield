@@ -146,7 +146,7 @@ fn get_recent_dns_queries() -> Vec<DnsQuery> {
 
     // Deduplicate
     let mut seen = std::collections::HashSet::new();
-    queries.retain(|q| seen.insert(q.domain.clone()));
+    queries.retain(|q: &DnsQuery| seen.insert(q.domain.clone()));
 
     queries
 }

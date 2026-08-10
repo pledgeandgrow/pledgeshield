@@ -49,8 +49,8 @@ pub fn wipe_freespace(path: &str, dry_run: bool) -> HardenResult {
         let out = Command::new("cipher").args(["/w:", path]).output();
         HardenResult {
             action: "freespace-wipe".to_string(),
-            success: out.map(|o| o.status.success()).unwrap_or(false),
-            message: if out.map(|o| o.status.success()).unwrap_or(false) {
+            success: out.as_ref().map(|o| o.status.success()).unwrap_or(false),
+            message: if out.as_ref().map(|o| o.status.success()).unwrap_or(false) {
                 format!("Free space on {} wiped.", path)
             } else {
                 format!("Failed to wipe free space (need admin?)")
