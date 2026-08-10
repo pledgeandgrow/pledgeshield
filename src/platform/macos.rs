@@ -461,7 +461,7 @@ fn audit_admin_users(findings: &mut Vec<Finding>) {
                     Severity::Info,
                     Category::Privileges,
                 )
-                .metadata("user", user)
+                .metadata("user", *user)
                 .metadata("group", "admin"),
             );
         }
