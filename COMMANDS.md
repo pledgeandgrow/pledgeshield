@@ -15,7 +15,7 @@ Commands:
   history      Show scan history from the local SQLite database
   trend        Show a trend dashboard from scan history
   schedule     Install or remove a scheduled scan (cron / Task Scheduler / launchd)
-  harden       Active defense: 95+ hardening modules (firewall, privacy, detection, etc.)
+  harden       Active defense: 120+ hardening modules (firewall, privacy, detection, etc.)
   vpn          VPN / proxy status & connection management (WireGuard, OpenVPN, Tor)
   monitor      Real-time security monitor — watch for new ports, processes, firewall changes
 ```
@@ -161,7 +161,7 @@ pledgeshield schedule --remove --name "pledgeshield-daily"
 pledgeshield harden <SUBCOMMAND> [OPTIONS]
 ```
 
-95+ hardening modules across 18 categories. Run `pledgeshield harden --help` to see all available subcommands. See [MODULES.md](MODULES.md) for the full module reference.
+120+ hardening modules across 19 categories. Run `pledgeshield harden --help` to see all available subcommands. See [MODULES.md](MODULES.md) for the full module reference.
 
 ### Network & Traffic
 
@@ -847,6 +847,178 @@ pledgeshield harden libaudit                    # Check LD_LIBRARY_PATH, RPATH f
 #### `harden binhash` — Binary Hash Verifier
 ```bash
 pledgeshield harden binhash                     # Compare binary hashes against package manager
+```
+
+---
+
+### Advanced Defense
+
+#### `harden sinkhole` — DNS Sinkhole
+```bash
+pledgeshield harden sinkhole                    # Audit DNS sinkhole status
+pledgeshield harden sinkhole --enable           # Enable DNS sinkhole for malicious domains
+pledgeshield harden sinkhole --disable          # Disable DNS sinkhole
+```
+
+#### `harden sandbox` — Process Sandboxing
+```bash
+pledgeshield harden sandbox                     # Audit process sandboxing
+pledgeshield harden sandbox --apply             # Apply seccomp/AppContainer sandboxing
+```
+
+#### `harden llmnr` — LLMNR/NBT-NS Poisoning Detector
+```bash
+pledgeshield harden llmnr                       # Check for LLMNR/NBT-NS poisoning indicators
+```
+
+#### `harden kerberos` — Kerberos Ticket Monitor
+```bash
+pledgeshield harden kerberos                    # Check for golden ticket indicators (Windows/AD)
+```
+
+#### `harden stickykeys` — Sticky Keys Bypass Detector
+```bash
+pledgeshield harden stickykeys                  # Detect accessibility tool replacement (Windows)
+```
+
+#### `harden wsl` — WSL Security Audit
+```bash
+pledgeshield harden wsl                         # Audit Windows Subsystem for Linux
+```
+
+#### `harden metaguard` — Cloud Metadata Guard
+```bash
+pledgeshield harden metaguard                   # Audit cloud metadata endpoint blocking
+pledgeshield harden metaguard --enable           # Block cloud metadata endpoints (169.254.169.254)
+pledgeshield harden metaguard --disable          # Remove cloud metadata blocking
+```
+
+#### `harden smbrelay` — SMB Relay Protection
+```bash
+pledgeshield harden smbrelay                    # Check SMB signing and SMBv1 status
+```
+
+#### `harden extwhitelist` — Browser Extension Whitelist
+```bash
+pledgeshield harden extwhitelist                # Audit browser extensions
+pledgeshield harden extwhitelist --list          # List approved extensions
+```
+
+#### `harden arplock` — ARP Table Lock
+```bash
+pledgeshield harden arplock                     # Audit ARP table lock status
+pledgeshield harden arplock --lock              # Lock ARP table (prevent spoofing)
+pledgeshield harden arplock --unlock            # Unlock ARP table
+```
+
+#### `harden dnspoison` — DNS Cache Poisoning Detector
+```bash
+pledgeshield harden dnspoison                   # Check for DNS cache poisoning indicators
+```
+
+#### `harden beacon` — Bluetooth Beacon Scanner
+```bash
+pledgeshield harden beacon                      # Scan for Bluetooth tracking beacons (AirTags, Tile)
+```
+
+#### `harden firmware` — Firmware Integrity Checker
+```bash
+pledgeshield harden firmware                    # Check peripheral firmware integrity
+```
+
+#### `harden memsnap` — Memory Forensics Snapshot
+```bash
+pledgeshield harden memsnap                     # Audit for suspicious memory regions
+pledgeshield harden memsnap --capture 1234      # Capture memory snapshot of PID 1234
+```
+
+#### `harden honeyport` — Network Honeytoken
+```bash
+pledgeshield harden honeyport                   # Check honeyport status
+pledgeshield harden honeyport --deploy 2222     # Deploy honeyport on port 2222
+```
+
+#### `harden credguard` — Credential Guard
+```bash
+pledgeshield harden credguard                   # Audit credential guard status
+pledgeshield harden credguard --enable           # Enable Credential Guard / PAM hardening
+```
+
+#### `harden sidechannel` — Side Channel Mitigator
+```bash
+pledgeshield harden sidechannel                 # Audit side-channel mitigations
+pledgeshield harden sidechannel --mitigate       # Apply Spectre/Meltdown/Downfall mitigations
+```
+
+#### `harden verify` — Supply Chain Verifier
+```bash
+pledgeshield harden verify                      # Audit supply chain verification
+pledgeshield harden verify --package openssl     # Verify specific package integrity
+```
+
+#### `harden zerotrust` — Zero Trust Agent
+```bash
+pledgeshield harden zerotrust                   # Audit zero-trust policy
+pledgeshield harden zerotrust --enable           # Enable zero-trust (default deny INPUT)
+pledgeshield harden zerotrust --disable          # Disable zero-trust policy
+```
+
+#### `harden escrow` — Disk Encryption Escrow
+```bash
+pledgeshield harden escrow                      # Audit recovery key status
+pledgeshield harden escrow --show                # Display recovery keys
+```
+
+#### `harden dnstunnel` — DNS Tunneling Detector
+```bash
+pledgeshield harden dnstunnel                   # Check for DNS tunneling indicators
+```
+
+#### `harden gpumon` — GPU Process Monitor
+```bash
+pledgeshield harden gpumon                      # Monitor GPU processes for crypto mining
+```
+
+#### `harden freeze` — Process Tree Freezer
+```bash
+pledgeshield harden freeze                      # Audit for zombie/stopped processes
+pledgeshield harden freeze --freeze 1234        # Freeze process PID 1234 (SIGSTOP)
+pledgeshield harden freeze --resume 1234        # Resume frozen process PID 1234 (SIGCONT)
+```
+
+#### `harden pinmon` — Certificate Pinning Monitor
+```bash
+pledgeshield harden pinmon                      # Check for CA trust store modifications
+```
+
+#### `harden segment` — Network Segmentation Enforcer
+```bash
+pledgeshield harden segment                     # Audit network segmentation
+pledgeshield harden segment --enforce            # Enforce segmentation (disable forwarding, block inter-interface)
+```
+
+#### `harden rtfim` — Real-Time FIM
+```bash
+pledgeshield harden rtfim                       # Check real-time FIM status
+pledgeshield harden rtfim --start               # Start real-time file integrity monitoring
+```
+
+#### `harden usbwhitelist` — USB Device Whitelist
+```bash
+pledgeshield harden usbwhitelist                # Audit USB whitelist
+pledgeshield harden usbwhitelist --add 046d:c52b   # Add device (vendor:product ID)
+pledgeshield harden usbwhitelist --clear           # Clear whitelist
+```
+
+#### `harden imagescan` — Container Image Scanner
+```bash
+pledgeshield harden imagescan                   # Audit container image setup
+pledgeshield harden imagescan --image nginx     # Scan specific image for vulnerabilities
+```
+
+#### `harden migrate` — Process Migration Detector
+```bash
+pledgeshield harden migrate                     # Detect anomalous process namespace migration
 ```
 
 ---

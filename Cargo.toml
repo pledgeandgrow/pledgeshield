@@ -2,7 +2,7 @@
 name = "pledgeshield"
 version = "0.0.1"
 edition = "2021"
-description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces."
+description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces."
 license = "MIT"
 repository = "https://github.com/pledgeandgrow/pledgeshield"
 homepage = "https://github.com/pledgeandgrow/pledgeshield"
@@ -81,7 +81,7 @@ PledgeShield — Personal device security auditor for Windows, macOS, and Linux.
 
 Finds what antivirus misses. Scans for misconfigurations, exposed services,
 unpatched CVEs, privilege escalation vectors, and other attack surfaces.
-Includes 95+ active defense modules for hardening your system.
+Includes 120+ active defense modules for hardening your system.
 
 Quick start:
   pledgeshield scan              # Run a full security audit

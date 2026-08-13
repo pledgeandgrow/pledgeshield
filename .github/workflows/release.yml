@@ -189,7 +189,7 @@ jobs:
 
             > Personal device security auditor — finds what antivirus misses.
 
-            PledgeShield is a Rust-based host security auditor for Windows, macOS, and Linux. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at. Includes 95+ active defense modules for hardening your system.
+            PledgeShield is a Rust-based host security auditor for Windows, macOS, and Linux. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at. Includes 120+ active defense modules for hardening your system.
 
             ### Downloads
             | Platform | File |
@@ -275,8 +275,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Cargo publish
-        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        continue-on-error: true
+        run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
 
   # ──────────────────────────────────────────────
   # Job 5: Publish npm wrapper package
@@ -310,7 +309,7 @@ jobs:
           {
             "name": "pledgeshield",
             "version": "${{ steps.version.outputs.version }}",
-            "description": "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces.",
+            "description": "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces.",
             "license": "MIT",
             "author": "mehdi-berel",
             "homepage": "https://github.com/pledgeandgrow/pledgeshield",
@@ -365,7 +364,7 @@ jobs:
           # Scan with CVE checking and compliance mapping
           pledgeshield scan --cve --compliance --output html --output-file report.html
 
-          # Harden your system (95+ hardening modules)
+          # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
           pledgeshield harden ports --all
           pledgeshield harden doh --enable cloudflare
@@ -393,7 +392,7 @@ jobs:
           - Data exfiltration patterns
           - And 80+ more checks
 
-          ## Active Defense (95+ Modules)
+          ## Active Defense (120+ Modules)
 
           | Category | Examples |
           |----------|---------|
@@ -474,12 +473,14 @@ jobs:
     name: Publish to PyPI
     needs: github-release
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Determine version
         id: version
@@ -502,12 +503,12 @@ jobs:
           [project]
           name = "pledgeshield"
           version = "${{ steps.version.outputs.version }}"
-          description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, and hardens 95+ attack surfaces."
-          readmes = "README.md"
+          description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, and hardens 120+ attack surfaces."
+          readme = "README.md"
           license = { text = "MIT" }
           requires-python = ">=3.8"
           authors = [
-              { name = "mehdi-berel" }
+              { name = "mehdi-berel", email = "mehdi.berel@pledgeandgrow.com" }
           ]
           keywords = [
               "security", "audit", "hardening", "firewall", "privacy",
@@ -570,7 +571,7 @@ jobs:
           # Scan with CVE checking and compliance mapping
           pledgeshield scan --cve --compliance --output html --output-file report.html
 
-          # Harden your system (95+ hardening modules)
+          # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
           pledgeshield harden ports --all
           pledgeshield harden doh --enable cloudflare
@@ -598,7 +599,7 @@ jobs:
           - Data exfiltration patterns
           - And 80+ more checks
 
-          ## Active Defense (95+ Modules)
+          ## Active Defense (120+ Modules)
 
           | Category | Examples |
           |----------|---------|
@@ -664,13 +665,17 @@ jobs:
                   sys.exit(1)
           PY
 
-      - name: Build and publish
+      - name: Build wheel
         run: |
           cd pypi-pkg
-          pip install build twine
+          pip install build
           python -m build
-          twine upload dist/* -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
-        continue-on-error: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi-pkg/dist/
+          password: ${{ secrets.PYTHON_TOKEN }}
 
   # ──────────────────────────────────────────────
   # Job 7: Publish to RubyGems (wrapper gem)
@@ -704,7 +709,7 @@ jobs:
               s.name          = "pledgeshield"
               s.version       = "${{ steps.version.outputs.version }}"
               s.summary       = "Personal device security auditor — finds what antivirus misses"
-              s.description   = "Personal device security auditor for Windows, macOS, and Linux. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation vectors, and hardens 95+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server."
+              s.description   = "Personal device security auditor for Windows, macOS, and Linux. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation vectors, and hardens 120+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server."
               s.license       = "MIT"
               s.homepage      = "https://github.com/pledgeandgrow/pledgeshield"
               s.metadata      = {
@@ -747,7 +752,7 @@ jobs:
           # Scan with CVE checking and compliance mapping
           pledgeshield scan --cve --compliance --output html --output-file report.html
 
-          # Harden your system (95+ hardening modules)
+          # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
           pledgeshield harden ports --all
           pledgeshield harden doh --enable cloudflare
@@ -775,7 +780,7 @@ jobs:
           - Data exfiltration patterns
           - And 80+ more checks
 
-          ## Active Defense (95+ Modules)
+          ## Active Defense (120+ Modules)
 
           | Category | Examples |
           |----------|---------|
@@ -828,7 +833,10 @@ jobs:
         run: |
           cd gem-pkg
           gem build pledgeshield.gemspec
-          gem push *.gem --key ${{ secrets.RUBYGEMS_API_KEY }}
+          mkdir -p $HOME/.gem
+          echo -e "---\n:rubygems_api_key: ${{ secrets.RUBY_TOKEN }}" > $HOME/.gem/credentials
+          chmod 0600 $HOME/.gem/credentials
+          gem push *.gem
         continue-on-error: true
 
   # ──────────────────────────────────────────────
@@ -867,9 +875,10 @@ jobs:
               <title>PledgeShield</title>
               <authors>mehdi-berel</authors>
               <owners>mehdi-berel</owners>
-              <description>Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server.</description>
+              <description>Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server.</description>
               <summary>Personal device security auditor for Windows, macOS, and Linux</summary>
-              <license type="MIT">MIT</license>
+              <license type="expression">MIT</license>
+              <licenseUrl>https://github.com/pledgeandgrow/pledgeshield/blob/main/LICENSE</licenseUrl>
               <projectUrl>https://github.com/pledgeandgrow/pledgeshield</projectUrl>
               <repository type="git" url="https://github.com/pledgeandgrow/pledgeshield" />
               <bugTrackerUrl>https://github.com/pledgeandgrow/pledgeshield/issues</bugTrackerUrl>
@@ -911,7 +920,7 @@ jobs:
           # Scan with CVE checking and compliance mapping
           pledgeshield scan --cve --compliance --output html --output-file report.html
 
-          # Harden your system (95+ hardening modules)
+          # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
           pledgeshield harden ports --all
           pledgeshield harden doh --enable cloudflare
@@ -939,7 +948,7 @@ jobs:
           - Data exfiltration patterns
           - And 80+ more checks
 
-          ## Active Defense (95+ Modules)
+          ## Active Defense (120+ Modules)
 
           | Category | Examples |
           |----------|---------|
@@ -995,8 +1004,18 @@ jobs:
       - name: Pack and push
         run: |
           cd nuget-pkg
-          nuget pack pledgeshield.nuspec -NoDefaultExcludes
-          nuget push *.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }}
+          cat > pledgeshield.csproj << 'CSPROJ'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+              <NuspecFile>pledgeshield.nuspec</NuspecFile>
+              <IsPackable>true</IsPackable>
+              <NoBuild>true</NoBuild>
+            </PropertyGroup>
+          </Project>
+          CSPROJ
+          dotnet pack -c Release --no-build -o dist
+          dotnet nuget push dist/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }} --skip-duplicate
         continue-on-error: true
 
   # ──────────────────────────────────────────────
@@ -1066,7 +1085,7 @@ jobs:
                   pledgeshield harden posture                # Check security posture score
                   pledgeshield monitor                       # Real-time monitoring
 
-                95+ hardening modules available. Run:
+                120+ hardening modules available. Run:
                   pledgeshield harden --help
 
                 Documentation: https://github.com/pledgeandgrow/pledgeshield
@@ -1144,7 +1163,7 @@ jobs:
               --publisher-url "https://github.com/pledgeandgrow" `
               --author "mehdi-berel" `
               --homepage "https://github.com/pledgeandgrow/pledgeshield" `
-              --description "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces." `
+              --description "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces." `
               --short-description "Personal device security auditor" `
               --tags "security" "audit" "hardening" "firewall" "privacy" "vulnerability" "cve" "compliance" "rootkit" "ransomware" `
               --license "MIT" `
@@ -1203,7 +1222,7 @@ jobs:
             echo "Version: ${{ steps.version.outputs.version }}"
             echo "Architectures: amd64"
             echo "Components: main"
-            echo "Description: PledgeShield — Personal device security auditor. Finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 95+ attack surfaces."
+            echo "Description: PledgeShield — Personal device security auditor. Finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces."
             echo "Maintainer: mehdi-berel <mehdi.berel@pledgeandgrow.com>"
             echo "Date: $(date -Ru)"
             echo "MD5Sum:"

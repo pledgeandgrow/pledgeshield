@@ -1142,6 +1142,186 @@ pub enum HardenAction {
 
     /// Binary hash verifier — compare binaries against package manager hashes
     Binhash,
+
+    // === New Defense Modules ===
+    /// DNS sinkhole — block known malicious domains at the local DNS level
+    Sinkhole {
+        /// Enable the DNS sinkhole
+        #[arg(long)]
+        enable: bool,
+
+        /// Disable the DNS sinkhole
+        #[arg(long)]
+        disable: bool,
+    },
+
+    /// Process sandboxing — apply seccomp/AppContainer sandboxing
+    Sandbox {
+        /// Apply sandboxing
+        #[arg(long)]
+        apply: bool,
+    },
+
+    /// LLMNR/NBT-NS poisoning detector
+    Llmnr,
+
+    /// Kerberos ticket monitor — detect golden ticket indicators (Windows/AD)
+    Kerberos,
+
+    /// Sticky keys bypass detector — detect accessibility tool replacement
+    Stickykeys,
+
+    /// WSL security audit — audit Windows Subsystem for Linux
+    Wsl,
+
+    /// Cloud metadata guard — block SSRF access to cloud metadata endpoints
+    Metaguard {
+        /// Block cloud metadata endpoints
+        #[arg(long)]
+        enable: bool,
+
+        /// Remove cloud metadata blocking
+        #[arg(long)]
+        disable: bool,
+    },
+
+    /// SMB relay protection — enforce SMB signing
+    Smbrelay,
+
+    /// Browser extension whitelist — list approved extensions
+    Extwhitelist {
+        /// List approved extensions
+        #[arg(long)]
+        list: bool,
+    },
+
+    /// ARP table lock — prevent ARP spoofing on static networks
+    Arplock {
+        /// Lock ARP table
+        #[arg(long)]
+        lock: bool,
+
+        /// Unlock ARP table
+        #[arg(long)]
+        unlock: bool,
+    },
+
+    /// DNS cache poisoning detector
+    Dnspoison,
+
+    /// Bluetooth beacon scanner — detect tracking beacons (AirTags, Tile, SmartTag)
+    Beacon,
+
+    /// Firmware integrity checker — verify peripheral firmware
+    Firmware,
+
+    /// Memory forensics snapshot — capture process memory for analysis
+    Memsnap {
+        /// Capture memory of a specific PID
+        #[arg(long)]
+        capture: Option<String>,
+    },
+
+    /// Network honeytoken — deploy fake services to detect lateral movement
+    Honeyport {
+        /// Deploy honeyport on a specific port
+        #[arg(long)]
+        deploy: Option<u16>,
+    },
+
+    /// Credential guard — enable Credential Guard / PAM hardening
+    Credguard {
+        /// Enable credential guard
+        #[arg(long)]
+        enable: bool,
+    },
+
+    /// Side channel mitigator — mitigate Spectre/Meltdown/Downfall
+    Sidechannel {
+        /// Apply side-channel mitigations
+        #[arg(long)]
+        mitigate: bool,
+    },
+
+    /// Supply chain verifier — verify package checksums/signatures
+    Verify {
+        /// Verify a specific package
+        #[arg(long)]
+        package: Option<String>,
+    },
+
+    /// Zero trust agent — enforce zero-trust network policy
+    Zerotrust {
+        /// Enable zero-trust policy
+        #[arg(long)]
+        enable: bool,
+
+        /// Disable zero-trust policy
+        #[arg(long)]
+        disable: bool,
+    },
+
+    /// Disk encryption escrow — escrow recovery keys
+    Escrow {
+        /// Display recovery keys
+        #[arg(long)]
+        show: bool,
+    },
+
+    /// DNS tunneling detector — detect DNS tunneling for data exfiltration
+    Dnstunnel,
+
+    /// GPU process monitor — detect crypto mining or ML exfiltration
+    Gpumon,
+
+    /// Process tree freezer — freeze suspicious processes for forensics
+    Freeze {
+        /// Freeze a specific PID
+        #[arg(long)]
+        freeze: Option<String>,
+
+        /// Resume a frozen PID
+        #[arg(long)]
+        resume: Option<String>,
+    },
+
+    /// Certificate pinning monitor — monitor for CA trust changes
+    Pinmon,
+
+    /// Network segmentation enforcer — enforce segmentation on multi-homed machines
+    Segment {
+        /// Enforce segmentation rules
+        #[arg(long)]
+        enforce: bool,
+    },
+
+    /// Real-time FIM — real-time file integrity monitoring
+    Rtfim {
+        /// Start real-time monitoring
+        #[arg(long)]
+        start: bool,
+    },
+
+    /// USB device whitelist — only allow whitelisted USB devices
+    Usbwhitelist {
+        /// Add a device (vendor_id:product_id)
+        #[arg(long)]
+        add: Option<String>,
+
+        /// Clear the whitelist
+        #[arg(long)]
+        clear: bool,
+    },
+
+    /// Container image scanner — scan images for vulnerabilities
+    Imagescan {
+        /// Scan a specific image
+        #[arg(long)]
+        image: Option<String>,
+    },
+
+    /// Anomalous process migration detector — detect container escape
+    Migrate,
 }
 
 #[derive(Subcommand)]

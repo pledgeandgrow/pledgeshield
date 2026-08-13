@@ -5,8 +5,19 @@ use pledgeshield::models::{ScanResult, Severity};
 use pledgeshield::modules::{Module, ModuleRegistry};
 use std::io::Write;
 
+fn main() {
+    // Use a larger stack (8MB) to handle the large HardenAction enum
+    // which causes stack overflow on Windows debug builds with default 1MB stack
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(real_main)
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
 #[tokio::main]
-async fn main() {
+async fn real_main() {
     env_logger::init();
 
     let cli = Cli::parse();
@@ -2540,6 +2551,514 @@ fn run_harden(action: HardenAction) {
                 println!("\n  ✓ All binary hashes match package manager records.");
             } else {
                 println!("\n── Binary hash mismatches ────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        // === New Defense Modules ===
+        HardenAction::Sinkhole { enable, disable } => {
+            if disable {
+                println!("\n── Disabling DNS sinkhole ────────────────────────");
+                println!("{}", pledgeshield::harden::sinkhole::disable_sinkhole());
+                return;
+            }
+            if enable {
+                println!("\n── Enabling DNS sinkhole ─────────────────────────");
+                println!("{}", pledgeshield::harden::sinkhole::enable_sinkhole(false));
+                return;
+            }
+            let findings = pledgeshield::harden::sinkhole::audit_sinkhole();
+            if findings.is_empty() {
+                println!("\n  ✓ DNS sinkhole is configured.");
+            } else {
+                println!("\n── DNS sinkhole issues ───────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Sandbox { apply } => {
+            if apply {
+                println!("\n── Applying process sandboxing ───────────────────");
+                println!("{}", pledgeshield::harden::sandbox::apply_sandbox(false));
+                return;
+            }
+            let findings = pledgeshield::harden::sandbox::audit_sandbox();
+            if findings.is_empty() {
+                println!("\n  ✓ Process sandboxing looks good.");
+            } else {
+                println!("\n── Sandboxing issues ─────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Llmnr => {
+            let findings = pledgeshield::harden::llmnr::audit_llmnr();
+            if findings.is_empty() {
+                println!("\n  ✓ No LLMNR/NBT-NS poisoning indicators.");
+            } else {
+                println!("\n── LLMNR/NBT-NS issues ───────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Kerberos => {
+            let findings = pledgeshield::harden::kerberos::audit_kerberos();
+            if findings.is_empty() {
+                println!("\n  ✓ No Kerberos anomalies detected.");
+            } else {
+                println!("\n── Kerberos issues ───────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Stickykeys => {
+            let findings = pledgeshield::harden::stickykeys::audit_stickykeys();
+            if findings.is_empty() {
+                println!("\n  ✓ No Sticky Keys bypass detected.");
+            } else {
+                println!("\n── Sticky Keys bypass indicators ─────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Wsl => {
+            let findings = pledgeshield::harden::wsl::audit_wsl();
+            if findings.is_empty() {
+                println!("\n  ✓ WSL configuration looks good.");
+            } else {
+                println!("\n── WSL issues ────────────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Metaguard { enable, disable } => {
+            if disable {
+                println!("\n── Disabling cloud metadata guard ────────────────");
+                println!("{}", pledgeshield::harden::metaguard::disable_metaguard());
+                return;
+            }
+            if enable {
+                println!("\n── Enabling cloud metadata guard ─────────────────");
+                println!(
+                    "{}",
+                    pledgeshield::harden::metaguard::enable_metaguard(false)
+                );
+                return;
+            }
+            let findings = pledgeshield::harden::metaguard::audit_metaguard();
+            if findings.is_empty() {
+                println!("\n  ✓ Cloud metadata endpoints are blocked.");
+            } else {
+                println!("\n── Cloud metadata guard issues ───────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Smbrelay => {
+            let findings = pledgeshield::harden::smbrelay::audit_smbrelay();
+            if findings.is_empty() {
+                println!("\n  ✓ SMB relay protection looks good.");
+            } else {
+                println!("\n── SMB relay issues ──────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Extwhitelist { list } => {
+            if list {
+                println!("\n── Approved browser extensions ──────────────────");
+                for line in pledgeshield::harden::extwhitelist::list_extensions() {
+                    println!("{}", line);
+                }
+                return;
+            }
+            let findings = pledgeshield::harden::extwhitelist::audit_extwhitelist();
+            if findings.is_empty() {
+                println!("\n  ✓ Browser extensions look good.");
+            } else {
+                println!("\n── Browser extension findings ────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Arplock { lock, unlock } => {
+            if unlock {
+                println!("\n── Unlocking ARP table ───────────────────────────");
+                println!("{}", pledgeshield::harden::arplock::unlock_arp());
+                return;
+            }
+            if lock {
+                println!("\n── Locking ARP table ─────────────────────────────");
+                println!("{}", pledgeshield::harden::arplock::lock_arp(false));
+                return;
+            }
+            let findings = pledgeshield::harden::arplock::audit_arplock();
+            if findings.is_empty() {
+                println!("\n  ✓ ARP table is locked.");
+            } else {
+                println!("\n── ARP table issues ──────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Dnspoison => {
+            let findings = pledgeshield::harden::dnspoison::audit_dnspoison();
+            if findings.is_empty() {
+                println!("\n  ✓ No DNS cache poisoning indicators.");
+            } else {
+                println!("\n── DNS cache poisoning indicators ────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Beacon => {
+            let findings = pledgeshield::harden::beacon::audit_beacon();
+            if findings.is_empty() {
+                println!("\n  ✓ No Bluetooth tracking beacons detected.");
+            } else {
+                println!("\n── Bluetooth tracking beacons ────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Firmware => {
+            let findings = pledgeshield::harden::firmware::audit_firmware();
+            if findings.is_empty() {
+                println!("\n  ✓ Firmware integrity looks good.");
+            } else {
+                println!("\n── Firmware integrity issues ─────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Memsnap { capture } => {
+            if let Some(pid) = capture {
+                println!("\n── Capturing memory snapshot ─────────────────────");
+                println!("{}", pledgeshield::harden::memsnap::capture_snapshot(&pid));
+                return;
+            }
+            let findings = pledgeshield::harden::memsnap::audit_memsnap();
+            if findings.is_empty() {
+                println!("\n  ✓ No suspicious memory regions detected.");
+            } else {
+                println!("\n── Memory anomalies ──────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Honeyport { deploy } => {
+            if let Some(port) = deploy {
+                println!("\n── Deploying honeyport ───────────────────────────");
+                println!(
+                    "{}",
+                    pledgeshield::harden::honeyport::deploy_honeyport(port, false)
+                );
+                return;
+            }
+            let findings = pledgeshield::harden::honeyport::audit_honeyport();
+            if findings.is_empty() {
+                println!("\n  ✓ Honeyport services detected.");
+            } else {
+                println!("\n── Honeyport status ──────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Credguard { enable } => {
+            if enable {
+                println!("\n── Enabling credential guard ─────────────────────");
+                println!(
+                    "{}",
+                    pledgeshield::harden::credguard::enable_credguard(false)
+                );
+                return;
+            }
+            let findings = pledgeshield::harden::credguard::audit_credguard();
+            if findings.is_empty() {
+                println!("\n  ✓ Credential guard is enabled.");
+            } else {
+                println!("\n── Credential guard issues ───────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Sidechannel { mitigate } => {
+            if mitigate {
+                println!("\n── Applying side-channel mitigations ─────────────");
+                println!(
+                    "{}",
+                    pledgeshield::harden::sidechannel::mitigate_sidechannel(false)
+                );
+                return;
+            }
+            let findings = pledgeshield::harden::sidechannel::audit_sidechannel();
+            if findings.is_empty() {
+                println!("\n  ✓ Side-channel mitigations are in place.");
+            } else {
+                println!("\n── Side-channel vulnerabilities ──────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Verify { package } => {
+            if let Some(pkg) = package {
+                println!("\n── Verifying package: {} ──────────────────────", pkg);
+                let findings = pledgeshield::harden::verify::verify_package(&pkg);
+                if findings.is_empty() {
+                    println!("\n  ✓ Package {} is unmodified.", pkg);
+                } else {
+                    for f in &findings {
+                        println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                    }
+                }
+                return;
+            }
+            let findings = pledgeshield::harden::verify::audit_verify();
+            if findings.is_empty() {
+                println!("\n  ✓ Supply chain verification looks good.");
+            } else {
+                println!("\n── Supply chain issues ───────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Zerotrust { enable, disable } => {
+            if disable {
+                println!("\n── Disabling zero-trust policy ───────────────────");
+                println!("{}", pledgeshield::harden::zerotrust::disable_zerotrust());
+                return;
+            }
+            if enable {
+                println!("\n── Enabling zero-trust policy ────────────────────");
+                println!(
+                    "{}",
+                    pledgeshield::harden::zerotrust::enable_zerotrust(false)
+                );
+                return;
+            }
+            let findings = pledgeshield::harden::zerotrust::audit_zerotrust();
+            if findings.is_empty() {
+                println!("\n  ✓ Zero-trust policy is enforced.");
+            } else {
+                println!("\n── Zero-trust issues ─────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Escrow { show } => {
+            if show {
+                println!("\n── Recovery keys ─────────────────────────────────");
+                println!("{}", pledgeshield::harden::escrow::escrow_keys());
+                return;
+            }
+            let findings = pledgeshield::harden::escrow::audit_escrow();
+            if findings.is_empty() {
+                println!("\n  ✓ Disk encryption recovery keys are configured.");
+            } else {
+                println!("\n── Recovery key issues ───────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Dnstunnel => {
+            let findings = pledgeshield::harden::dnstunnel::audit_dnstunnel();
+            if findings.is_empty() {
+                println!("\n  ✓ No DNS tunneling detected.");
+            } else {
+                println!("\n── DNS tunneling indicators ──────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Gpumon => {
+            let findings = pledgeshield::harden::gpumon::audit_gpumon();
+            if findings.is_empty() {
+                println!("\n  ✓ No suspicious GPU processes detected.");
+            } else {
+                println!("\n── GPU process anomalies ─────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Freeze { freeze, resume } => {
+            if let Some(pid) = resume {
+                println!("\n── Resuming process {} ───────────────────────", pid);
+                println!("{}", pledgeshield::harden::freeze::resume_process(&pid));
+                return;
+            }
+            if let Some(pid) = freeze {
+                println!("\n── Freezing process {} ───────────────────────", pid);
+                println!("{}", pledgeshield::harden::freeze::freeze_process(&pid));
+                return;
+            }
+            let findings = pledgeshield::harden::freeze::audit_freeze();
+            if findings.is_empty() {
+                println!("\n  ✓ No zombie or stopped processes detected.");
+            } else {
+                println!("\n── Process anomalies ─────────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Pinmon => {
+            let findings = pledgeshield::harden::pinmon::audit_pinmon();
+            if findings.is_empty() {
+                println!("\n  ✓ No certificate pinning violations detected.");
+            } else {
+                println!("\n── Certificate pinning issues ────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Segment { enforce } => {
+            if enforce {
+                println!("\n── Enforcing network segmentation ────────────────");
+                println!("{}", pledgeshield::harden::segment::enforce_segment(false));
+                return;
+            }
+            let findings = pledgeshield::harden::segment::audit_segment();
+            if findings.is_empty() {
+                println!("\n  ✓ Network segmentation looks good.");
+            } else {
+                println!("\n── Network segmentation issues ───────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Rtfim { start } => {
+            if start {
+                println!("\n── Starting real-time FIM ────────────────────────");
+                println!("{}", pledgeshield::harden::rtfim::start_rtfim());
+                return;
+            }
+            let findings = pledgeshield::harden::rtfim::audit_rtfim();
+            if findings.is_empty() {
+                println!("\n  ✓ Real-time FIM is running.");
+            } else {
+                println!("\n── Real-time FIM issues ──────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Usbwhitelist { add, clear } => {
+            if clear {
+                println!("\n── Clearing USB whitelist ────────────────────────");
+                println!("{}", pledgeshield::harden::usbwhitelist::clear_whitelist());
+                return;
+            }
+            if let Some(device) = add {
+                let parts: Vec<&str> = device.split(':').collect();
+                if parts.len() == 2 {
+                    println!(
+                        "\n── Adding USB device {}/{} ──────────────────",
+                        parts[0], parts[1]
+                    );
+                    println!(
+                        "{}",
+                        pledgeshield::harden::usbwhitelist::add_device(parts[0], parts[1])
+                    );
+                } else {
+                    println!(
+                        "\n  Usage: pledgeshield harden usbwhitelist --add vendor_id:product_id"
+                    );
+                }
+                return;
+            }
+            let findings = pledgeshield::harden::usbwhitelist::audit_usbwhitelist();
+            if findings.is_empty() {
+                println!("\n  ✓ USB whitelist is configured.");
+            } else {
+                println!("\n── USB whitelist issues ──────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Imagescan { image } => {
+            if let Some(img) = image {
+                println!("\n── Scanning image: {} ──────────────────────────", img);
+                let findings = pledgeshield::harden::imagescan::scan_image(&img);
+                if findings.is_empty() {
+                    println!("\n  ✓ No vulnerabilities found in {}.", img);
+                } else {
+                    for f in &findings {
+                        println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                    }
+                }
+                return;
+            }
+            let findings = pledgeshield::harden::imagescan::audit_imagescan();
+            if findings.is_empty() {
+                println!("\n  ✓ Container image setup looks good.");
+            } else {
+                println!("\n── Container image issues ────────────────────────");
+                for f in &findings {
+                    println!("  [{}] {} — {}", f.severity, f.id, f.title);
+                }
+            }
+        }
+
+        HardenAction::Migrate => {
+            let findings = pledgeshield::harden::migrate::audit_migrate();
+            if findings.is_empty() {
+                println!("\n  ✓ No anomalous process migration detected.");
+            } else {
+                println!("\n── Process migration anomalies ───────────────────");
                 for f in &findings {
                     println!("  [{}] {} — {}", f.severity, f.id, f.title);
                 }

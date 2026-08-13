@@ -40,7 +40,7 @@ pledgeshield scan
 # Scan with CVE checking and compliance mapping
 pledgeshield scan --cve --compliance --output html --output-file report.html
 
-# Harden your system (95+ hardening modules)
+# Harden your system (120+ hardening modules)
 pledgeshield harden firewall --harden --allow-ssh
 pledgeshield harden ports --all
 pledgeshield harden doh --enable cloudflare
@@ -118,7 +118,7 @@ Commands:
   history      Show scan history from the local SQLite database
   trend        Show a trend dashboard from scan history
   schedule     Install or remove a scheduled scan (cron / Task Scheduler / launchd)
-  harden       Active defense: 95+ hardening modules
+  harden       Active defense: 120+ hardening modules
   vpn          VPN / proxy management (WireGuard, OpenVPN, Tor)
   monitor      Real-time security monitor
 ```
@@ -239,7 +239,7 @@ See [COMMANDS.md](COMMANDS.md) for the full command reference.
 
 ## Active Defense (`harden`)
 
-95+ modules that take action to secure your system. See [MODULES.md](MODULES.md) for the full list.
+120+ modules that take action to secure your system. See [MODULES.md](MODULES.md) for the full list.
 
 ### Network & Traffic (10)
 | Command | Description |
@@ -404,6 +404,39 @@ See [COMMANDS.md](COMMANDS.md) for the full command reference.
 | `harden libaudit` | Check LD_LIBRARY_PATH, RPATH for library hijacking vectors |
 | `harden binhash` | Compare binary hashes against package manager records |
 
+### Advanced Defense (29)
+| Command | Description |
+|---------|-------------|
+| `harden sinkhole` | DNS sinkhole — block known malicious domains at the local DNS level |
+| `harden sandbox` | Process sandboxing — apply seccomp/AppContainer sandboxing |
+| `harden llmnr` | LLMNR/NBT-NS poisoning detector |
+| `harden kerberos` | Kerberos ticket monitor — detect golden ticket indicators (Windows/AD) |
+| `harden stickykeys` | Sticky Keys bypass detector — detect accessibility tool replacement |
+| `harden wsl` | WSL security audit — audit Windows Subsystem for Linux |
+| `harden metaguard` | Cloud metadata guard — block SSRF access to cloud metadata endpoints |
+| `harden smbrelay` | SMB relay protection — enforce SMB signing |
+| `harden extwhitelist` | Browser extension whitelist — list approved extensions |
+| `harden arplock` | ARP table lock — prevent ARP spoofing on static networks |
+| `harden dnspoison` | DNS cache poisoning detector |
+| `harden beacon` | Bluetooth beacon scanner — detect tracking beacons (AirTags, Tile, SmartTag) |
+| `harden firmware` | Firmware integrity checker — verify peripheral firmware |
+| `harden memsnap` | Memory forensics snapshot — capture process memory for analysis |
+| `harden honeyport` | Network honeytoken — deploy fake services to detect lateral movement |
+| `harden credguard` | Credential guard — enable Credential Guard / PAM hardening |
+| `harden sidechannel` | Side channel mitigator — mitigate Spectre/Meltdown/Downfall |
+| `harden verify` | Supply chain verifier — verify package checksums/signatures |
+| `harden zerotrust` | Zero trust agent — enforce zero-trust network policy |
+| `harden escrow` | Disk encryption escrow — escrow recovery keys |
+| `harden dnstunnel` | DNS tunneling detector — detect DNS tunneling for data exfiltration |
+| `harden gpumon` | GPU process monitor — detect crypto mining or ML exfiltration |
+| `harden freeze` | Process tree freezer — freeze suspicious processes for forensics |
+| `harden pinmon` | Certificate pinning monitor — monitor for CA trust changes |
+| `harden segment` | Network segmentation enforcer — enforce segmentation on multi-homed machines |
+| `harden rtfim` | Real-time FIM — real-time file integrity monitoring |
+| `harden usbwhitelist` | USB device whitelist — only allow whitelisted USB devices |
+| `harden imagescan` | Container image scanner — scan images for vulnerabilities |
+| `harden migrate` | Anomalous process migration detector — detect container escape |
+
 ---
 
 ## VPN & Proxy
@@ -492,7 +525,7 @@ SHARED MODULES (same concept, all 3 platforms)     PLATFORM-SPECIFIC (conditiona
 │ CustomChecks                       │             │  - XProtect, LaunchAgents/Daemons   │
 └────────────────────────────────────┘             │                                     │
                                                    │ #[cfg(linux)]                       │
-95+ harden modules (platform-conditional)          │  LinuxHardeningModule               │
+120+ harden modules (platform-conditional)          │  LinuxHardeningModule               │
 VPN: WireGuard, OpenVPN, Tor                       │  - AppArmor / SELinux status        │
 Real-time monitor                                  │  - systemd service audit            │
                                                    │  - fail2ban, /etc/ hardening        │
@@ -532,7 +565,7 @@ pledgeshield/
 │   ├── browser.rs          # Browser extension audit
 │   ├── network.rs          # Network exposure checks
 │   ├── modules/            # 11 scan modules
-│   ├── harden/             # 95+ active defense modules
+│   ├── harden/             # 120+ active defense modules
 │   ├── cve/                # CVE API clients (NVD, OSV, GHSA, EPSS, cache)
 │   ├── fix/                # Interactive fix actions (Windows, macOS, Linux)
 │   ├── notify/             # Email + webhook notifications + scheduled scans
@@ -570,7 +603,7 @@ pledgeshield/
 
 **Key differentiators:**
 - **Cross-platform** — Windows, macOS, and Linux from a single codebase
-- **95+ active defense modules** — not just scanning, but hardening
+- **120+ active defense modules** — not just scanning, but hardening
 - **Rust** — memory-safe, single binary, no runtime dependency
 - **API-based CVE** — no local database to maintain, always current
 - **Multi-source CVE** — NVD + OSV + GHSA with CPE matching and ecosystem detection

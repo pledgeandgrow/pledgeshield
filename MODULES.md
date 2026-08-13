@@ -222,6 +222,40 @@ These modules take action to secure the system. Invoked via `pledgeshield harden
 | 3 | Shared Library Auditor | `src/harden/libaudit.rs` | Checks LD_LIBRARY_PATH, RPATH, RUNPATH for unusual paths. Detects library hijacking vectors |
 | 4 | Binary Hash Verifier | `src/harden/binhash.rs` | Compares binary hashes against package manager records (dpkg, rpm). Detects trojanized binaries |
 
+### Advanced Defense (29)
+
+| # | Module | File | Description |
+|---|--------|------|-------------|
+| 1 | DNS Sinkhole | `src/harden/sinkhole.rs` | Blocks known malicious domains at the local DNS level via dnsmasq. Configurable domain blocklist |
+| 2 | Process Sandbox | `src/harden/sandbox.rs` | Applies seccomp/AppContainer sandboxing to restrict process capabilities. Audits seccomp mode |
+| 3 | LLMNR/NBT-NS Detector | `src/harden/llmnr.rs` | Detects LLMNR/NBT-NS name resolution poisoning attacks. Checks source routing and Windows LLMNR setting |
+| 4 | Kerberos Ticket Monitor | `src/harden/kerberos.rs` | Monitors for golden ticket indicators by checking krbtgt tickets in Windows sessions |
+| 5 | Sticky Keys Bypass Detector | `src/harden/stickykeys.rs` | Detects accessibility tool replacement (sethc.exe, utilman.exe, etc.) for privilege escalation on Windows |
+| 6 | WSL Security Audit | `src/harden/wsl.rs` | Audits Windows Subsystem for Linux configurations — WSL version, running state, localhost forwarding |
+| 7 | Cloud Metadata Guard | `src/harden/metaguard.rs` | Blocks SSRF access to cloud metadata endpoints (169.254.169.254) via iptables. Prevents credential theft |
+| 8 | SMB Relay Protection | `src/harden/smbrelay.rs` | Enforces SMB signing and detects SMBv1 usage. Prevents SMB relay attacks on Linux (Samba) and Windows |
+| 9 | Browser Extension Whitelist | `src/harden/extwhitelist.rs` | Lists approved browser extensions and audits extension directories for unapproved add-ons |
+| 10 | ARP Table Lock | `src/harden/arplock.rs` | Locks ARP table entries to prevent ARP spoofing on static networks. Sets arp_ignore sysctl |
+| 11 | DNS Cache Poisoning Detector | `src/harden/dnspoison.rs` | Monitors local DNS cache for poisoning indicators — high transaction counts, large cache, TXT abuse |
+| 12 | Bluetooth Beacon Scanner | `src/harden/beacon.rs` | Detects Bluetooth tracking beacons (AirTags, Tile, Galaxy SmartTag) via bluetoothctl |
+| 13 | Firmware Integrity Checker | `src/harden/firmware.rs` | Verifies peripheral firmware integrity against known hashes. Checks sysfs and dmesg for load errors |
+| 14 | Memory Forensics Snapshot | `src/harden/memsnap.rs` | Captures process memory snapshots for forensic analysis. Detects RWX memory regions |
+| 15 | Network Honeytoken | `src/harden/honeyport.rs` | Deploys fake network services on specified ports to detect unauthorized scanning and lateral movement |
+| 16 | Credential Guard | `src/harden/credguard.rs` | Enables Windows Credential Guard or configures PAM (pam_wheel) to prevent credential theft |
+| 17 | Side Channel Mitigator | `src/harden/sidechannel.rs` | Mitigates CPU side-channel attacks (Spectre/Meltdown/Downfall) via sysctl: kptr_restrict, perf_event_paranoid |
+| 18 | Supply Chain Verifier | `src/harden/verify.rs` | Verifies checksums/signatures of installed packages via dpkg -V. Detects tampered packages |
+| 19 | Zero Trust Agent | `src/harden/zerotrust.rs` | Enforces zero-trust network policy: default deny INPUT, allow only established connections and loopback |
+| 20 | Disk Encryption Escrow | `src/harden/escrow.rs` | Escrows LUKS/BitLocker recovery keys. Audits key backup status and displays recovery passwords |
+| 21 | DNS Tunneling Detector | `src/harden/dnstunnel.rs` | Detects DNS tunneling for data exfiltration — long queries, high-entropy subdomains, TXT record abuse |
+| 22 | GPU Process Monitor | `src/harden/gpumon.rs` | Monitors GPU processes for crypto mining or ML model exfiltration via nvidia-smi |
+| 23 | Process Tree Freezer | `src/harden/freeze.rs` | Freezes/suspends suspicious process trees (SIGSTOP) for forensic analysis. Resumable (SIGCONT) |
+| 24 | Certificate Pinning Monitor | `src/harden/pinmon.rs` | Monitors TLS connections for certificate pinning violations. Detects recent CA store modifications |
+| 25 | Network Segmentation Enforcer | `src/harden/segment.rs` | Enforces network segmentation on multi-homed machines. Disables IP forwarding, blocks inter-interface traffic |
+| 26 | Real-Time FIM | `src/harden/rtfim.rs` | Real-time file integrity monitoring via inotify. Watches critical system files for modifications |
+| 27 | USB Device Whitelist | `src/harden/usbwhitelist.rs` | Only allows whitelisted USB devices by vendor/product ID via udev rules. Blocks unauthorized devices |
+| 28 | Container Image Scanner | `src/harden/imagescan.rs` | Scans container images for vulnerabilities using Trivy. Detects critical/high CVEs in Docker images |
+| 29 | Process Migration Detector | `src/harden/migrate.rs` | Detects anomalous process migration between namespaces/containers. Flags PID/net namespace mismatches |
+
 ---
 
 ## VPN & Proxy Modules
@@ -274,36 +308,45 @@ These modules take action to secure the system. Invoked via `pledgeshield harden
 | Active defense — Access Control | 5 |
 | Active defense — Hardware & Peripherals | 4 |
 | Active defense — System Integrity | 4 |
+| Active defense — Advanced Defense | 29 |
 | VPN & Proxy | 2 |
 | Real-time monitor | 1 |
 | Platform abstraction | 3 |
-| **Total** | **121** |
+| **Total** | **150** |
 
 ### Source files in `src/harden/`
 
 ```
-arp.rs          attrmon.rs      autorun.rs      backup.rs
-binhash.rs      bluetooth.rs    bootlog.rs      browser.rs
-canary.rs       caps.rs         cleaner.rs      clipboard.rs
-codeinject.rs   cronmon.rs      deauth.rs       deps.rs
-devices.rs      diskmon.rs      dnsmon.rs       doh.rs
-dohforce.rs     encryption.rs   envleak.rs      exfil.rs
-fail2ban.rs     fileperms.rs    filewatch.rs    firewall.rs
-firewire.rs     freespace.rs    geoip.rs        hollow.rs
-hostname.rs     hosts.rs        identity.rs     immutable.rs
+arp.rs          arplock.rs      attrmon.rs      autorun.rs
+backup.rs       beacon.rs       binhash.rs      bluetooth.rs
+bootlog.rs      browser.rs      canary.rs       caps.rs
+cleaner.rs      clipboard.rs    codeinject.rs   credguard.rs
+cronmon.rs      deauth.rs       deps.rs         devices.rs
+diskmon.rs      dnspoison.rs    dnsmon.rs       dnstunnel.rs
+doh.rs          dohforce.rs     encryption.rs   envleak.rs
+escrow.rs       exfil.rs        extwhitelist.rs fail2ban.rs
+fileperms.rs    filewatch.rs    firewall.rs     firewire.rs
+firmware.rs     freeze.rs       freespace.rs    geoip.rs
+gpumon.rs       hollow.rs       honeyport.rs    hostname.rs
+hosts.rs        identity.rs     imagescan.rs    immutable.rs
 integrity.rs    ipv6.rs         isolation.rs    kernel.rs
-knock.rs        libaudit.rs     lockscreen.rs   logins.rs
-logtamper.rs    mac.rs          macaudit.rs     memscan.rs
-memwipe.rs      metadata.rs     micmute.rs      mod.rs
-modsign.rs      mount.rs        netcons.rs      nsaudit.rs
-pam.rs          pcapdetect.rs   pii.rs          polkit.rs
-ports.rs        posture.rs      procinj.rs      proctree.rs
-profile.rs      proxy.rs        ptrace.rs       quota.rs
-ratelimit.rs    resource.rs     roguedhcp.rs    rootkit.rs
-scheduler.rs    secrets.rs      sensitive.rs    shredder.rs
-ssh.rs          sshkeys.rs      suid.rs         sysctl.rs
-systemd.rs      telemetry.rs    thread.rs       thunderbolt.rs
-tls.rs          tmpsan.rs       tpm.rs          traffic.rs
-uefi.rs         usb.rs          useragent.rs    usermon.rs
-vault.rs        webcam.rs       webrtc.rs       wifi.rs
+kerberos.rs     knock.rs        libaudit.rs     llmnr.rs
+lockscreen.rs   logins.rs       logtamper.rs    mac.rs
+macaudit.rs     memscan.rs      memsnap.rs      memwipe.rs
+metadata.rs     metaguard.rs    micmute.rs      migrate.rs
+mod.rs          modsign.rs      mount.rs        netcons.rs
+nsaudit.rs      pam.rs          pcapdetect.rs   pii.rs
+pinmon.rs       polkit.rs       ports.rs        posture.rs
+procinj.rs      proctree.rs     profile.rs      proxy.rs
+ptrace.rs       quota.rs        ratelimit.rs    resource.rs
+roguedhcp.rs    rootkit.rs      rtfim.rs        sandbox.rs
+scheduler.rs    secrets.rs      segment.rs      sensitive.rs
+shredder.rs     sidechannel.rs  sinkhole.rs     smbrelay.rs
+ssh.rs          sshkeys.rs      stickykeys.rs   suid.rs
+sysctl.rs       systemd.rs      telemetry.rs    thread.rs
+thunderbolt.rs  tls.rs          tmpsan.rs       tpm.rs
+traffic.rs      uefi.rs         usb.rs          usbwhitelist.rs
+useragent.rs    usermon.rs      vault.rs        verify.rs
+webcam.rs       webrtc.rs       wifi.rs         wsl.rs
+zerotrust.rs
 ```
