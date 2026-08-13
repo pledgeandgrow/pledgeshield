@@ -290,7 +290,7 @@ async fn run_scan(
     }
 
     // Apply threshold limits
-    if let Some(ref cfg) = &cfg {
+    if let Some(cfg) = &cfg {
         if let Some(max_info) = cfg.thresholds.max_info {
             let info_count = result
                 .findings
@@ -439,7 +439,7 @@ async fn run_scan(
     }
 
     // Exit code based on fail_on threshold
-    if let Some(ref cfg) = &cfg {
+    if let Some(cfg) = &cfg {
         if let Some(fail_sev) = cfg
             .thresholds
             .fail_on
@@ -3087,41 +3087,41 @@ fn run_vpn(action: VpnAction) {
                 vpn_type
             ),
         },
-        VpnAction::Disconnect { vpn_type, config } => {
-            match vpn_type.as_str() {
-                "wireguard" | "wg" => {
-                    let cfg = match config {
-                        Some(c) => c,
-                        None => {
-                            let s = pledgeshield::vpn::status();
-                            if !s.active || s.vpn_type != pledgeshield::vpn::VpnType::WireGuard {
-                                eprintln!("No active WireGuard VPN detected.");
+        VpnAction::Disconnect { vpn_type, config } => match vpn_type.as_str() {
+            "wireguard" | "wg" => {
+                let cfg = match config {
+                    Some(c) => c,
+                    None => {
+                        let s = pledgeshield::vpn::status();
+                        if !s.active || s.vpn_type != pledgeshield::vpn::VpnType::WireGuard {
+                            eprintln!("No active WireGuard VPN detected.");
+                            return;
+                        }
+                        match s.interface {
+                            Some(i) => i,
+                            None => {
+                                eprintln!(
+                                    "Error: --config required (could not auto-detect interface)."
+                                );
                                 return;
                             }
-                            match s.interface {
-                                Some(i) => i,
-                                None => {
-                                    eprintln!("Error: --config required (could not auto-detect interface).");
-                                    return;
-                                }
-                            }
                         }
-                    };
-                    match pledgeshield::vpn::disconnect_wireguard(&cfg) {
-                        Ok(msg) => println!("\n  ✓ {}", msg),
-                        Err(e) => eprintln!("\n  ✗ {}", e),
                     }
-                }
-                "openvpn" | "ovpn" => match pledgeshield::vpn::disconnect_openvpn() {
+                };
+                match pledgeshield::vpn::disconnect_wireguard(&cfg) {
                     Ok(msg) => println!("\n  ✓ {}", msg),
                     Err(e) => eprintln!("\n  ✗ {}", e),
-                },
-                _ => eprintln!(
-                    "Unknown VPN type '{}'. Use: wireguard or openvpn.",
-                    vpn_type
-                ),
+                }
             }
-        }
+            "openvpn" | "ovpn" => match pledgeshield::vpn::disconnect_openvpn() {
+                Ok(msg) => println!("\n  ✓ {}", msg),
+                Err(e) => eprintln!("\n  ✗ {}", e),
+            },
+            _ => eprintln!(
+                "Unknown VPN type '{}'. Use: wireguard or openvpn.",
+                vpn_type
+            ),
+        },
         VpnAction::List => {
             let configs = pledgeshield::vpn::list_wireguard_configs();
             if configs.is_empty() {

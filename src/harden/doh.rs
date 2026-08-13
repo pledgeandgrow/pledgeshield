@@ -192,7 +192,10 @@ pub fn enable_doh(provider: &str, dry_run: bool) -> HardenResult {
         HardenResult {
             action: "doh-enable".to_string(),
             success: false,
-            message: format!("DoH configuration on this platform requires manual setup. Use {} in browser settings.", url),
+            message: format!(
+                "DoH configuration on this platform requires manual setup. Use {} in browser settings.",
+                url
+            ),
             findings: vec![],
         }
     }

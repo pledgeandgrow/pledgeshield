@@ -138,8 +138,8 @@ fn run_check(check: &CustomCheck) -> bool {
 
 #[cfg(windows)]
 fn check_registry_value(key: &str, value: &str, expected: Option<&str>) -> bool {
-    use winreg::enums::*;
     use winreg::RegKey;
+    use winreg::enums::*;
 
     // Parse HKLM\...\key format
     let (root, subpath) = if key.starts_with("HKLM\\") {

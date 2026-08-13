@@ -14,7 +14,7 @@ pub fn plant_canaries(dry_run: bool) -> Vec<HardenResult> {
                 success: false,
                 message: "Could not determine home directory.".to_string(),
                 findings: vec![],
-            }]
+            }];
         }
     };
 
@@ -163,7 +163,7 @@ pub fn remove_canaries() -> HardenResult {
                 success: false,
                 message: "No home directory.".to_string(),
                 findings: vec![],
-            }
+            };
         }
     };
 

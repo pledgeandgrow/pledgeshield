@@ -20,11 +20,7 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() {
-                e
-            } else {
-                s
-            }
+            if s.is_empty() { e } else { s }
         })
         .unwrap_or_default()
 }
@@ -1492,7 +1488,13 @@ fn audit_smbv1(findings: &mut Vec<Finding>) {
         Some(1) | None => {
             // If None, SMB1 might be enabled by default on older Windows
             // Check via PowerShell
-            let ps_output = run_cmd_lossy("powershell", &["-Command", "Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol | Select-Object -ExpandProperty State"]);
+            let ps_output = run_cmd_lossy(
+                "powershell",
+                &[
+                    "-Command",
+                    "Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol | Select-Object -ExpandProperty State",
+                ],
+            );
             if ps_output.to_lowercase().contains("enabled") || smb1_enabled == Some(1) {
                 findings.push(Finding::new(
                     "win-smbv1-enabled",

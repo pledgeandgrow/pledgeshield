@@ -222,7 +222,7 @@ pub fn enable_kill_switch() -> Result<String, String> {
                         "kill-switch step '{}' failed: {}",
                         label,
                         String::from_utf8_lossy(&o.stderr)
-                    ))
+                    ));
                 }
                 Err(e) => return Err(format!("kill-switch step '{}' failed to run: {}", label, e)),
             }

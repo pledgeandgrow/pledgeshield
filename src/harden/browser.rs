@@ -295,7 +295,10 @@ fn harden_chromium_prefs(
         return HardenResult {
             action: format!("browser-harden-{}", browser),
             success: true,
-            message: format!("[dry-run] Would disable {} telemetry, enable Safe Browsing, block third-party cookies.", browser),
+            message: format!(
+                "[dry-run] Would disable {} telemetry, enable Safe Browsing, block third-party cookies.",
+                browser
+            ),
             findings: vec![],
         };
     }
@@ -308,7 +311,7 @@ fn harden_chromium_prefs(
                 success: false,
                 message: format!("Failed to read prefs: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -320,7 +323,7 @@ fn harden_chromium_prefs(
                 success: false,
                 message: format!("Failed to parse prefs JSON: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -356,7 +359,7 @@ fn harden_chromium_prefs(
                 success: false,
                 message: format!("Failed to serialize prefs: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -400,7 +403,7 @@ fn harden_firefox_prefs(profile_dir: &std::path::Path, dry_run: bool) -> HardenR
                 success: false,
                 message: format!("Failed to read prefs.js: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 

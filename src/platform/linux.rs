@@ -20,11 +20,7 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() {
-                e
-            } else {
-                s
-            }
+            if s.is_empty() { e } else { s }
         })
         .unwrap_or_default()
 }

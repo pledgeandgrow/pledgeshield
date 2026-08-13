@@ -125,7 +125,7 @@ pub fn verify_backup_hash(path: &str, expected_hash: &str) -> HardenResult {
                 success: false,
                 message: format!("Cannot read {}: {}", path, e),
                 findings: vec![],
-            }
+            };
         }
     };
 

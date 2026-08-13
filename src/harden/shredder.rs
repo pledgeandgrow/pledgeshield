@@ -48,7 +48,7 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
                 success: false,
                 message: format!("Cannot get file size: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -61,7 +61,7 @@ pub fn shred_file(path: &str, passes: u32, dry_run: bool) -> HardenResult {
                 success: false,
                 message: format!("Cannot open file: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 

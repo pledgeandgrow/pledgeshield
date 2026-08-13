@@ -321,7 +321,10 @@ fn set_privacy_dns(dry_run: bool) -> HardenResult {
             Ok(o) => HardenResult {
                 action: "set-dns".to_string(),
                 success: false,
-                message: format!("netsh failed: {} (try with adapter name from `netsh interface show interface`)", String::from_utf8_lossy(&o.stderr)),
+                message: format!(
+                    "netsh failed: {} (try with adapter name from `netsh interface show interface`)",
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 findings: vec![],
             },
             Err(e) => HardenResult {

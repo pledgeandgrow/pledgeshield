@@ -123,8 +123,10 @@ pub fn disable_ipv6(dry_run: bool) -> HardenResult {
             }
         }
         // Persist
-        let _ = std::fs::write("/etc/sysctl.d/99-disable-ipv6.conf",
-            "net.ipv6.conf.all.disable_ipv6=1\nnet.ipv6.conf.default.disable_ipv6=1\nnet.ipv6.conf.lo.disable_ipv6=1\n");
+        let _ = std::fs::write(
+            "/etc/sysctl.d/99-disable-ipv6.conf",
+            "net.ipv6.conf.all.disable_ipv6=1\nnet.ipv6.conf.default.disable_ipv6=1\nnet.ipv6.conf.lo.disable_ipv6=1\n",
+        );
         HardenResult {
             action: "ipv6-disable".to_string(),
             success: ok,

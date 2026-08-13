@@ -6,8 +6,8 @@ pub fn apply_registry_fix(
     value: &str,
     data: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use winreg::enums::*;
     use winreg::RegKey;
+    use winreg::enums::*;
 
     log::info!("Registry fix: {}\\{} = {}", key, value, data);
 

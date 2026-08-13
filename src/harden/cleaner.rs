@@ -160,7 +160,9 @@ pub fn clean_activity(dry_run: bool) -> Vec<HardenResult> {
     // macOS: clear recent items
     #[cfg(target_os = "macos")]
     {
-        let recent_apps = expand_tilde("~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.RecentApplications.sfl");
+        let recent_apps = expand_tilde(
+            "~/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.RecentApplications.sfl",
+        );
         if std::path::Path::new(&recent_apps).exists() && !dry_run {
             let _ = std::fs::remove_file(&recent_apps);
             results.push(HardenResult {

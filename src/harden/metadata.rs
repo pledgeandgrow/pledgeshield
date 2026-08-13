@@ -56,7 +56,7 @@ pub fn strip_metadata(path: &str, output: Option<&str>, dry_run: bool) -> Harden
                 success: false,
                 message: format!("Cannot read file: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 

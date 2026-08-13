@@ -112,7 +112,7 @@ fn set_chromium_ua(prefs_path: &std::path::Path, browser: &str, ua: &str) -> Har
                 success: false,
                 message: format!("Failed to read prefs: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -124,7 +124,7 @@ fn set_chromium_ua(prefs_path: &std::path::Path, browser: &str, ua: &str) -> Har
                 success: false,
                 message: format!("Failed to parse prefs: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 
@@ -163,7 +163,7 @@ fn set_firefox_ua(prefs_path: &std::path::Path, ua: &str) -> HardenResult {
                 success: false,
                 message: format!("Failed to read: {}", e),
                 findings: vec![],
-            }
+            };
         }
     };
 

@@ -22,11 +22,7 @@ fn run_cmd_lossy(program: &str, args: &[&str]) -> String {
         .map(|o| {
             let s = String::from_utf8_lossy(&o.stdout).to_string();
             let e = String::from_utf8_lossy(&o.stderr).to_string();
-            if s.is_empty() {
-                e
-            } else {
-                s
-            }
+            if s.is_empty() { e } else { s }
         })
         .unwrap_or_default()
 }
@@ -673,7 +669,10 @@ fn is_suspicious_persistence(content: &str, path: &str) -> bool {
 
 fn audit_login_items(findings: &mut Vec<Finding>) {
     let home = std::env::var("HOME").unwrap_or_default();
-    let login_items_path = format!("{}/Library/Application Support/com.apple.backgroundtaskmanagementagent/BackgroundItems.btm", home);
+    let login_items_path = format!(
+        "{}/Library/Application Support/com.apple.backgroundtaskmanagementagent/BackgroundItems.btm",
+        home
+    );
 
     if file_exists(&login_items_path) {
         // Parse the BTM file - it's a binary plist

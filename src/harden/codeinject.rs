@@ -107,7 +107,10 @@ pub fn block_injection(dry_run: bool) -> HardenResult {
         HardenResult {
             action: "codeinject-block".to_string(),
             success: true,
-            message: format!("Set {} anti-injection parameters (ptrace_scope=2, BPF disabled, dmesg restricted).", fixed),
+            message: format!(
+                "Set {} anti-injection parameters (ptrace_scope=2, BPF disabled, dmesg restricted).",
+                fixed
+            ),
             findings: vec![],
         }
     }

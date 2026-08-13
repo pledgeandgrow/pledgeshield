@@ -144,9 +144,14 @@ fn build_discord_payload(result: &ScanResult) -> serde_json::Value {
 
     let mut description = format!(
         "**PledgeShield Security Alert**\n**Host:** {} | **OS:** {} {}\n**Critical:** {} | **High:** {} | **Medium:** {} | **Low:** {} | **Info:** {}",
-        result.hostname, result.os, result.os_version,
-        result.summary.critical, result.summary.high, result.summary.medium,
-        result.summary.low, result.summary.info
+        result.hostname,
+        result.os,
+        result.os_version,
+        result.summary.critical,
+        result.summary.high,
+        result.summary.medium,
+        result.summary.low,
+        result.summary.info
     );
 
     let critical_findings: Vec<_> = result

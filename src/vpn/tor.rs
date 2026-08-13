@@ -213,7 +213,7 @@ pub fn route_traffic() -> Result<String, String> {
                         "route step '{}' failed: {}",
                         label,
                         String::from_utf8_lossy(&o.stderr)
-                    ))
+                    ));
                 }
                 Err(e) => return Err(format!("route step '{}' failed (need root?): {}", label, e)),
             }
