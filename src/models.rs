@@ -68,6 +68,7 @@ pub enum Category {
     Browser,
     Containers,
     HostConfig,
+    System,
 }
 
 impl std::fmt::Display for Category {
@@ -85,6 +86,7 @@ impl std::fmt::Display for Category {
             Category::Browser => write!(f, "browser"),
             Category::Containers => write!(f, "containers"),
             Category::HostConfig => write!(f, "host_config"),
+            Category::System => write!(f, "system"),
         }
     }
 }

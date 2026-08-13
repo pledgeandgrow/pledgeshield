@@ -362,7 +362,7 @@ jobs:
           pledgeshield scan
 
           # Scan with CVE checking and compliance mapping
-          pledgeshield scan --cve --compliance --output html --output-file report.html
+          pledgeshield scan --cve --compliance --format html --output report.html
 
           # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
@@ -569,7 +569,7 @@ jobs:
           pledgeshield scan
 
           # Scan with CVE checking and compliance mapping
-          pledgeshield scan --cve --compliance --output html --output-file report.html
+          pledgeshield scan --cve --compliance --format html --output report.html
 
           # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
@@ -750,7 +750,7 @@ jobs:
           pledgeshield scan
 
           # Scan with CVE checking and compliance mapping
-          pledgeshield scan --cve --compliance --output html --output-file report.html
+          pledgeshield scan --cve --compliance --format html --output report.html
 
           # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh
@@ -918,7 +918,7 @@ jobs:
           pledgeshield scan
 
           # Scan with CVE checking and compliance mapping
-          pledgeshield scan --cve --compliance --output html --output-file report.html
+          pledgeshield scan --cve --compliance --format html --output report.html
 
           # Harden your system (120+ hardening modules)
           pledgeshield harden firewall --harden --allow-ssh

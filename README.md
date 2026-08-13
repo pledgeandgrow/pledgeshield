@@ -7,6 +7,10 @@
 
 ---
 
+## AI-Assisted Usage
+
+PledgeShield is designed to be used with an AI assistant. For the best experience, have your AI analyze [`COMMANDS.md`](COMMANDS.md) before running commands — it contains the complete command reference and examples.
+
 ## What It Is
 
 PledgeShield is a Rust-based host security auditor for Windows, macOS, and Linux. It scans your device for misconfigurations, exposed services, unpatched software, privilege escalation vectors, and other attack surfaces that antivirus software doesn't look at.
@@ -38,7 +42,7 @@ Antivirus (Microsoft Defender, XProtect, ClamAV, etc.) focuses on **malware dete
 pledgeshield scan
 
 # Scan with CVE checking and compliance mapping
-pledgeshield scan --cve --compliance --output html --output-file report.html
+pledgeshield scan --cve --compliance --format html --output report.html
 
 # Harden your system (120+ hardening modules)
 pledgeshield harden firewall --harden --allow-ssh
