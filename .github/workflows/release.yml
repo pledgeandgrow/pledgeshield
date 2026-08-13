@@ -878,7 +878,6 @@ jobs:
               <description>Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces. Think lynis but cross-platform, in Rust, one binary, no agent, no server.</description>
               <summary>Personal device security auditor for Windows, macOS, and Linux</summary>
               <license type="expression">MIT</license>
-              <licenseUrl>https://github.com/pledgeandgrow/pledgeshield/blob/main/LICENSE</licenseUrl>
               <projectUrl>https://github.com/pledgeandgrow/pledgeshield</projectUrl>
               <repository type="git" url="https://github.com/pledgeandgrow/pledgeshield" />
               <bugTrackerUrl>https://github.com/pledgeandgrow/pledgeshield/issues</bugTrackerUrl>
