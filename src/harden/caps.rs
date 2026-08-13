@@ -2,6 +2,7 @@
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
+#[cfg(target_os = "linux")]
 const DANGEROUS_CAPS: &[(&str, &str)] = &[
     (
         "cap_setuid",

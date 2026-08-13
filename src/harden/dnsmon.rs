@@ -151,6 +151,7 @@ fn get_recent_dns_queries() -> Vec<DnsQuery> {
     queries
 }
 
+#[cfg(target_os = "linux")]
 fn extract_domain_from_journal(line: &str) -> Option<String> {
     // Format: "query[AAAA] example.com"
     if let Some(idx) = line.find("query[") {

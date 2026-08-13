@@ -3220,7 +3220,7 @@ fn ctrlc_handler<F: Fn() + Send + 'static>(handler: F) {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         use std::os::raw::c_int;
-        extern "C" {
+        unsafe extern "C" {
             fn signal(sig: c_int, handler: extern "C" fn(c_int)) -> usize;
         }
         static mut HANDLER: Option<Box<dyn Fn() + Send + 'static>> = None;

@@ -139,6 +139,7 @@ pub fn scan_rootkits() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn get_proc_pids() -> Vec<u32> {
     let mut pids = Vec::new();
     if let Ok(entries) = std::fs::read_dir("/proc") {
@@ -151,6 +152,7 @@ fn get_proc_pids() -> Vec<u32> {
     pids
 }
 
+#[cfg(target_os = "linux")]
 fn get_ps_pids() -> Vec<u32> {
     if let Ok(o) = Command::new("ps").args(["-eo", "pid"]).output() {
         String::from_utf8_lossy(&o.stdout)
@@ -163,6 +165,7 @@ fn get_ps_pids() -> Vec<u32> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn get_lsmod_modules() -> Vec<String> {
     if let Ok(o) = Command::new("lsmod").output() {
         String::from_utf8_lossy(&o.stdout)
@@ -175,6 +178,7 @@ fn get_lsmod_modules() -> Vec<String> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn get_proc_modules() -> Vec<String> {
     std::fs::read_to_string("/proc/modules")
         .map(|s| {

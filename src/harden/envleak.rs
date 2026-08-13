@@ -1,6 +1,7 @@
 /// Environment variable leak checker — scan /proc/[pid]/environ for secrets.
 use crate::models::{Category, Finding, Severity};
 
+#[cfg(target_os = "linux")]
 const SECRET_ENV_VARS: &[&str] = &[
     "API_KEY",
     "API_SECRET",

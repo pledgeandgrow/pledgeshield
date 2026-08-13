@@ -172,6 +172,7 @@ pub fn audit_schedulers() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn audit_cron_content(content: &str, source: &str, findings: &mut Vec<Finding>) {
     for line in content.lines() {
         let line = line.trim();

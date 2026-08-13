@@ -125,6 +125,7 @@ pub fn audit_resources() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn num_cpus() -> usize {
     #[cfg(target_os = "linux")]
     {

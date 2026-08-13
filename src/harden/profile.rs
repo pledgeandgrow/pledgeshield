@@ -88,6 +88,7 @@ pub fn audit_profile(profile: Profile) -> Vec<Finding> {
                                         setting.severity,
                                         Category::HostConfig,
                                     )
+                                    .description(setting.description.clone())
                                     .fixable(true),
                                 );
                             }

@@ -3,6 +3,7 @@ use std::process::Command;
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 fn run_cmd(program: &str, args: &[&str]) -> String {
     Command::new(program)
         .args(args)

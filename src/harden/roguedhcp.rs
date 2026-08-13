@@ -64,6 +64,7 @@ pub fn audit_rogue_dhcp() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn get_default_gateway() -> Option<String> {
     #[cfg(target_os = "linux")]
     {

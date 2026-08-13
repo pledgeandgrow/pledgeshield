@@ -5,6 +5,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 /// Known-safe SUID binaries (common on Linux).
+#[cfg(target_os = "linux")]
 const KNOWN_SUID: &[&str] = &[
     "/usr/bin/sudo",
     "/usr/bin/su",
@@ -77,6 +78,7 @@ pub fn audit_suid() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn find_suid_binaries(root: &str) -> Vec<String> {
     let mut results = Vec::new();
     let root_path = Path::new(root);
@@ -106,6 +108,7 @@ fn find_suid_binaries(root: &str) -> Vec<String> {
     results
 }
 
+#[cfg(target_os = "linux")]
 fn walk_dir(dir: &Path, callback: &mut impl FnMut(&Path)) {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -134,6 +137,7 @@ fn walk_dir(dir: &Path, callback: &mut impl FnMut(&Path)) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn is_suspicious_suid(path: &str) -> bool {
     // SUID binaries in /tmp, /home, /var/tmp are always suspicious
     path.starts_with("/tmp/")

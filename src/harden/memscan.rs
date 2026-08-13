@@ -12,6 +12,7 @@ const MALWARE_SIGNATURES: &[(&str, &str)] = &[
     ("Merlin agent", "merlin"),
 ];
 
+#[cfg(target_os = "linux")]
 const STRING_SIGNATURES: &[&str] = &[
     "meterpreter",
     "Mimikatz",

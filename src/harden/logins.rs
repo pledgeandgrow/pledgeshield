@@ -188,6 +188,7 @@ fn get_failed_logins() -> Vec<LoginAttempt> {
     attempts
 }
 
+#[cfg(target_os = "linux")]
 fn extract_ip(line: &str) -> Option<String> {
     // Look for IP address pattern
     for word in line.split_whitespace() {
@@ -201,6 +202,7 @@ fn extract_ip(line: &str) -> Option<String> {
     None
 }
 
+#[cfg(target_os = "linux")]
 fn extract_user(line: &str) -> Option<String> {
     if let Some(idx) = line.find("user ") {
         let rest = &line[idx + 5..];

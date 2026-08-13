@@ -3,6 +3,7 @@ use super::HardenResult;
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
+#[cfg(target_os = "linux")]
 const SECURE_MOUNTS: &[(&str, &[&str])] = &[
     // (mount point, required options)
     ("/tmp", &["nosuid", "nodev", "noexec"]),

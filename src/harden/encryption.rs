@@ -131,6 +131,7 @@ pub fn audit_encryption() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn check_block_device(dev: &serde_json::Value, encrypted: &mut usize, total: &mut usize) {
     if let Some(fstype) = dev.get("fstype").and_then(|v| v.as_str()) {
         if fstype == "crypto_LUKS" {

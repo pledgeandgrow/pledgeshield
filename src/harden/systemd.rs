@@ -73,6 +73,7 @@ pub fn audit_systemd() -> Vec<Finding> {
     findings
 }
 
+#[cfg(target_os = "linux")]
 fn scan_systemd_dir(dir: &str, findings: &mut Vec<Finding>) {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {

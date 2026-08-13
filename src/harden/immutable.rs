@@ -3,6 +3,7 @@ use super::HardenResult;
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
+#[cfg(target_os = "linux")]
 const CRITICAL_FILES: &[&str] = &[
     "/etc/passwd",
     "/etc/shadow",

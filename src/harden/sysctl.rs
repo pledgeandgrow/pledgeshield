@@ -3,6 +3,7 @@ use super::HardenResult;
 use crate::models::{Category, Finding, Severity};
 use std::process::Command;
 
+#[cfg(target_os = "linux")]
 const SECURITY_SYSCALLS: &[(&str, &str, &str)] = &[
     // (param, secure_value, description)
     (

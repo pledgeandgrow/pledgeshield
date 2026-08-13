@@ -75,6 +75,7 @@ fn scan_dirs() -> HashSet<String> {
     files
 }
 
+#[cfg(target_os = "linux")]
 fn scan_dir_recursive(dir: &Path, files: &mut HashSet<String>, depth: usize, max_depth: usize) {
     if depth > max_depth {
         return;
