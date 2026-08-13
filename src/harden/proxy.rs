@@ -50,7 +50,7 @@ pub fn set_proxy(proxy_type: &str, host: &str, port: u16, dry_run: bool) -> Hard
 
         // Also set for current process
         for (key, val) in &env_vars {
-            std::env::set_var(key, val);
+            unsafe { std::env::set_var(key, val) };
         }
 
         HardenResult {
@@ -160,7 +160,7 @@ pub fn clear_proxy() -> HardenResult {
             "all_proxy",
             "ALL_PROXY",
         ] {
-            std::env::remove_var(key);
+            unsafe { std::env::remove_var(key) };
         }
         HardenResult {
             action: "proxy-clear".to_string(),
