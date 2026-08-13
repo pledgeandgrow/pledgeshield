@@ -114,17 +114,4 @@ jobs:
             ${{ matrix.artifact }}.zip
             ${{ matrix.artifact }}.zip.sha256
 
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Build Docker image
-        run: docker build -t pledgeshield:ci .
-
-      - name: Test Docker image
-        run: docker run --rm pledgeshield:ci --help

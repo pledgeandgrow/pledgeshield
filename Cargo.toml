@@ -1,7 +1,7 @@
 [package]
 name = "pledgeshield"
-version = "0.0.1"
-edition = "2021"
+version = "0.0.2"
+edition = "2024"
 description = "Personal device security auditor — finds what antivirus misses. Scans for misconfigurations, exposed services, unpatched CVEs, privilege escalation, and hardens 120+ attack surfaces."
 license = "MIT"
 repository = "https://github.com/pledgeandgrow/pledgeshield"
